@@ -1,0 +1,12 @@
+script_name=selector
+
+executable            = selector.sh
+arguments 	      = $(NTUPLE_NAME)
+universe	      = vanilla
+requirements          = (OpSysAndVer =?= "CentOS7")
+output                = out/$(script_name).$(ClusterId).$(ProcId).$(Step).$(NTUPLE_NAME).out
+error                 = out/$(script_name).$(ClusterId).$(ProcId).$(Step).$(NTUPLE_NAME).err
+log                   = log/$(script_name).$(ClusterId).log
+RequestCpus	      = 4
++JobFlavour = "workday"
+queue NTUPLE_NAME in (ntuple_1000.root)
