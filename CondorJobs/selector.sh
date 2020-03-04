@@ -36,6 +36,6 @@ cd "${INIT_FOLDER}";
 
 INFILE="/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/ntuple_${1}.root";
 echo "Input file: ${INFILE}"
-OUTFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${1}.txt";
+OUTFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${1}.root";
 echo "Output file: ${OUTFILE}"
 process_data_exe "${INFILE}" "${OUTFILE}";
