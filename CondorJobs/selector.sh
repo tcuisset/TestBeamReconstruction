@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 varExists() { 
     # Checks whether a certain environment variable already exists
@@ -33,8 +33,9 @@ eval `scramv1 runtime -sh` #cmsenv substitute
 
 #back to the job folder
 cd "${INIT_FOLDER}";
-pwd
 
-echo "Before command";
-process_data_exe "${1}"
-echo "After command";
+INFILE="/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/ntuple_${1}.root";
+echo "Input file: ${INFILE}"
+OUTFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${1}.txt";
+echo "Output file: ${OUTFILE}"
+process_data_exe "${INFILE}" "${OUTFILE}";
