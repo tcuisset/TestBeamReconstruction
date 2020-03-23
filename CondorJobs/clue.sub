@@ -1,0 +1,16 @@
+script_name=clue
+file_name=ntuple
+DC=20
+DELTAC=20
+RHOC=20
+
+executable            = clue.sh
+arguments 	      = $(file_name) $(DC) $(DELTAO) $(DELTAC) $(RHOC)
+universe	      = vanilla
+requirements          = (OpSysAndVer =?= "CentOS7")
+output                = out/$(script_name).$(ProcId).$(DELTAO).out
+error                 = out/$(script_name).$(ProcId).$(DELTAO).err
+log                   = log/$(script_name).$(ProcId).log
+RequestCpus	      = 6
++JobFlavour = "workday"
+queue 1 DELTAO in (5,10,15,20,25,30)
