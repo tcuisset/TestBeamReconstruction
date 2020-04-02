@@ -26,8 +26,41 @@ void Selector::select_relevant_branches()
     throw std::invalid_argument("In order to perform TTree skimming you must specify an output file path.");
   //enable parallelism
   ROOT::EnableImplicitMT( ncpus_ );
+
+  auto convert_energy = [&](std::vector<float> en, std::vector<unsigned int> l) {
+    std::vector<float> en_conv(en.size(), 0.);
+    float thick_corr = 0;
+    for(unsigned int i=0; i<en.size(); ++i)
+      {
+	if(l[i]>0 && l[i]<27)
+	  thick_corr = this->thickness_correction_[0];
+	else if(l[i]<29)
+	  thick_corr = this->thickness_correction_[1];
+	else
+	  throw std::out_of_range("The layer number is too large.");
+	en_conv.at(i) = en[i] * thick_corr;
+      }
+    return en_conv;
+  };
+  
+  auto weight_energy = [&](std::vector<float> en, std::vector<unsigned int> l) {
+	unsigned int layer = 0;
+	std::vector<float> en_conv(en.size(), 0.);
+	for(unsigned int i=0; i<en.size(); ++i)
+	  {
+	    layer = l[i];
+	    if(layer > 28 || layer < 1)
+	      throw std::out_of_range("The layer number is too large.");
+	    en_conv.at(i) = en[i] * this->energy_weights_[layer];
+	  }
+	return en_conv;  
+      };
+      
   //define dataframe that owns the TTree
   ROOT::RDataFrame d(this->indata_.tree_name.c_str(), this->indata_.file_path.c_str());
+  //convert from MIPs to MeV
+  auto d_def = d.Define(newcol1_, convert_energy, {"rechit_energy", "rechit_layer"})
+      .Define(newcol2_, weight_energy, {"rechit_energy_MeV", "rechit_layer"});
   //store the contents of the TTree according to the specified columns
   d.Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), cols_);
 };
