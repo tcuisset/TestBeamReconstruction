@@ -5,7 +5,7 @@ Selector::Selector(const std::string& in_file_path, std::optional<std::string> o
 {
   sanity_checks(in_file_path);
   this->indata_.file_path = in_file_path;
-  if(in_tree_name != std::nullopt)
+  if(out_file_path != std::nullopt)
     {
       this->outdata_.file_path = out_file_path.value();
       sanity_checks(this->outdata_.file_path);
@@ -28,41 +28,50 @@ void Selector::select_relevant_branches()
   ROOT::EnableImplicitMT( ncpus_ );
 
   auto convert_energy = [&](std::vector<float> en, std::vector<unsigned int> l) {
-    std::vector<float> en_conv(en.size(), 0.);
+    std::vector<float> en_conv(en.size(), 0.f);
+    unsigned int layer = 0;
     float thick_corr = 0;
     for(unsigned int i=0; i<en.size(); ++i)
       {
-	if(l[i]>0 && l[i]<27)
+	layer = l[i];
+	if(layer>0 && layer<27)
 	  thick_corr = this->thickness_correction_[0];
-	else if(l[i]<29)
+	else if(layer >= 27 && layer<29)
 	  thick_corr = this->thickness_correction_[1];
+	else if(layer >= 29 && layer<=50)
+	  thick_corr = 0; //ignore hits in the hadronic section
 	else
-	  throw std::out_of_range("The layer number is too large.");
-	en_conv.at(i) = en[i] * thick_corr;
+	  throw std::out_of_range("Unphysical layer number: "+std::to_string(layer));
+	en_conv.at(i) =  en[i] * thick_corr;
       }
     return en_conv;
   };
   
   auto weight_energy = [&](std::vector<float> en, std::vector<unsigned int> l) {
 	unsigned int layer = 0;
-	std::vector<float> en_conv(en.size(), 0.);
+	float weight = 1.;
+	std::vector<float> en_conv(en.size(), 0.f);
 	for(unsigned int i=0; i<en.size(); ++i)
 	  {
 	    layer = l[i];
-	    if(layer > 28 || layer < 1)
-	      throw std::out_of_range("The layer number is too large.");
-	    en_conv.at(i) = en[i] * this->energy_weights_[layer];
+	    if(layer > 0 && layer <= 28)
+	      weight = this->energy_weights_[layer];
+	    else if(layer > 28 && layer <= 50)
+	      weight = 0.; //ignore hits in the hadronic section
+	    else
+	      throw std::out_of_range("Unphysical layer number: "+std::to_string(layer));
+	    en_conv.at(i) = en[i] * weight;
 	  }
 	return en_conv;  
       };
-      
+
   //define dataframe that owns the TTree
   ROOT::RDataFrame d(this->indata_.tree_name.c_str(), this->indata_.file_path.c_str());
   //convert from MIPs to MeV
   auto d_def = d.Define(newcol1_, convert_energy, {"rechit_energy", "rechit_layer"})
-      .Define(newcol2_, weight_energy, {"rechit_energy_MeV", "rechit_layer"});
-  //store the contents of the TTree according to the specified columns
-  d.Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), cols_);
+    .Define(newcol2_, weight_energy, {"rechit_energy_MeV", "rechit_layer"})
+    //store the contents of the TTree according to the specified columns
+    .Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), cols_);
 };
 
 void Selector::print_relevant_branches(const int& nrows=5, std::optional<std::string> filename)
