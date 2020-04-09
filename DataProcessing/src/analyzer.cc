@@ -31,7 +31,7 @@ Analyzer::~Analyzer()
 {
 }
 
-void Analyzer::runCLUE(int dc, int deltao, int deltac, int rhoc) {
+void Analyzer::runCLUE(float dc, float rhoc_300, float rhoc_200) {
   float tot_en = 0;
   std::vector< std::vector<float> > x_;
   std::vector< std::vector<float> > y_;
@@ -42,7 +42,7 @@ void Analyzer::runCLUE(int dc, int deltao, int deltac, int rhoc) {
   std::pair<unsigned int, float> out_pair;
   unsigned int nevents = 0;
   float beam_energy = -1;
-  CLUEAlgo clueAlgo(dc, deltao, deltac, rhoc, 0); //non-verbose
+  CLUEAlgo clueAlgo(dc, rhoc_300, rhoc_200); //non-verbose
   CLUEAnalysis clueAna;
   for(unsigned int i=0; i<nfiles_; ++i) 
     {
@@ -107,6 +107,7 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
 
   //loop over the TTree pointed by the RDataFrame
   d.ForeachSlot(fill, {"rechit_x", "rechit_y", "rechit_layer", "rechit_weighted_energy_MeV", "rechit_detid", "beamEnergy"});
+
   //calculate number of events taking into account that ncpus is just a hint to EnableImplicitMT
   std::vector<unsigned int> nevents_v;
   for(unsigned int iThread=0; iThread<ncpus_; ++iThread) {

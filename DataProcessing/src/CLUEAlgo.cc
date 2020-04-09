@@ -1,4 +1,4 @@
-#include "UserCode/Clue/interface/CLUEAlgo.h"
+#include "UserCode/DataProcessing/interface/CLUEAlgo.h"
 
 void CLUEAlgo::makeClusters(){
   std::array<LayerTiles, NLAYERS> allLayerTiles;
@@ -71,6 +71,7 @@ void CLUEAlgo::calculateLocalDensity( std::array<LayerTiles, NLAYERS> & allLayer
 
 void CLUEAlgo::calculateDistanceToHigher( std::array<LayerTiles, NLAYERS> & allLayerTiles ){
   // loop over all points
+  float dm = outlierDeltaFactor_ * dc_;
   for(int i = 0; i < points_.n; i++) {
     // default values of delta and nearest higher for i
     float maxDelta = std::numeric_limits<float>::max();
@@ -80,7 +81,7 @@ void CLUEAlgo::calculateDistanceToHigher( std::array<LayerTiles, NLAYERS> & allL
     LayerTiles& lt = allLayerTiles[points_.layer[i]];
 
     // get search box 
-    std::array<int,4> search_box = lt.searchBox(points_.x[i]-dm_, points_.x[i]+dm_, points_.y[i]-dm_, points_.y[i]+dm_);
+    std::array<int,4> search_box = lt.searchBox(points_.x[i]-dm, points_.x[i]+dm, points_.y[i]-dm, points_.y[i]+dm);
     
     // loop over all bins in the search box
     for(int xBin = search_box[0]; xBin < search_box[1]+1; ++xBin) {
@@ -94,13 +95,13 @@ void CLUEAlgo::calculateDistanceToHigher( std::array<LayerTiles, NLAYERS> & allL
         // interate inside this bin
         for (int binIter = 0; binIter < binSize; binIter++) {
           int j = lt[binId][binIter];
-          // query N'_{dm_}(i)
+          // query N'_{dm}(i)
           bool foundHigher = (points_.rho[j] > points_.rho[i]);
           // in the rare case where rho is the same, use detid
           foundHigher = foundHigher || ((points_.rho[j] == points_.rho[i]) && (j>i) );
           float dist_ij = distance(i, j);
-          if(foundHigher && dist_ij <= dm_) { // definition of N'_{dm_}(i)
-            // find the nearest point within N'_{dm_}(i)
+          if(foundHigher && dist_ij <= dm) { // definition of N'_{dm}(i)
+            // find the nearest point within N'_{dm}(i)
             if (dist_ij < delta_i) {
               // update delta_i and nearestHigher_i
               delta_i = dist_ij;
@@ -128,8 +129,9 @@ void CLUEAlgo::findAndAssignClusters(){
     // initialize clusterIndex
     points_.clusterIndex[i] = -1;
     // determine seed or outlier
-    bool isSeed = (points_.delta[i] > deltac_) && (points_.rho[i] >= rhoc_);
-    bool isOutlier = (points_.delta[i] > deltao_) && (points_.rho[i] < rhoc_);
+    float rhoc = points_.layer[i] < 27 ? this->rhoc_300_ : this->rhoc_200_;
+    bool isSeed = (points_.delta[i] > dc_) && (points_.rho[i] >= rhoc);
+    bool isOutlier = (points_.delta[i] > outlierDeltaFactor_ * dc_) && (points_.rho[i] < rhoc);
     if (isSeed) {
       // set isSeed as 1
       points_.isSeed[i] = 1;

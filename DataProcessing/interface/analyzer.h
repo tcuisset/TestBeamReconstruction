@@ -5,7 +5,7 @@
 #include "TTree.h"
 #include "ROOT/RDataFrame.hxx"
 #include "ROOT/RDF/InterfaceUtils.hxx"
-#include "UserCode/Clue/interface/range.h"
+#include "UserCode/DataProcessing/interface/range.h"
 #include "UserCode/DataProcessing/interface/CLUEAlgo.h"
 #include "UserCode/DataProcessing/interface/CLUEAnalysis.h"
 
@@ -32,7 +32,7 @@ class Analyzer {
   Analyzer(const std::vector< std::string >&, const std::string& out_file_path, std::string in_tree_name);
   Analyzer(const std::string&, const std::string& out_file_path, std::string in_tree_name);
   ~Analyzer();
-  void runCLUE(int dc, int deltao, int deltac, int rhoc);
+  void runCLUE(float dc, float rhoc_300, float rhoc_200);
   void sum_energy();
   void save_to_file(const std::string&);
 

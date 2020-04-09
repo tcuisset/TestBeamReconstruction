@@ -18,12 +18,12 @@ class CLUEAlgo{
 
   public:
     // constructor
-    CLUEAlgo(float dc, float deltao, float deltac, float rhoc, bool verbose=false ){ 
+  CLUEAlgo(float dc, float rhoc_300, float rhoc_200, bool verbose=false ){ 
       dc_ = dc; 
-      deltao_ = deltao; 
-      deltac_ = deltac; 
-      rhoc_ = rhoc;
-      dm_ = std::max(deltao_, deltac_);
+      rhoc_300_ = rhoc_300;
+      rhoc_200_ = rhoc_200;
+      //dm_ =  std::max(deltao_, deltac_);
+      outlierDeltaFactor_ = 2.;
       verbose_ = verbose;
     
     }
@@ -31,8 +31,11 @@ class CLUEAlgo{
     ~CLUEAlgo(){} 
     
     // public variables
-    float dc_, dm_, deltao_, deltac_, rhoc_;
+    float dc_, rhoc_300_, rhoc_200_, outlierDeltaFactor_;
+    float ecut = 3.;
+    std::array<float, 2> snratio = {{7.2 /*300 micron sensors*/, 4.8 /*200 micron sensors*/}}; //values given by Thorben
     bool verbose_;
+    
     Points points_;
 
     std::vector<float> getHitsClusterX();
@@ -44,19 +47,28 @@ class CLUEAlgo{
     // public methods
     void setPoints(int n, float* x, float* y, unsigned int* layer, float* weight) {
       points_.clear();
-      points_.n = n;
+
       // input variables
-      points_.x.assign(x, x + n);
-      points_.y.assign(y, y + n);
-      points_.layer.assign(layer, layer + n);
-      points_.weight.assign(weight, weight + n);
+      for(int i=0; i<n; ++i)
+	{
+	  if( (layer[i] < 27 and weight[i] < ecut*snratio[0]) or
+	      (layer[i] >= 27 and layer[i] < 29 and weight[i] < ecut*snratio[1]) )
+	    continue;
+	  points_.x.push_back(x[i]);
+	  points_.y.push_back(y[i]);
+	  points_.layer.push_back(layer[i]);
+	  points_.weight.push_back(weight[i]);
+	}
+
+      points_.n = points_.x.size();
+
       // result variables
-      points_.rho.resize(n,0);
-      points_.delta.resize(n,std::numeric_limits<float>::max());
-      points_.nearestHigher.resize(n,-1);
-      points_.isSeed.resize(n,0);
-      points_.followers.resize(n);
-      points_.clusterIndex.resize(n,-1);
+      points_.rho.resize(points_.n,0);
+      points_.delta.resize(points_.n,std::numeric_limits<float>::max());
+      points_.nearestHigher.resize(points_.n,-1);
+      points_.isSeed.resize(points_.n,0);
+      points_.followers.resize(points_.n);
+      points_.clusterIndex.resize(points_.n,-1);
     }
 
     void clearPoints(){ points_.clear(); }
