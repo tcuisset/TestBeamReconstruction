@@ -4,6 +4,7 @@
 #include "TTree.h"
 #include "ROOT/RDataFrame.hxx"
 #include "ROOT/RDF/InterfaceUtils.hxx"
+#include "UserCode/DataProcessing/interface/range.h"
 
 class Selector {
  public:

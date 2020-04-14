@@ -37,14 +37,6 @@ class CLUEAnalysis {
   float getTotalClusterOutput(const std::string& outputFileName, bool verbose=0);
 
  private:
-  /*
-  constexpr nlayers_ = 50;
-  TTree *t_;
-  std::array< float, nlayers_ > outx_;
-  std::array< float, nlayers_ > outy_;
-  std::array< TBranch*, nlayers_ > branchesx_;
-  std::array< TBranch*, nlayers_ > branchesy_;
-  */
   std::vector<dataformats::position> pos_;
   std::vector< float > en_;
 };

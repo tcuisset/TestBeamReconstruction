@@ -170,14 +170,3 @@ float CLUEAnalysis::getTotalClusterOutput(const std::string& outputFileName, boo
     }
   return toten;
 }
-
-/*
-void CLUEAnalysis::createOutputTree(std::string& file_name, std::string& tree_name) {
-  t_ = new TTree( tree_name.c_str(), tree_name.c_str() );
-  for(auto i : util::lang::indices(branches_))
-    {
-      branchesx_[i] = tree.Branch("x_"+std::to_string(i), &outx_[i]);
-      branchesy_[i] = tree.Branch("y_"+std::to_string(i), &outy_[i]);
-    }
-}
-*/

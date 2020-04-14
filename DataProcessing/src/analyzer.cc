@@ -21,7 +21,7 @@ Analyzer::Analyzer(const std::string& in_file_path, const std::string& out_file_
 {
   nfiles_ = 1;
   std::cout << "Number of files being processed: " << nfiles_ << std::endl;
-  std::cout << "Files: " << std::endl;
+  std::cout << "File: " << in_file_path << std::endl;
   sanity_checks(in_file_path);
   names_.push_back( std::make_pair(in_file_path, in_tree_name) );
   en_total_.push_back( std::vector< std::tuple<float, float> >() );
@@ -170,6 +170,66 @@ void Analyzer::sum_energy()
       d.Foreach(sum, {"rechit_weighted_energy_MeV", "beamEnergy"});
     }
 };
+
+void Analyzer::histogram_checks()
+{
+  //enable parallelism
+  ROOT::EnableImplicitMT( ncpus_ );
+
+  auto sum_energies = [&](std::vector<float> en, std::vector<unsigned int> l) {
+    std::vector<float> ensum(en.size(), 0.f);
+    unsigned int layer = 0;
+    float thick_corr = 0.;
+    float weight = 1.;
+    for(unsigned int i=0; i<en.size(); ++i)
+      {
+	layer = l[i];
+	if(layer>0 && layer<27)
+	  {
+	    thick_corr = this->thickness_correction_[0];
+	    weight = this->energy_weights_[layer];
+	  }
+	else if(layer >= 27 && layer<29)
+	  {
+	    thick_corr = this->thickness_correction_[1];
+	    weight = this->energy_weights_[layer];
+	  }
+	else if(layer >= 29 && layer<=50)
+	  {
+	    thick_corr = 0; //ignore hits in the hadronic section
+	    weight = 0;
+	  }
+	else
+	  throw std::out_of_range("Unphysical layer number: "+std::to_string(layer));
+	ensum.at(i) =  en[i] * thick_corr * weight;
+      }
+    return std::accumulate(ensum.begin(), ensum.end(), 0.);
+  };
+  
+  //define dataframe that owns the TTree
+  assert(this->names_.size() == 1);
+  ROOT::RDataFrame d(this->names_[0].second.c_str(), this->names_[0].first.c_str());
+  auto h1 = d.Histo2D<std::vector<unsigned int>, std::vector<float>>({"h1", "RecHit Energy vs. RecHit Layer", 41u, 0, 42, 200u, 0., 14.}, "rechit_layer", "rechit_energy");
+  auto d_def = d.Define("energy_sum", sum_energies, {"rechit_energy_MeV", "rechit_layer"}); 
+  auto h_sum = d_def.Histo1D("energy_sum");
+
+  TCanvas *c = new TCanvas("c", "c", 1600, 600);
+  c->Divide(2,1);
+  c->cd(1);
+  h_sum->SetLineColor(4);
+  h_sum->SetTitle("RecHit Energy Sum per Event");
+  h_sum->SetXTitle("Energy Sum [MeV]");
+  h_sum->SetYTitle("Counts");
+  h_sum->Draw();
+  c->cd(2);
+  h1->SetLineColor(4);
+  h1->SetYTitle("Rechit energy [MIP]");
+  h1->SetXTitle("Layer");
+  h1->Draw("colz");
+  c->SaveAs("histo.png");
+  delete c;
+};
+
 
 int Analyzer::sanity_checks(const std::string& fname) 
 {

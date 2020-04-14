@@ -27,10 +27,21 @@ void Selector::select_relevant_branches()
   //enable parallelism
   ROOT::EnableImplicitMT( ncpus_ );
 
+  auto hadronic_contamination_filter = [](std::vector<float> en, std::vector<unsigned int> l) {
+    unsigned int counter = 0;
+    assert(en.size() == l.size());
+    for(auto i: util::lang::indices(en)) 
+      {
+	if(l[i]>28 and en[i]>0.5) //hadronic hit with more than half MIP deposited energy
+	  counter += 1;
+      }
+    return counter < 80; //filters out events with 80 hits or more in the hadronic section
+  };
+
   auto convert_energy = [&](std::vector<float> en, std::vector<unsigned int> l) {
     std::vector<float> en_conv(en.size(), 0.f);
     unsigned int layer = 0;
-    float thick_corr = 0;
+    float thick_corr = 0.;
     for(unsigned int i=0; i<en.size(); ++i)
       {
 	layer = l[i];
@@ -68,7 +79,8 @@ void Selector::select_relevant_branches()
   //define dataframe that owns the TTree
   ROOT::RDataFrame d(this->indata_.tree_name.c_str(), this->indata_.file_path.c_str());
   //convert from MIPs to MeV
-  auto d_def = d.Define(newcol1_, convert_energy, {"rechit_energy", "rechit_layer"})
+  auto d_def = d.Filter(hadronic_contamination_filter, {"rechit_energy", "rechit_layer"})
+    .Define(newcol1_, convert_energy, {"rechit_energy", "rechit_layer"})
     .Define(newcol2_, weight_energy, {"rechit_energy_MeV", "rechit_layer"})
     //store the contents of the TTree according to the specified columns
     .Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), cols_);

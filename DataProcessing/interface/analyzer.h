@@ -2,6 +2,9 @@
 #include <fstream>
 #include <string>
 #include <thread>
+#include <numeric>
+#include "TFile.h"
+#include "TCanvas.h"
 #include "TTree.h"
 #include "ROOT/RDataFrame.hxx"
 #include "ROOT/RDF/InterfaceUtils.hxx"
@@ -33,6 +36,7 @@ class Analyzer {
   Analyzer(const std::string&, const std::string& out_file_path, std::string in_tree_name);
   ~Analyzer();
   void runCLUE(float dc, float rhoc_300, float rhoc_200);
+  void histogram_checks();
   void sum_energy();
   void save_to_file(const std::string&);
 
@@ -44,6 +48,9 @@ class Analyzer {
   //data
   size_t nfiles_;
   static const int ncpus_ = 4;
+  //weights and thickness corrections taken from the third column of Table 3 of CMS DN-19-019
+  std::array<float, 28> energy_weights_ = {{11.289,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,11.360,11.360,11.360,11.360,10.995,10.995,11.153,7.470}};
+  std::array<float, 2> thickness_correction_ = {{0.0850, 0.0567}};
   std::vector< std::pair<std::string, std::string> > names_; //file and tree names
   std::vector< std::vector< std::tuple<float, float> > > en_total_; //total energy per event (vector of RecHits) per file (run)
 };
