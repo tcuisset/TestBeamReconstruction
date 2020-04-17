@@ -1,0 +1,12 @@
+script_name=analyzer
+
+executable            = analyzer.sh
+arguments 	      = $(FILE_NAME)
+universe	      = vanilla
+requirements          = (OpSysAndVer =?= "CentOS7")
+output                = out/$(script_name).$(ProcId).out
+error                 = out/$(script_name).$(ProcId).err
+log                   = log/$(script_name).$(ProcId).log
+RequestCpus	      = 10
++JobFlavour = "workday"
+queue FILE_NAME from file_names.txt
