@@ -9,7 +9,8 @@ void analysis_CLUE(std::string& in_fname, std::string& out_fname, std::string& i
     Run custom analyzer
   *////////////////////////
   Analyzer ana(in_fname, out_fname, in_tname);
-  ana.runCLUE(dc, kappa * snratio[0], kappa * snratio[1]); //ana.sum_energy();
+  ana.runCLUE(dc, kappa * snratio[0], kappa * snratio[1]);
+  //ana.sum_energy();
   ana.save_to_file(out_fname);
 }
 
@@ -24,7 +25,7 @@ int main(int argc, char **argv) {
   std::string out_fname = std::string(argv[2]);
   std::string in_tname = "relevant_branches";
 
-  //analysis_CLUE(in_fname, out_fname, in_tname);
-  analysis_histos(in_fname, out_fname, in_tname);
+  analysis_CLUE(in_fname, out_fname, in_tname);
+  //analysis_histos(in_fname, out_fname, in_tname);
   return 0;
 }

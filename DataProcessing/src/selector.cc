@@ -27,6 +27,7 @@ void Selector::select_relevant_branches()
   //enable parallelism
   ROOT::EnableImplicitMT( ncpus_ );
 
+  /*
   auto hadronic_contamination_filter = [](std::vector<float> en, std::vector<unsigned int> l) {
     unsigned int counter = 0;
     assert(en.size() == l.size());
@@ -37,7 +38,9 @@ void Selector::select_relevant_branches()
       }
     return counter < 80; //filters out events with 80 hits or more in the hadronic section
   };
+  */
 
+  /*
   auto convert_energy = [&](std::vector<float> en, std::vector<unsigned int> l) {
     std::vector<float> en_conv(en.size(), 0.f);
     unsigned int layer = 0;
@@ -57,6 +60,7 @@ void Selector::select_relevant_branches()
       }
     return en_conv;
   };
+  */
   
   auto weight_energy = [&](std::vector<float> en, std::vector<unsigned int> l) {
 	unsigned int layer = 0;
@@ -66,9 +70,11 @@ void Selector::select_relevant_branches()
 	  {
 	    layer = l[i];
 	    if(layer > 0 && layer <= 28)
-	      weight = this->energy_weights_[layer];
+	      weight = this->energy_weights_.at(layer-1);
 	    else if(layer > 28 && layer <= 50)
-	      weight = 0.; //ignore hits in the hadronic section
+	      {
+		weight = 0.; //ignore hits in the hadronic section
+	      }
 	    else
 	      throw std::out_of_range("Unphysical layer number: "+std::to_string(layer));
 	    en_conv.at(i) = en[i] * weight;
@@ -79,9 +85,9 @@ void Selector::select_relevant_branches()
   //define dataframe that owns the TTree
   ROOT::RDataFrame d(this->indata_.tree_name.c_str(), this->indata_.file_path.c_str());
   //convert from MIPs to MeV
-  auto d_def = d.Filter(hadronic_contamination_filter, {"rechit_energy", "rechit_layer"})
-    .Define(newcol1_, convert_energy, {"rechit_energy", "rechit_layer"})
-    .Define(newcol2_, weight_energy, {"rechit_energy_MeV", "rechit_layer"})
+  /*d.Filter(hadronic_contamination_filter, {"rechit_energy", "rechit_layer"})*/
+  d.Define(newcol2_, weight_energy, {"rechit_energy", "rechit_layer"})
+    //Define(newcol1_, convert_energy, {"rechit_energy", "rechit_layer"})
     //store the contents of the TTree according to the specified columns
     .Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), cols_);
 };

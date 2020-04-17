@@ -7,6 +7,6 @@ requirements          = (OpSysAndVer =?= "CentOS7")
 output                = out/$(script_name).$(ProcId).$(NTUPLE_ID).out
 error                 = out/$(script_name).$(ProcId).$(NTUPLE_ID).err
 log                   = log/$(script_name).$(ProcId).log
-RequestCpus	      = 4
+RequestCpus	      = 10
 +JobFlavour = "workday"
 queue NTUPLE_ID from ntuple_ids.txt
