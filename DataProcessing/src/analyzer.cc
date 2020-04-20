@@ -179,29 +179,29 @@ void Analyzer::histogram_checks()
   auto sum_energies = [&](std::vector<float> en, std::vector<unsigned int> l) {
     std::vector<float> ensum(en.size(), 0.f);
     unsigned int layer = 0;
-    float thick_corr = 0.;
+    //float thick_corr = 0.;
     float weight = 1.;
     for(unsigned int i=0; i<en.size(); ++i)
       {
 	layer = l[i];
 	if(layer>0 && layer<27)
 	  {
-	    thick_corr = this->thickness_correction_[0];
+	    //thick_corr = this->thickness_correction_[0];
 	    weight = this->energy_weights_[layer];
 	  }
 	else if(layer >= 27 && layer<29)
 	  {
-	    thick_corr = this->thickness_correction_[1];
+	    //thick_corr = this->thickness_correction_[1];
 	    weight = this->energy_weights_[layer];
 	  }
 	else if(layer >= 29 && layer<=50)
 	  {
-	    thick_corr = 0; //ignore hits in the hadronic section
+	    //thick_corr = 0; //ignore hits in the hadronic section
 	    weight = 0;
 	  }
 	else
 	  throw std::out_of_range("Unphysical layer number: "+std::to_string(layer));
-	ensum.at(i) =  en[i] * thick_corr * weight;
+	ensum.at(i) =  en[i] * /*thick_corr **/ weight;
       }
     return std::accumulate(ensum.begin(), ensum.end(), 0.);
   };
@@ -240,7 +240,7 @@ int Analyzer::sanity_checks(const std::string& fname)
 
 void Analyzer::save_to_file(const std::string& filename) {
   std::ofstream oFile(filename);
-
+  std::cout << "SAVE: " << filename << std::endl;
   for(unsigned int i=0; i<nfiles_; ++i)
     {
       std::string curr_name = std::get<0>(names_[i]);

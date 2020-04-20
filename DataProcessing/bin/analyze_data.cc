@@ -9,9 +9,14 @@ void analysis_CLUE(std::string& in_fname, std::string& out_fname, std::string& i
     Run custom analyzer
   *////////////////////////
   Analyzer ana(in_fname, out_fname, in_tname);
+
   ana.runCLUE(dc, kappa * snratio[0], kappa * snratio[1]);
-  //ana.sum_energy();
   ana.save_to_file(out_fname);
+  //sum rechit energy directly without clustering
+  ana.sum_energy();
+  std::string first_half = out_fname.substr(0,out_fname.find('.', 20)); //the 20 avoids the '.' in 'cern.ch'
+  std::string second_half = out_fname.substr(out_fname.find('.', 20), 4);
+  ana.save_to_file(first_half+"_noclusters"+second_half);
 }
 
 void analysis_histos(std::string& in_fname, std::string& out_fname, std::string& in_tname) {
