@@ -120,7 +120,7 @@ def final_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2, frameid
     fig = bokehplot.get_figure(idx=1, iframe=frameid)
     fig.legend.location = 'bottom_right'
 
-    axis_kwargs3 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Resolution [MeV]'}
+    axis_kwargs3 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': u" Resolution (\u03c3 / E) [MeV]"}
     bokehplot.graph(idx=2, data=[np.array(true_beam_energies_GeV),np.array(res1)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.array(eres1)/2,np.array(eres1)/2]],
@@ -190,7 +190,8 @@ def main():
     _, _, _, _, res2_shifted, eres2_shifted = HandleHistograms.fit(hist2_shifted, pars2_shifted, histo_ranges2_shifted)
 
     bokehplot.add_frame('response_and_resolution.html', nfigs=3)
-    final_graphs(resp1, eresp1, res1_shifted, eres1_shifted, resp2, eresp2, res2_shifted, eres2_shifted, bkp.get_nframes())
+    last_frame_id = bokehplot.get_nframes() - 1
+    final_graphs(resp1, eresp1, res1_shifted, eres1_shifted, resp2, eresp2, res2_shifted, eres2_shifted, last_frame_id)
 
 if __name__ == '__main__':
     cmssw_base = subprocess.check_output("echo $CMSSW_BASE", shell=True).split('\n')[0]

@@ -19,7 +19,6 @@ void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, c
   for(auto i: util::lang::indices(weights))
     {
       unsigned int weight_index = clusterid.at(i) + 1; //outliers will correspond to total_weight[0]
-      weight_index = weight_index;
       total_weight.at(weight_index) += weights.at(i);
     }
 
@@ -117,6 +116,38 @@ void CLUEAnalysis::calculateEnergy( const std::vector<float>& weights, const std
   std::cout << "--- calculateEnergy      " << elapsed.count() *1000 << " ms\n\n";
 }
 
+//calculate the number of clusterized hits and clusterized energy per layer
+void CLUEAnalysis::calculateLayerDepVars(const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
+  assert(!weights.empty() && !clusterid.empty()&& !layerid.empty());
+  auto start = std::chrono::high_resolution_clock::now();
+
+  //calculate the clusterized energy per layer
+  std::array<float, nlayers_> en_per_layer = {{0.}};
+  std::array<float, nlayers_> hits_per_layer = {{0.}};
+  for(auto i: util::lang::indices(weights))
+    {
+      if(clusterid[i] != -1)  //outliers are not considered
+	{
+	  int layeridx = layerid[i]-1; //layers start at 1
+	  en_per_layer.at(layeridx) += weights[i];
+	  hits_per_layer.at(layeridx) += 1;
+	}
+    }
+  //fill std::array with fractions
+  for(auto i: util::lang::indices(weights))
+    {
+      if(clusterid[i] != -1)  //outliers are not considered
+	{
+	  int layeridx = layerid[i] - 1; //layers start at 1
+	  layerdep_vars_.at(layeridx) = std::make_tuple(hits_per_layer[layeridx], en_per_layer[layeridx]);
+	}
+    }
+
+  auto finish = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = finish - start;
+  //std::cout << "--- calculatePositions      " << elapsed.count() *1000 << " ms\n\n";
+}
+
 //Returns quantities of interest of individual clusters
 std::vector<dataformats::data> CLUEAnalysis::getIndividualClusterOutput(std::string& outputFileName, bool verbose) {
   bool pos_set = !pos_.empty(), en_set = !en_.empty();
@@ -156,7 +187,7 @@ std::vector<dataformats::data> CLUEAnalysis::getIndividualClusterOutput(std::str
 }
 
 //Returns the sum of all quantities of interest of individual clusters
-float CLUEAnalysis::getTotalClusterOutput(const std::string& outputFileName, bool verbose) {
+float CLUEAnalysis::getTotalClusterEnergyOutput(const std::string& outputFileName, bool verbose) {
   assert( !en_.empty() );
   float toten = 0.;
   for(unsigned int i=1; i<en_.size(); ++i) //outliers (i=0) are skipped!
@@ -169,4 +200,9 @@ float CLUEAnalysis::getTotalClusterOutput(const std::string& outputFileName, boo
       oFile.close();
     }
   return toten;
+}
+
+//Returns the number of clusterized hits and clusterized energy per layer
+std::array< std::tuple<unsigned int, float>, 28> CLUEAnalysis::getTotalClusterLayerDepOutput() {
+  return this->layerdep_vars_;
 }

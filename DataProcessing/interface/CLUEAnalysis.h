@@ -25,7 +25,13 @@ namespace dataformats {
 
 class CLUEAnalysis {
   /*Outliers are all identified to the 'cluster' of index = 0*/
- public:
+private:
+  static const unsigned int nlayers_ = 28;
+  std::vector<dataformats::position> pos_;
+  std::vector< float > en_;
+  std::array< std::tuple<unsigned int, float>, nlayers_> layerdep_vars_; //clusterized nhits and << ", " << lusterized energy per event
+  
+public:
   CLUEAnalysis(){};
   void calculatePositionsAndEnergy(const std::vector<float>&, const std::vector<float>&, 
 				   const std::vector<float>&, const std::vector<int>&, const std::vector<int>&);
@@ -33,12 +39,10 @@ class CLUEAnalysis {
 			    const std::vector<float>&, const std::vector<int>&, const std::vector<int>&);
   void calculateEnergy(const std::vector<float>&, const std::vector<int>&);
   void verboseResults(std::string&);
+  void calculateLayerDepVars(const std::vector<float>&, const std::vector<int>&, const std::vector<int>&);
   std::vector<dataformats::data> getIndividualClusterOutput(std::string& outputFileName, bool verbose=0);
-  float getTotalClusterOutput(const std::string& outputFileName, bool verbose=0);
-
- private:
-  std::vector<dataformats::position> pos_;
-  std::vector< float > en_;
+  float getTotalClusterEnergyOutput(const std::string& outputFileName, bool verbose=0);
+  std::array< std::tuple<unsigned int, float>, nlayers_> getTotalClusterLayerDepOutput();
 };
 
 #endif //CLUEAnalysis_h
