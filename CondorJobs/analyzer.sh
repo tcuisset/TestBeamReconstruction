@@ -36,6 +36,6 @@ cd "${INIT_FOLDER}";
 
 INFILE="${1}";
 echo "Input file: ${INFILE}"
-OUTFILE="${FULL_PATH}UserCode/DataProcessing/job_output/out_${INFILE:61:-5}.csv"; #extract ntuple number
+OUTFILE="${FULL_PATH}UserCode/DataProcessing/job_output/layer_dependent/out_${INFILE:61:-5}.csv"; #extract ntuple number
 echo "Output file: ${OUTFILE}"
 analyze_data_exe "${INFILE}" "${OUTFILE}";

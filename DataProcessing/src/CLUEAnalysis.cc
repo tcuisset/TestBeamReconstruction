@@ -119,7 +119,6 @@ void CLUEAnalysis::calculateEnergy( const std::vector<float>& weights, const std
 //calculate the number of clusterized hits and clusterized energy per layer
 void CLUEAnalysis::calculateLayerDepVars(const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
   assert(!weights.empty() && !clusterid.empty() && !layerid.empty());
-  auto start = std::chrono::high_resolution_clock::now();
 
   //calculate the number of rechits and clusterized energy per layer
   std::array<float, nlayers_> en_per_layer = {{0.f}};
@@ -133,15 +132,56 @@ void CLUEAnalysis::calculateLayerDepVars(const std::vector<float>& weights, cons
 	  hits_per_layer.at(layeridx) += 1;
 	}
       //Note: We should get an out-of-bounds error for trying to access info at layers > 28. 
-      //      It does not happen since all hits not in the CEE are marked as outliers by CLUE.
+      //      It does not happen since all hits not in the CEE are marked as outliers by CLUE (clusterid == -1).
     }
   //fill std::array with fractions
   for(unsigned int ilayer=0; ilayer<nlayers_; ++ilayer)
-    layerdep_vars_.at(ilayer) = std::make_tuple(hits_per_layer.at(ilayer), en_per_layer.at(ilayer));
+    layerdep_vars_.at(ilayer) = std::make_tuple(hits_per_layer.at(ilayer), en_per_layer.at(ilayer)); 
+}
 
-  auto finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
-  //std::cout << "--- calculatePositions      " << elapsed.count() *1000 << " ms\n\n";
+//calculate the number of clusterized hits and clusterized energy per layer and per cluster
+void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
+  assert(!weights.empty() && !clusterid.empty() && !layerid.empty());
+
+  std::array< unsigned int, nlayers_> nclusters_per_layer = {{0}}; //number of clusters per layer for resizing the vectors
+  std::vector<unsigned int> clusterIds;
+  std::unordered_map<unsigned int, unsigned int> clusterIdsMap;
+
+  //calculate number of clusters per layer
+  for(auto i: util::lang::indices(weights))
+    {
+      if(clusterid[i]!=-1 /*outliers are not considered*/ and clusterIdsMap.find(clusterid[i]) == clusterIdsMap.end())
+	{
+	  int layeridx = layerid[i]-1; //layers start at 1
+	  clusterIdsMap.emplace(clusterid[i], nclusters_per_layer[layeridx]);
+	  nclusters_per_layer[layeridx] += 1;
+	}
+    }
+
+  std::array< std::vector<float>, nlayers_> en_per_cluster;
+  std::array< std::vector<unsigned int>, nlayers_ > hits_per_cluster;
+  for(unsigned int i=0; i<nlayers_; ++i) 
+    {
+      en_per_cluster[i].resize( nclusters_per_layer[i], 0.f ); //resizes and default-initializes to zero
+      hits_per_cluster[i].resize( nclusters_per_layer[i], 0 ); //resizes and default-initializes to zero
+    }
+
+  for(auto i: util::lang::indices(weights))
+    {
+      if(clusterid[i] != -1)  //outliers are not considered
+	{
+	  unsigned int layeridx = static_cast<unsigned int>(layerid[i]) - 1; //layers start at 1
+	  unsigned int vectoridx = clusterIdsMap[clusterid[i]];
+	  en_per_cluster.at(layeridx).at(vectoridx) += weights[i];
+	  hits_per_cluster.at(layeridx).at(vectoridx) += 1;
+	}
+      //Note: We should get an out-of-bounds error for trying to access info at layers > 28. 
+      //      It does not happen since all hits not in the CEE are marked as outliers by CLUE (clusterid == -1).
+    }
+  //fill std::array with clusterized cluster number of hits and energy
+  //both vectors might well be empty, in case there was no cluster in a particular layer
+  for(unsigned int ilayer=0; ilayer<nlayers_; ++ilayer)
+    clusterdep_vars_.at(ilayer) = std::make_tuple( hits_per_cluster.at(ilayer), en_per_cluster.at(ilayer));
 }
 
 //Returns quantities of interest of individual clusters
@@ -183,7 +223,7 @@ std::vector<dataformats::data> CLUEAnalysis::getIndividualClusterOutput(std::str
 }
 
 //Returns the sum of all quantities of interest of individual clusters
-float CLUEAnalysis::getTotalClusterEnergyOutput(const std::string& outputFileName, bool verbose) {
+float CLUEAnalysis::getTotalEnergyOutput(const std::string& outputFileName, bool verbose) {
   assert( !en_.empty() );
   float toten = 0.;
   for(unsigned int i=1; i<en_.size(); ++i) //outliers (i=0) are skipped!
@@ -199,6 +239,11 @@ float CLUEAnalysis::getTotalClusterEnergyOutput(const std::string& outputFileNam
 }
 
 //Returns the number of clusterized hits and clusterized energy per layer
-std::array< std::tuple<unsigned int, float>, 28> CLUEAnalysis::getTotalClusterLayerDepOutput() {
+std::array< std::tuple<unsigned int, float>, 28> CLUEAnalysis::getTotalLayerDepOutput() {
   return this->layerdep_vars_;
+}
+
+//Returns the number of clusterized hits and clusterized energy per layer and per cluster
+std::array< std::tuple< std::vector<unsigned int>, std::vector<float> >, 28> CLUEAnalysis::getTotalClusterDepOutput() {
+  return this->clusterdep_vars_;
 }
