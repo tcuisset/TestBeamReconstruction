@@ -118,12 +118,12 @@ void CLUEAnalysis::calculateEnergy( const std::vector<float>& weights, const std
 
 //calculate the number of clusterized hits and clusterized energy per layer
 void CLUEAnalysis::calculateLayerDepVars(const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
-  assert(!weights.empty() && !clusterid.empty()&& !layerid.empty());
+  assert(!weights.empty() && !clusterid.empty() && !layerid.empty());
   auto start = std::chrono::high_resolution_clock::now();
 
-  //calculate the clusterized energy per layer
-  std::array<float, nlayers_> en_per_layer = {{0.}};
-  std::array<float, nlayers_> hits_per_layer = {{0.}};
+  //calculate the number of rechits and clusterized energy per layer
+  std::array<float, nlayers_> en_per_layer = {{0.f}};
+  std::array<unsigned int, nlayers_> hits_per_layer = {{0}};
   for(auto i: util::lang::indices(weights))
     {
       if(clusterid[i] != -1)  //outliers are not considered
@@ -132,16 +132,12 @@ void CLUEAnalysis::calculateLayerDepVars(const std::vector<float>& weights, cons
 	  en_per_layer.at(layeridx) += weights[i];
 	  hits_per_layer.at(layeridx) += 1;
 	}
+      //Note: We should get an out-of-bounds error for trying to access info at layers > 28. 
+      //      It does not happen since all hits not in the CEE are marked as outliers by CLUE.
     }
   //fill std::array with fractions
-  for(auto i: util::lang::indices(weights))
-    {
-      if(clusterid[i] != -1)  //outliers are not considered
-	{
-	  int layeridx = layerid[i] - 1; //layers start at 1
-	  layerdep_vars_.at(layeridx) = std::make_tuple(hits_per_layer[layeridx], en_per_layer[layeridx]);
-	}
-    }
+  for(unsigned int ilayer=0; ilayer<nlayers_; ++ilayer)
+    layerdep_vars_.at(ilayer) = std::make_tuple(hits_per_layer.at(ilayer), en_per_layer.at(ilayer));
 
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;

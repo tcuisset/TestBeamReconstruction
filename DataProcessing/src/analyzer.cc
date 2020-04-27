@@ -65,20 +65,21 @@ void Analyzer::runCLUE(float dc, float rhoc_300, float rhoc_200) {
 	  std::cout << "Inside this tree there are " << nevents << " events: ";
 	  std::cout << iEvent/static_cast<float>(nevents)*100 << "% \r";
 
-	  //run the algorithm per event
-	  clueAlgo.setPoints(x_[iEvent].size(), &x_[iEvent][0], &y_[iEvent][0], &layer_[iEvent][0], &weight_[iEvent][0]);
-	  clueAlgo.makeClusters();
-
 	  //calculate quantities including outliers
 	  std::array<unsigned int, nlayers_> tot_hits_per_layer = {{0}};
-	  std::array<float, nlayers_> tot_en_per_layer = {{0}};
+	  std::array<float, nlayers_> tot_en_per_layer = {{0.f}};
 	  for(unsigned int j=0; j<layer_[iEvent].size(); ++j)
 	    {
-	      unsigned int layeridx = layer_[iEvent][j] - 1;
-	      tot_hits_per_layer[layeridx] += 1;
-	      tot_en_per_layer[layeridx] += weight_[iEvent][j];
+	      unsigned int layeridx = layer_.at(iEvent).at(j) - 1;
+	      if(layeridx > nlayers_ - 1)
+		continue;
+	      tot_hits_per_layer.at(layeridx) += 1;
+	      tot_en_per_layer.at(layeridx) += weight_.at(iEvent).at(j);
 	    }
-	  
+
+	  //run the algorithm per event
+	  clueAlgo.setPoints(x_[iEvent].size(), &x_[iEvent][0], &y_[iEvent][0], &layer_[iEvent][0], &weight_[iEvent][0]);
+	  clueAlgo.makeClusters();	  
 	  //calculate the total energy that was clusterized (excluding outliers)
 	  clueAna.calculatePositionsAndEnergy( clueAlgo.getHitsClusterX(), clueAlgo.getHitsClusterY(), clueAlgo.getHitsWeight(), clueAlgo.getHitsClusterId(), clueAlgo.getHitsLayerId() );
 	  tot_en = clueAna.getTotalClusterEnergyOutput("", false); //non-verbose
@@ -89,9 +90,6 @@ void Analyzer::runCLUE(float dc, float rhoc_300, float rhoc_200) {
 	  std::array< std::tuple<float, float>, nlayers_> eventarray_tmp;
 	  for(unsigned int j=0; j<nlayers_; ++j)
 	    {
-	      std::cout << std::endl;
-	      std::cout << std::get<0>(layerdep_vars[j]) << ", " << tot_hits_per_layer[j] << std::endl;
-	      std::cout << std::get<1>(layerdep_vars[j]) << ", " << tot_en_per_layer[j] << std::endl;
 	      if (tot_hits_per_layer[j] != 0 and tot_en_per_layer[j] != 0)
 		eventarray_tmp[j] = std::make_tuple(static_cast<float>(std::get<0>(layerdep_vars[j]))/tot_hits_per_layer[j], std::get<1>(layerdep_vars[j])/tot_en_per_layer[j] );
 	      else
