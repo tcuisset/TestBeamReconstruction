@@ -12,7 +12,7 @@ void analysis_CLUE(std::string& in_fname, std::string& out_fname, std::string& o
 
   ana.runCLUE(dc, kappa * snratio[0], kappa * snratio[1]);
   //ana.save_to_file(out_fname);
-  //ana.save_to_file_layer_dependent(out_fname2);
+  ana.save_to_file_layer_dependent(out_fname2);
   ana.save_to_file_cluster_dependent(out_fname3);
 
   //sum rechit energy directly without clustering
@@ -41,11 +41,11 @@ int main(int argc, char **argv) {
   std::string out_fname3 = std::string(argv[4]);  
 
   std::string str1 = out_fname2.substr(0,out_fname2.find('.', 20)); //the 20 avoids the '.' in 'cern.ch'
-  std::string str2 = out_fname2.substr(out_fname2.find('.', 20), 4);
-  std::string out_fname_layer_dependent = str1 + "_layerdep" + str2;
+  std::string csv_end = out_fname2.substr(out_fname2.find('.', 20), 4);
+  std::string out_fname_layer_dependent = str1 + "_layerdep" + csv_end;
 
   std::string str3 = out_fname3.substr(0,out_fname3.find('.', 20)); //the 20 avoids the '.' in 'cern.ch'
-  std::string root_end = ".root";
+  std::string root_end = out_fname3.substr(out_fname3.find('.', 20), 5);
   std::string out_fname_cluster_dependent = str3 + "_clusterdep" + root_end; //must end with '.root'!
 
   analysis_CLUE(in_fname, out_fname, out_fname_layer_dependent, out_fname_cluster_dependent, in_tname);

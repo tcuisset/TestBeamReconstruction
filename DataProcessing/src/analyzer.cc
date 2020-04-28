@@ -5,6 +5,7 @@ Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::st
   nfiles_ = in_file_path.size();
   std::cout << "Number of files being processed: " << nfiles_ << std::endl;
   std::cout << "Files: " << std::endl;
+  beam_energies_.resize(nfiles_, 0.f);
   for(unsigned int i=0; i<nfiles_; ++i)
     {
       sanity_checks(in_file_path[i]);
@@ -24,6 +25,7 @@ Analyzer::Analyzer(const std::string& in_file_path, const std::string& in_tree_n
   std::cout << "File: " << in_file_path << std::endl;
   sanity_checks(in_file_path);
   names_.push_back( std::make_pair(in_file_path, in_tree_name) );
+  beam_energies_.resize(1, 0.f);
   en_total_.push_back( std::vector< std::tuple<float, float> >() );
   fracs_.push_back( std::vector< std::array< std::tuple<float, float>, nlayers_ > >() );
   clusterdep_.push_back( std::vector< cluster_dependent_type >() );
@@ -62,8 +64,9 @@ void Analyzer::runCLUE(float dc, float rhoc_300, float rhoc_200) {
       out_pair = this->_readTree( this->names_[i].first, x_, y_, layer_, weight_, rechits_id_ );
       nevents = out_pair.first;
       beam_energy = out_pair.second;
+      beam_energies_[i] = beam_energy;
 
-      for(unsigned int iEvent=0; iEvent<nevents-nevents+1; ++iEvent) //otherwise error for unused 'nevents' variable
+      for(unsigned int iEvent=0; iEvent<nevents; ++iEvent) //otherwise error for unused 'nevents' variable
 	{
 	  std::cout << "Inside this tree there are " << nevents << " events: ";
 	  std::cout << iEvent/static_cast<float>(nevents)*100 << "% \r";
@@ -317,6 +320,7 @@ void Analyzer::save_to_file_layer_dependent(const std::string& filename) {
   std::cout << std::endl;
   std::cout << "SAVE: " << filename << std::endl;
   std::cout << "NFILES: " << nfiles_ << std::endl;
+  oFile << "beamen" << ",";
   for(unsigned int i=0; i<nfiles_; ++i)
     {
       std::string curr_name = std::get<0>(names_[i]);
@@ -324,7 +328,7 @@ void Analyzer::save_to_file_layer_dependent(const std::string& filename) {
       for(unsigned int ilayer=0; ilayer<28; ++ilayer)
 	{
 	  oFile << "nhitsfrac_layer" << ilayer << "_" << curr_name << ",";
-	  oFile << "enfrac_" << ilayer << "_" << curr_name;
+	  oFile << "enfrac_layer" << ilayer << "_" << curr_name;
 	  if(ilayer<nlayers_-1)
 	    oFile << ",";
 	}
@@ -349,6 +353,7 @@ void Analyzer::save_to_file_layer_dependent(const std::string& filename) {
 	{
 	  if(k<fracs_sizes[i])
 	    {
+	      oFile << std::to_string(beam_energies_.at(i)) << ",";
 	      for(unsigned int ilayer=0; ilayer<28; ++ilayer)
 		{
 		  oFile << std::to_string( std::get<0>(fracs_.at(i).at(k).at(ilayer)) ) << ",";
@@ -377,6 +382,7 @@ void Analyzer::save_to_file_cluster_dependent(const std::string& filename) {
       TTree tmptree( name.c_str(), name.c_str());
 
       //define branches
+      tmptree.Branch("BeamEnergy", &beam_energies_.at(i));
       std::array< std::vector<unsigned int>, nlayers_> arr_hits;
       std::array< std::vector<float>, nlayers_> arr_en;
       for(unsigned int ilayer=0; ilayer<nlayers_; ++ilayer) 

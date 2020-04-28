@@ -55,6 +55,7 @@ class Analyzer {
   std::array<float, nlayers_> energy_weights_ = {{11.289,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,11.360,11.360,11.360,11.360,10.995,10.995,11.153,7.470}};
   std::array<float, 2> thickness_correction_ = {{0.0850, 0.0567}};
   std::vector< std::pair<std::string, std::string> > names_; //file and tree names
+  std::vector<float> beam_energies_;
   std::vector< std::vector< std::tuple<float, float> > > en_total_; //total energy per event (vector of RecHits) per file (run) and corresponding beam energy
   std::vector< std::vector< std::array< std::tuple<float, float>, nlayers_> > > fracs_; //fraction of clusterized nhits and clusterized energy per event
   using cluster_dependent_type = std::array< std::tuple< std::vector<unsigned int>, std::vector<float> >, nlayers_>;
