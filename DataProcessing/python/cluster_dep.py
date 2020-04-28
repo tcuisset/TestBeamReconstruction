@@ -5,36 +5,41 @@ import uproot as up
 import numpy as np
 import pandas as pd
 
-def histograms(dfs1, dfs2, axis_kwargs):
+def graphs2d(dfs1, dfs2, axis_kwargs):
     """Plots number of cluysterized hits and clusterized energy per layer"""
     assert(len(dfs1) == len(dfs2))
-    hist1, hist2 = ([] for _ in range(2))
-    bins = np.linspace(0,100,11)
+    bins_hits = np.linspace(0,50,11)
+    bins_en   = np.linspace(0,5000,11)
 
-    for ilayer in range(1,nlayers+1):
-        arr = dfs1[-1]['Nhits_layer'+str(ilayer)]
-        counts, edges = np.histogram([item for items in arr for item in items], bins=bins)
-        centers = (edges[:-1]+edges[1:])/2
-        print(centers)
-        quit()
-
-    for i, idf in enumerate(dfs1):
-        nhitsfrac = idf['nhitsfrac']
-        enfrac    = idf['endfrac']
-        #flattens 'idf' to one-dimension
-        hist1.append( np.histogram2d(nhitsfrac, density=False, bins=bins, range=(nhitsfrac.min(),nhitsfrac.max())) )
-        hist2.append( np.histogram2d(enfrac, density=False, bins=bins, range=(nhitsfrac.min(),nhitsfrac.max())) )
+    for i,df in enumerate(dfs1):
+        for ilayer in range(1,nlayers+1):
+            arr = df['Nhits_layer'+str(ilayer)]
+            counts, edges = np.histogram([item for items in arr for item in items], bins=bins_hits)
+            centers = (edges[:-1]+edges[1:])/2
+            assert(len(counts) == len(centers))
+            same_layer_array = ilayer*np.ones(len(centers))
+            bokehplot.graph(data=[same_layer_array, centers, counts], 
+                            idx=i, style='square%Viridis',
+                            fig_kwargs=axis_kwargs[0])
+            print(i)
+            print(centers, type(centers))
+            print(counts, type(counts))
+    bokehplot.show_frame(plot_width=300, plot_height=300)
 
     """
-    #number of hits
-    bokehplot.histogram(data=hist1, 
-                        idx=[x for x in range(size)], style='hex%Viridis',
-                        fig_kwargs=axis_kwargs[0])
-    #energy
-    bokehplot.histogram(data=hist2, 
-                        idx=[x for x in range(size,2*size)], style='hex%Viridis',
-                        fig_kwargs=axis_kwargs[1])
-
+    bokehplot.add_frame("another_plot.html", nfigs=size)
+    for i,df in enumerate(dfs2):
+        for ilayer in range(1,nlayers+1):
+            arr = df['Energy_layer'+str(ilayer)]
+            counts, edges = np.histogram([item for items in arr for item in items], bins=bins_en)
+            centers = (edges[:-1]+edges[1:])/2
+            assert(len(counts) == len(centers))
+            same_layer_array = ilayer*np.ones(len(centers))
+            bokehplot.graph(data=[same_layer_array, centers, counts], 
+                            idx=i, style='circle%Viridis',
+                            fig_kwargs=axis_kwargs[1])
+            print(centers)
+            print(counts)
     bokehplot.show_frame(plot_width=200, plot_height=200)
     """
 
@@ -47,7 +52,7 @@ def main():
     file = up.open( path )
     #file.allkeys(filterclass=lambda x: issubclass(x, up.tree.TTreeMethods))
     tree = file['tree0']
-    df = tree.arrays("*", outputtype=pd.DataFrame, entrystop=10, cache=up_cache)
+    df = tree.arrays("*", outputtype=pd.DataFrame, entrystop=200, cache=up_cache)
     hits_cols = [x for x in df.columns if 'Nhits'  in x] + [beamen_str]
     en_cols   = [x for x in df.columns if 'Energy' in x]
     df_hits, df_en = df[hits_cols], df[en_cols]
@@ -58,7 +63,7 @@ def main():
 
     axis_kwargs_hits = {'x.axis_label': 'Layer', 'y.axis_label': 'Number of clusterized hits'}
     axis_kwargs_en   = {'x.axis_label': 'Layer', 'y.axis_label': 'Clusterized energy'}
-    histograms(df_hits_split, df_en_split, (axis_kwargs_hits, axis_kwargs_en))
+    graphs2d(df_hits_split, df_en_split, (axis_kwargs_hits, axis_kwargs_en))
 
 if __name__ == '__main__':
     cmssw_base = subprocess.check_output("echo $CMSSW_BASE", shell=True).split('\n')[0]
@@ -69,5 +74,5 @@ if __name__ == '__main__':
     size = len(true_beam_energies_GeV)
     assert(len(beam_energies)==size)
 
-    bokehplot = bkp.BokehPlot(filenames='plot_clusters.html', nfigs=2*size)
+    bokehplot = bkp.BokehPlot(filenames='plot_clusters.html', nfigs=size)
     main()
