@@ -182,7 +182,7 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
   return std::make_pair(nevents, beam_energy);
 }
 
-void Analyzer::sum_energy()
+void Analyzer::sum_energy(const bool& with_ecut)
 {
   //anonymous function to pass to RDataFrame.ForEach()
   std::mutex mut;
@@ -193,9 +193,20 @@ void Analyzer::sum_energy()
   for(unsigned int i=0; i<nfiles_; ++i)
     {
 
-      auto sum = [&](const std::vector<float>& en, float beamen)
-	{
-	  float entot = std::accumulate(en.begin(), en.end(), 0.);
+      auto sum = [&](const std::vector<float>& en, const std::vector<unsigned int>& layer, float beamen)
+	{ 
+	  float entot = 0.f;
+	  if(with_ecut)
+	    {
+	      for(unsigned int ien=0; ien<en.size(); ++ien)
+		{
+		  if( (layer[i] < 27 and en[i] > ecut_*snratio_[0]) or
+		      (layer[i] >= 27 and layer[i] <= nlayers_ and en[i] > ecut_*snratio_[1]) )
+		    entot += en[ien];
+		}
+	    }
+	  else
+	    entot = std::accumulate(en.begin(), en.end(), 0.);
 	  { //mutex lock scope
 	    std::lock_guard lock(mut);
 	    this->en_total_[i].push_back(std::make_tuple(entot, beamen));
@@ -206,7 +217,7 @@ void Analyzer::sum_energy()
       ROOT::RDataFrame d(this->names_[i].second.c_str(), this->names_[i].first.c_str());
       //store the contents of the TTree according to the specified columns
       en_total_[i].clear();
-      d.Foreach(sum, {"rechit_weighted_energy_MeV", "beamEnergy"});
+      d.Foreach(sum, {"rechit_weighted_energy_MeV", "rechit_layer", "beamEnergy"});
     }
 };
 

@@ -11,20 +11,19 @@ void analysis_CLUE(std::string& in_fname, std::string& out_fname, std::string& o
   Analyzer ana(in_fname, in_tname);
 
   ana.runCLUE(dc, kappa * snratio[0], kappa * snratio[1]);
-  //ana.save_to_file(out_fname);
-  ana.save_to_file_layer_dependent(out_fname2);
-  ana.save_to_file_cluster_dependent(out_fname3);
+  ana.save_to_file(out_fname);
+  //ana.save_to_file_layer_dependent(out_fname2);
+  //ana.save_to_file_cluster_dependent(out_fname3);
 
   //sum rechit energy directly without clustering
-  /*
-  ana.sum_energy();
+  bool sum_with_ecut = true;
+  ana.sum_energy(sum_with_ecut);
   std::string first_half = out_fname.substr(0,out_fname.find('.', 20)); //the 20 avoids the '.' in 'cern.ch'
   std::string second_half = out_fname.substr(out_fname.find('.', 20), 4);
   std::string first_half2 = out_fname2.substr(0,out_fname2.find('.', 20)); //the 20 avoids the '.' in 'cern.ch'
   std::string second_half2 = out_fname2.substr(out_fname2.find('.', 20), 4);
   ana.save_to_file(first_half + "_noclusters" + second_half);
-  ana.save_to_file_layer_dependent(first_half2 + "_noclusters" + second_half2);
-  */
+  //ana.save_to_file_layer_dependent(first_half2 + "_noclusters" + second_half2);
 }
 
 void analysis_histos(std::string& in_fname, std::string& out_fname, std::string& in_tname) {
