@@ -79,6 +79,8 @@ void Analyzer::runCLUE(float dc, float rhoc_300, float rhoc_200) {
 	      unsigned int layeridx = layer_.at(iEvent).at(j) - 1;
 	      if(layeridx > nlayers_ - 1)
 		continue;
+	      if( ! ecut_selection(layer_.at(iEvent).at(j), weight_.at(iEvent).at(j)) )
+		continue;
 	      tot_hits_per_layer.at(layeridx) += 1;
 	      tot_en_per_layer.at(layeridx) += weight_.at(iEvent).at(j);
 	    }
@@ -182,6 +184,13 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
   return std::make_pair(nevents, beam_energy);
 }
 
+bool Analyzer::ecut_selection(const unsigned int& layer, const float& energy)
+{
+  bool cond_until26 = layer<27 and energy>ecut_*snratio_[0];
+  bool cond_above26 = layer>=27 and layer<=nlayers_ and energy>ecut_*snratio_[1];
+  return cond_until26 or cond_above26;
+}
+
 void Analyzer::sum_energy(const bool& with_ecut)
 {
   //anonymous function to pass to RDataFrame.ForEach()
@@ -200,8 +209,7 @@ void Analyzer::sum_energy(const bool& with_ecut)
 	    {
 	      for(unsigned int ien=0; ien<en.size(); ++ien)
 		{
-		  if( (layer[i] < 27 and en[i] > ecut_*snratio_[0]) or
-		      (layer[i] >= 27 and layer[i] <= nlayers_ and en[i] > ecut_*snratio_[1]) )
+		  if( ecut_selection(layer[ien], en[ien]) )
 		    entot += en[ien];
 		}
 	    }

@@ -46,6 +46,7 @@ class Analyzer {
   //methods 
   std::pair<unsigned int, float> _readTree( const std::string&, std::vector< std::vector<float> >& x, std::vector< std::vector<float> >&, std::vector< std::vector<unsigned int> >&, std::vector< std::vector<float> >&, std::vector< std::vector<unsigned int> >&);
   int sanity_checks(const std::string&);
+  bool ecut_selection(const unsigned int&, const float&);
   
   //data
   size_t nfiles_;
