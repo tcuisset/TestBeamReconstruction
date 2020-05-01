@@ -134,7 +134,7 @@ def final_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2, frameid
 def main():
     #files with sum of rechit energy
     usercode_path = 'src/UserCode/DataProcessing/job_output'
-    path = os.path.join(cmssw_base, usercode_path, 'out_')
+    path = os.path.join(cmssw_base, usercode_path, 'outEcut_')
     average_shift = 1.05
     bins = (1000, 1800, 4200, 5000, 5000, 4200, 5700, 5500, 5500, 500)
     histo_ranges1 = (Range1d(0,30000), Range1d(11000, 35000), Range1d(27000, 58000), Range1d(52000, 94000), 
@@ -161,7 +161,7 @@ def main():
     mean1, emean1, resp1, eresp1, _, _ = HandleHistograms.fit(hist1, pars1, histo_ranges1)
 
     #files with sum of clusterized rechit energy
-    bokehplot.add_frame('clusterized_rechit_energy.html', nfigs=len(true_beam_energies_GeV))
+    bokehplot.add_frame('clusterized_rechit_energy'+ecut_str+'.html', nfigs=len(true_beam_energies_GeV))
     pars2 = ([750, 18000.,  2000.], #20GeV
              [750, 25000.,  1200.], #30GeV
              [750, 43000.,  2000.], #50GeV
@@ -177,30 +177,32 @@ def main():
     mean2, emean2, resp2, eresp2, _, _ = HandleHistograms.fit(hist2, pars2, histo_ranges2)
 
     #shift the hits to calculate resolution
-    bokehplot.add_frame('pure_rechit_energy_shifted.html', nfigs=len(true_beam_energies_GeV))
+    bokehplot.add_frame('pure_rechit_energy_shifted'+ecut_str+'.html', nfigs=len(true_beam_energies_GeV))
     pars1_shifted = tuple([x[0], x[1]*average_shift, x[2]] for x in pars1)
     data1_shifted = ProcessData.shift_energy(data1, mean1)
     hist1_shifted = HandleHistograms.create(data1_shifted, bins)
     _, _, _, _, res1_shifted, eres1_shifted = HandleHistograms.fit(hist1_shifted, pars1_shifted, histo_ranges1_shifted)
 
-    bokehplot.add_frame('clusterized_rechit_energy_shifted.html', nfigs=len(true_beam_energies_GeV))
+    bokehplot.add_frame('clusterized_rechit_energy_shifted'+ecut_str+'.html', nfigs=len(true_beam_energies_GeV))
     pars2_shifted = tuple([x[0], x[1]*average_shift, x[2]] for x in pars2)
     data2_shifted = ProcessData.shift_energy(data2, mean2)
     hist2_shifted = HandleHistograms.create(data2_shifted, bins)
     _, _, _, _, res2_shifted, eres2_shifted = HandleHistograms.fit(hist2_shifted, pars2_shifted, histo_ranges2_shifted)
 
-    bokehplot.add_frame('response_and_resolution.html', nfigs=3)
+    bokehplot.add_frame('response_and_resolution'+ecut_str+'.html', nfigs=3)
     last_frame_id = bokehplot.get_nframes() - 1
     final_graphs(resp1, eresp1, res1_shifted, eres1_shifted, resp2, eresp2, res2_shifted, eres2_shifted, last_frame_id)
 
 if __name__ == '__main__':
+    ecut_str = '' if len(sys.argv)==1 else sys.argv[1]
+
     cmssw_base = subprocess.check_output("echo $CMSSW_BASE", shell=True).split('\n')[0]
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
     true_beam_energies_GeV = (20,30,49.99,79.93,99.83,119.65,149.14,197.32,243.61,287.18)
     true_beam_energies_MeV = tuple(x*1000 for x in true_beam_energies_GeV)
     assert(len(beam_energies)==len(true_beam_energies_GeV))
 
-    bokehplot = bkp.BokehPlot(filenames='pure_rechit_energy.html', nfigs=len(true_beam_energies_GeV))
+    bokehplot = bkp.BokehPlot(filenames='pure_rechit_energy'+ecut_str+'.html', nfigs=len(true_beam_energies_GeV))
     line_colors = ['black', 'blue', 'green', 'red', 'orange', 'purple', 'greenyellow', 'brown', 'pink', 'grey']
     main()
 
