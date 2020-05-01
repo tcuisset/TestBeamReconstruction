@@ -37,7 +37,7 @@ cd "${INIT_FOLDER}";
 INFILE="${1}";
 echo "Input file: ${INFILE}"
 PATH_REMAINDER="UserCode/DataProcessing/job_output/"
-OUTNAME="out_${INFILE:61:-5}" #extract ntuple number
+OUTNAME="outEcut_${INFILE:61:-5}" #extract ntuple number
 OUTFILE1="${FULL_PATH}${PATH_REMAINDER}${OUTNAME}.csv"; 
 OUTFILE2="${FULL_PATH}${PATH_REMAINDER}layer_dependent/${OUTNAME}.csv";
 OUTFILE3="${FULL_PATH}${PATH_REMAINDER}cluster_dependent/${OUTNAME}.root";

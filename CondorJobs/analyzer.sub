@@ -10,6 +10,7 @@ requirements = (OpSysAndVer =?= "CentOS7")
 output       = out/$(script_name).$(ProcId).out
 error        = out/$(script_name).$(ProcId).err
 log          = log/$(script_name).$(ProcId).log
-request_cpus = 10
+request_cpus = 5
+request_memory = 80MB
 +JobFlavour = "workday"
 queue FILE_NAME from file_names.txt
