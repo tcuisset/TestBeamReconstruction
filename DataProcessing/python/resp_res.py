@@ -1,6 +1,7 @@
 import sys
 import os
 import subprocess
+import errno
 import glob
 import pandas as pd
 import numpy as np
@@ -91,14 +92,19 @@ class HandleHistograms:
             means.append( coeff[1] )
             means_err.append( err1 )
             responses.append( (coeff[1]-true_beam_energies_MeV[i]) / (true_beam_energies_MeV[i]) ) 
-            resolutions.append( coeff[2] / true_beam_energies_MeV[i] )
             responses_err.append( err1 / true_beam_energies_MeV[i] )
             resolutions.append( coeff[2] / true_beam_energies_MeV[i] )
             resolutions_err.append( err2 / true_beam_energies_MeV[i] )
-        bokehplot.show_frame(plot_width=300, plot_height=300)
+        bokehplot.save_frame(plot_width=300, plot_height=300, show=False)
         return means, means_err, responses, responses_err, resolutions, resolutions_err
 
-            
+def create_dir(directory):
+    try:
+        os.makedirs(directory)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
 def final_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2, frameid):
     """Plots responses and resolutions with their errors"""
     axis_kwargs1 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Response (E/True - 1)'}
@@ -120,7 +126,7 @@ def final_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2, frameid
     fig = bokehplot.get_figure(idx=1, iframe=frameid)
     fig.legend.location = 'bottom_right'
 
-    axis_kwargs3 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': u" Resolution (\u03c3 / E) [MeV]"}
+    axis_kwargs3 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': u" Fractional energy Resolution (\u03c3 / E)"}
     bokehplot.graph(idx=2, data=[np.array(true_beam_energies_GeV),np.array(res1)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.array(eres1)/2,np.array(eres1)/2]],
@@ -129,12 +135,13 @@ def final_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2, frameid
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.array(eres2)/2,np.array(eres2)/2]],
                     style='triangle', line=True, color='orange', legend_label='Clusterized hits')
-    bokehplot.show_frame(plot_width=300, plot_height=300)
+    bokehplot.save_frame(plot_width=300, plot_height=300, show=False)
 
 def main():
     #files with sum of rechit energy
     usercode_path = 'src/UserCode/DataProcessing/job_output'
-    path = os.path.join(cmssw_base, usercode_path, 'outEcut_')
+    path_start = '' if ecut_str == '' else 'Ecut'
+    path = os.path.join(cmssw_base, usercode_path, 'out'+path_start+'_')
     average_shift = 1.05
     bins = (1000, 1800, 4200, 5000, 5000, 4200, 5700, 5500, 5500, 500)
     histo_ranges1 = (Range1d(0,30000), Range1d(11000, 35000), Range1d(27000, 58000), Range1d(52000, 94000), 
@@ -161,7 +168,7 @@ def main():
     mean1, emean1, resp1, eresp1, _, _ = HandleHistograms.fit(hist1, pars1, histo_ranges1)
 
     #files with sum of clusterized rechit energy
-    bokehplot.add_frame('clusterized_rechit_energy'+ecut_str+'.html', nfigs=len(true_beam_energies_GeV))
+    bokehplot.add_frame(os.path.join(output_html_dir,'clusterized_rechit_energy'+ecut_str+'.html'), nfigs=len(true_beam_energies_GeV))
     pars2 = ([750, 18000.,  2000.], #20GeV
              [750, 25000.,  1200.], #30GeV
              [750, 43000.,  2000.], #50GeV
@@ -177,19 +184,19 @@ def main():
     mean2, emean2, resp2, eresp2, _, _ = HandleHistograms.fit(hist2, pars2, histo_ranges2)
 
     #shift the hits to calculate resolution
-    bokehplot.add_frame('pure_rechit_energy_shifted'+ecut_str+'.html', nfigs=len(true_beam_energies_GeV))
+    bokehplot.add_frame(os.path.join(output_html_dir,'pure_rechit_energy_shifted'+ecut_str+'.html'), nfigs=len(true_beam_energies_GeV))
     pars1_shifted = tuple([x[0], x[1]*average_shift, x[2]] for x in pars1)
     data1_shifted = ProcessData.shift_energy(data1, mean1)
     hist1_shifted = HandleHistograms.create(data1_shifted, bins)
     _, _, _, _, res1_shifted, eres1_shifted = HandleHistograms.fit(hist1_shifted, pars1_shifted, histo_ranges1_shifted)
 
-    bokehplot.add_frame('clusterized_rechit_energy_shifted'+ecut_str+'.html', nfigs=len(true_beam_energies_GeV))
+    bokehplot.add_frame(os.path.join(output_html_dir,'clusterized_rechit_energy_shifted'+ecut_str+'.html'), nfigs=len(true_beam_energies_GeV))
     pars2_shifted = tuple([x[0], x[1]*average_shift, x[2]] for x in pars2)
     data2_shifted = ProcessData.shift_energy(data2, mean2)
     hist2_shifted = HandleHistograms.create(data2_shifted, bins)
     _, _, _, _, res2_shifted, eres2_shifted = HandleHistograms.fit(hist2_shifted, pars2_shifted, histo_ranges2_shifted)
 
-    bokehplot.add_frame('response_and_resolution'+ecut_str+'.html', nfigs=3)
+    bokehplot.add_frame(os.path.join(output_html_dir,'response_and_resolution'+ecut_str+'.html'), nfigs=3)
     last_frame_id = bokehplot.get_nframes() - 1
     final_graphs(resp1, eresp1, res1_shifted, eres1_shifted, resp2, eresp2, res2_shifted, eres2_shifted, last_frame_id)
 
@@ -202,7 +209,12 @@ if __name__ == '__main__':
     true_beam_energies_MeV = tuple(x*1000 for x in true_beam_energies_GeV)
     assert(len(beam_energies)==len(true_beam_energies_GeV))
 
-    bokehplot = bkp.BokehPlot(filenames='pure_rechit_energy'+ecut_str+'.html', nfigs=len(true_beam_energies_GeV))
+    cms_user = subprocess.check_output("echo $USER", shell=True).split('\n')[0]
+    data_directory = 'TestBeamReconstruction'
+    create_dir( os.path.join('/eos/user/', cms_user[0], cms_user, 'www', data_directory) )
+    output_html_dir = os.path.join('/eos/user/', cms_user[0], cms_user, 'www', data_directory)
+    output_html_file = os.path.join(output_html_dir, 'pure_rechit_energy'+ecut_str+'.html')
+    bokehplot = bkp.BokehPlot(filenames=output_html_file, nfigs=len(true_beam_energies_GeV))
     line_colors = ['black', 'blue', 'green', 'red', 'orange', 'purple', 'greenyellow', 'brown', 'pink', 'grey']
     main()
 
