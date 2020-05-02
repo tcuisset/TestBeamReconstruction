@@ -71,7 +71,7 @@ def histograms(dfs, field):
         bokehplot.graph(data=[np.array(xvalues), np.array(yvalues), np.array(counts)],
                         width=np.ones((len(xvalues))), height=height_hits,
                         idx=i, style='rect%Viridis', fig_kwargs=fig_kwargs)
-        #bokehplot.show_frame()
+        #bokehplot.save_frame()
 
 def create_dir(directory):
     try:
@@ -82,16 +82,16 @@ def create_dir(directory):
 
 def main():
     usercode_path = 'src/UserCode/DataProcessing/job_output/layer_dependent/'
-    path = os.path.join(cmssw_base, usercode_path, 'out_*_layerdep.csv')
+    path = os.path.join(cmssw_base, usercode_path, 'outEcut_*_layerdep.csv')
 
     data_hits = ProcessData.join(path, 'nhitsfrac_')
     histograms(data_hits, 'nhitsfrac_')
-    bokehplot.show_frame()
+    bokehplot.save_frame(show=False)
 
     bokehplot.add_frame(os.path.join(output_html_dir, 'plot_layers_energies.html'), nfigs=size)
     data_en = ProcessData.join(path, 'enfrac_')
     histograms(data_en, 'enfrac_')
-    bokehplot.show_frame()
+    bokehplot.save_frame(show=False)
 
 if __name__ == '__main__':
     cmssw_base = subprocess.check_output("echo $CMSSW_BASE", shell=True).split('\n')[0]
