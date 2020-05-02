@@ -77,7 +77,7 @@ class HandleHistograms:
             hist_modified = [hist[i][0][indexes_selected][:-1], hist[i][1][selection]]
             bokehplot.histogram(data=hist_modified, idx=i, style='step',
                                 legend_label=[str(x)+' GeV' for x in true_beam_energies_GeV], fill_color='white', line_color=line_colors[i], 
-                                alpha=1., fig_kwargs={'x_range': ranges[i]})
+                                alpha=1., fig_kwargs={'x_range': ranges[i], 'y_range': Range1d(-30.,850)})
 
             #Second fit
             coeff, var = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=1, color=line_colors[i], **common_args)

@@ -64,7 +64,7 @@ def graphs2d(dfs, axis_kwargs):
                 hits_min = m1
             if m2 > hits_max:
                 hits_max = m2
-        nbins = int(20.) if hits_max>=20 else int(hits_max)
+        nbins = int(15.) if hits_max>=15 else int(hits_max)
         bins = np.linspace(m1, m2, nbins+1)
         #bins = np.logspace(np.log10(m1), np.log10(m2), nbins+1)
         height_hits = height_for_plot_bins(bins, scale='linear')
@@ -125,7 +125,6 @@ def main():
     ######Cluster dependent number of hits#########
     ###############################################
     #load cache
-    """
     cacheobj = CacheManager(cache_file_name_hits)
     up_cache = cacheobj.load()
 
@@ -142,9 +141,8 @@ def main():
 
     axis_kwargs_hits = {'x.axis_label': 'Layer', 'y.axis_label': 'Number of hits per cluster'}
     graphs2d(df_hits_split, axis_kwargs_hits)
-    print('show_frame')
-    bokehplot.show_frame(plot_width=800, plot_height=500)
-    """
+    print('save_frame')
+    bokehplot.save_frame(plot_width=800, plot_height=500, show=False)
 
     ###############################################
     ######Cluster dependent energy#################
@@ -169,8 +167,8 @@ def main():
 
     axis_kwargs_en = {'x.axis_label': 'Layer', 'y.axis_label': 'Total energy per cluster [MeV]'}
     graphs2d(df_en_split, axis_kwargs_en)
-    print('show_frame')
-    bokehplot.show_frame(plot_width=800, plot_height=500)
+    print('save_frame')
+    bokehplot.save_frame(plot_width=800, plot_height=500, show=False)
 
 if __name__ == '__main__':
     #define local data paths and variables
