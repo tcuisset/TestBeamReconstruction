@@ -28,19 +28,18 @@ class ProcessData:
         return df_beamen
 
     @staticmethod
-    def shift_energy(dfs, means):
-        assert(len(means) == len(true_beam_energies_GeV))
-        assert(len(means) == len(dfs))
+    def shift_energy(dfs, shift_factor):
+        assert(len(shift_factor) == size)
+        assert(len(shift_factor) == len(dfs))
         dfs_shifted = []
         for i,df in enumerate(dfs): #each dataframe is a pandas Series
-            shift_factor = true_beam_energies_MeV[i]/means[i]
-            df_tmp = df.apply(lambda x: shift_factor*x if x!= -1 else x) #perform no shifting when the value is -1 (fillna used before)
+            df_tmp = df.apply(lambda x: shift_factor[i]*x if x!= -1 else x) #perform no shifting when the value is -1 (fillna used before)
             dfs_shifted.append(df_tmp)
         return dfs_shifted
 
 class HandleHistograms:
     @staticmethod
-    def create(dfs, bins):
+    def create(dfs, bins, iframe):
         hist = []
         for i,idf in enumerate(dfs):
             if idf is not None:
@@ -48,13 +47,13 @@ class HandleHistograms:
                 hist.append( np.histogram(idf, density=False, bins=bins[i], range=(idf.min(),idf.max())) ) #flattens 'df' to one-dimension
                 
         axis_kwargs = {'x.axis_label': 'Total RecHit energy per event [MeV]', 'y.axis_label': 'Counts'}
-        bokehplot.histogram(data=hist, idx=[x for x in range(len(true_beam_energies_GeV))], style='step',
+        bokehplot.histogram(data=hist, idx=[x for x in range(len(true_beam_energies_GeV))], iframe=iframe, style='step',
                             legend_label=[str(x)+' GeV' for x in true_beam_energies_GeV], fill_color='white', line_color=line_colors, alpha=0.5,
                             fig_kwargs=axis_kwargs)
         return hist
 
     @staticmethod
-    def fit(hist, parameters, ranges):
+    def fit(hist, parameters, ranges, iframe):
         sigma_units = 3
         common_args = {'pdf':'gaus', 'line_width':2.5, 'alpha':0.8}
 
@@ -66,7 +65,7 @@ class HandleHistograms:
         resolutions_err = []
         for i in range(len(true_beam_energies_GeV)):
             #First fit
-            coeff, _ = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=0, color=line_colors[i], **common_args)
+            coeff, _ = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=0, iframe=iframe, color=line_colors[i], **common_args)
             fit_bounds = (coeff[1]-sigma_units*coeff[2], coeff[1]+sigma_units*coeff[2])
             
             #Create and draw amputed histogram 
@@ -75,27 +74,26 @@ class HandleHistograms:
             selection = (hist[i][1]>fit_bounds[0]) & (hist[i][1]<fit_bounds[1])
             indexes_selected = np.nonzero(selection) #return indexes of the non-zero (True) elements
             hist_modified = [hist[i][0][indexes_selected][:-1], hist[i][1][selection]]
-            bokehplot.histogram(data=hist_modified, idx=i, style='step',
+            bokehplot.histogram(data=hist_modified, idx=i, iframe=iframe, style='step',
                                 legend_label=[str(x)+' GeV' for x in true_beam_energies_GeV], fill_color='white', line_color=line_colors[i], 
                                 alpha=1., fig_kwargs={'x_range': ranges[i], 'y_range': Range1d(-30.,850)})
 
             #Second fit
-            coeff, var = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=1, color=line_colors[i], **common_args)
+            coeff, var = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=1, iframe=iframe, color=line_colors[i], **common_args)
             err = np.sqrt(np.diag(var))
             err1 = round(err[1],2)
             err2 = round(err[2],2)
             mean_label = 'mean='+str(round(coeff[1],2))+'+-'+str(err1)+' MeV'
             sigma_label = 'sigma='+str(round(coeff[2],2))+'+-'+str(err2)+' MeV'
-            font_size = {'text_font_size': '8pt'}
-            bokehplot.label(mean_label,  idx=i, x=10, y=320, **font_size)
-            bokehplot.label(sigma_label, idx=i, x=10, y=305, **font_size)
+            font_size = {'text_font_size': '9pt', 'x_units': 'screen'}
+            bokehplot.label(mean_label,  idx=i, iframe=iframe, x=10, y=340, **font_size)
+            bokehplot.label(sigma_label, idx=i, iframe=iframe, x=10, y=320, **font_size)
             means.append( coeff[1] )
             means_err.append( err1 )
             responses.append( (coeff[1]-true_beam_energies_MeV[i]) / (true_beam_energies_MeV[i]) ) 
             responses_err.append( err1 / true_beam_energies_MeV[i] )
             resolutions.append( coeff[2] / true_beam_energies_MeV[i] )
             resolutions_err.append( err2 / true_beam_energies_MeV[i] )
-        bokehplot.save_frame(plot_width=300, plot_height=300, show=False)
         return means, means_err, responses, responses_err, resolutions, resolutions_err
 
 def create_dir(directory):
@@ -105,44 +103,64 @@ def create_dir(directory):
         if e.errno != errno.EEXIST:
             raise
 
-def final_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2, frameid):
+def response_and_resolution_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2, frameid):
     """Plots responses and resolutions with their errors"""
     axis_kwargs1 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Response (E/True - 1)'}
-    bokehplot.graph(data=[np.array(true_beam_energies_GeV),np.array(resp1)], 
+    bokehplot.graph(idx=2, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(resp1)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.array(eresp1)/2,np.array(eresp1)/2]],
                     style='square', line=True, color='green', legend_label='Reconstructable', fig_kwargs=axis_kwargs1)
-    bokehplot.graph(data=[np.array(true_beam_energies_GeV),np.array(resp2)], 
+    bokehplot.graph(idx=2, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(resp2)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.array(eresp2)/2,np.array(eresp2)/2]],
                     style='triangle', line=True, color='orange', legend_label='Clusterized hits')
 
-    axis_kwargs2 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Response difference'}
-    bokehplot.graph(idx=1, data=[np.array(true_beam_energies_GeV), np.array(resp2)-np.array(resp1)], 
+    axis_kwargs2 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Response difference', 'l.location': 'bottom_right'}
+    bokehplot.graph(idx=3, iframe=frameid, data=[np.array(true_beam_energies_GeV), np.array(resp2)-np.array(resp1)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.sqrt( ( np.power(np.array(eresp1),2)+np.power(np.array(eresp2),2) ) / 2 ), 
                              np.sqrt( ( np.power(np.array(eresp1),2)+np.power(np.array(eresp2),2) ) / 2 )]],
                     style='square', line=True, color='blue', legend_label="Reconstructable - Clusterized", fig_kwargs=axis_kwargs2)
-    fig = bokehplot.get_figure(idx=1, iframe=frameid)
-    fig.legend.location = 'bottom_right'
+    #fig = bokehplot.get_figure(idx=3, iframe=frameid)
+    #fig.legend.location = 'bottom_right'
 
     axis_kwargs3 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': u" Fractional energy Resolution (\u03c3 / E)"}
-    bokehplot.graph(idx=2, data=[np.array(true_beam_energies_GeV),np.array(res1)], 
+    bokehplot.graph(idx=1, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(res1)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.array(eres1)/2,np.array(eres1)/2]],
                     style='square', line=True, color='green', legend_label='Reconstructable', fig_kwargs=axis_kwargs3)
-    bokehplot.graph(idx=2, data=[np.array(true_beam_energies_GeV),np.array(res2)], 
+    bokehplot.graph(idx=1, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(res2)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.array(eres2)/2,np.array(eres2)/2]],
                     style='triangle', line=True, color='orange', legend_label='Clusterized hits')
-    bokehplot.save_frame(plot_width=300, plot_height=300, show=False)
+
+
+def linear_fit_graph(mean, emean, iframe):
+    plot_index = 0
+    axis_kwargs = {'t.title': 'Calibration: linear fit', 'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Reconstructed energy [GeV]'}
+    bokehplot.graph(idx=0, iframe=iframe, 
+                    data=[np.array(true_beam_energies_GeV),np.array(mean)/1000], 
+                    errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
+                            [np.array(emean)/2,np.array(emean)/2]],
+                    style='circle', line=False, color='black', fig_kwargs=axis_kwargs)
+    coeff, var = bokehplot.fit(pdf='linear', idx=plot_index, iframe=iframe, p0=([1.,0.]), color='red', 
+                               legend_label='y(x) = m*x + b', fig_kwargs={'l.location': 'bottom_right'})
+    err = np.sqrt(np.diag(var))
+    err1 = round(err[0],2)
+    err2 = round(err[1],2)
+    pm = (u'\u00B1').encode('utf-8')
+    m_label = 'm = '+str(round(coeff[0],2))+pm+str(err1)
+    b_label = 'b = '+str(round(coeff[1],2))+pm+str(err2)+' MeV'
+    font_size = {'text_font_size': '9pt', 'x_units': 'data'}
+    bokehplot.label(m_label, idx=plot_index, iframe=iframe, x=15, y=300, **font_size)
+    bokehplot.label(b_label, idx=plot_index, iframe=iframe, x=15, y=280, **font_size)
+    return coeff[0]
 
 def main():
     #files with sum of rechit energy
     usercode_path = 'src/UserCode/DataProcessing/job_output'
     path_start = '' if ecut_str == '' else 'Ecut'
     path = os.path.join(cmssw_base, usercode_path, 'out'+path_start+'_')
-    average_shift = 1.05
     bins = (1000, 1800, 4200, 5000, 5000, 4200, 5700, 5500, 5500, 500)
     histo_ranges1 = (Range1d(0,30000), Range1d(11000, 35000), Range1d(27000, 58000), Range1d(52000, 94000), 
                     Range1d(64000, 120000), Range1d(88000,130000), Range1d(120000,165000), Range1d(160000, 210000), 
@@ -150,8 +168,6 @@ def main():
     histo_ranges2 = (Range1d(0,30000), Range1d(11000, 35000), Range1d(27000, 58000), Range1d(52000, 94000), 
                     Range1d(64000, 120000), Range1d(88000,130000), Range1d(120000,165000), Range1d(160000, 210000), 
                     Range1d(210000,250000), Range1d(240000,295000))
-    histo_ranges1_shifted = tuple(Range1d(average_shift*x.start, average_shift*x.end) for x in histo_ranges1)
-    histo_ranges2_shifted = tuple(Range1d(average_shift*x.start, average_shift*x.end) for x in histo_ranges2)
 
     pars1 = ([750, 20000.,  2000.], #20GeV
              [750, 30000.,  1200.], #30GeV
@@ -164,11 +180,20 @@ def main():
              [750, 215000., 4000.], #250GeV
              [750, 280000., 4500.]) #300GeV 
     data1 = ProcessData.join(path + '*_noclusters.csv')
-    hist1 = HandleHistograms.create(data1, bins)
-    mean1, emean1, resp1, eresp1, _, _ = HandleHistograms.fit(hist1, pars1, histo_ranges1)
+    hist1 = HandleHistograms.create(data1, bins, iframe=0)
+    mean1, emean1, _, _, _, _ = HandleHistograms.fit(hist1, pars1, histo_ranges1, iframe=0)
+
+    last_frame_id = bokehplot.get_nframes() - 1
+    calibration_slope1 = linear_fit_graph(mean1, emean1, iframe=last_frame_id)
+    correction_values1 = np.ones(size) / calibration_slope1
+
+    data1_corrected = ProcessData.shift_energy(data1, correction_values1)
+    hist1_corrected = HandleHistograms.create(data1_corrected, bins, iframe=1)
+    pars1_corrected = tuple([x[0], x[1]/calibration_slope1, x[2]] for x in pars1)
+    histo_ranges1_corrected = tuple(Range1d(x.start/calibration_slope1, x.end/calibration_slope1) for x in histo_ranges1)
+    _, _, resp1, eresp1, res1, eres1 = HandleHistograms.fit(hist1_corrected, pars1_corrected, histo_ranges1_corrected, iframe=1)
 
     #files with sum of clusterized rechit energy
-    bokehplot.add_frame(os.path.join(output_html_dir,'clusterized_rechit_energy'+ecut_str+'.html'), nfigs=len(true_beam_energies_GeV))
     pars2 = ([750, 18000.,  2000.], #20GeV
              [750, 25000.,  1200.], #30GeV
              [750, 43000.,  2000.], #50GeV
@@ -180,25 +205,18 @@ def main():
              [750, 220000., 4000.], #250GeV
              [750, 270000., 4500.]) #300GeV 
     data2 = ProcessData.join(path + '*[0-9][0-9][0-9].csv')
-    hist2 = HandleHistograms.create(data2, bins)
-    mean2, emean2, resp2, eresp2, _, _ = HandleHistograms.fit(hist2, pars2, histo_ranges2)
+    data2_corrected = ProcessData.shift_energy(data2, correction_values1)
+    hist2_corrected = HandleHistograms.create(data2_corrected, bins, iframe=2)
+    pars2_corrected = tuple([x[0], x[1]/calibration_slope1, x[2]] for x in pars2)
+    histo_ranges2_corrected = tuple(Range1d(x.start/calibration_slope1, x.end/calibration_slope1) for x in histo_ranges2)
+    _, _, resp2, eresp2, res2, eres2 = HandleHistograms.fit(hist2_corrected, pars2_corrected, histo_ranges2_corrected, iframe=2)
 
-    #shift the hits to calculate resolution
-    bokehplot.add_frame(os.path.join(output_html_dir,'pure_rechit_energy_shifted'+ecut_str+'.html'), nfigs=len(true_beam_energies_GeV))
-    pars1_shifted = tuple([x[0], x[1]*average_shift, x[2]] for x in pars1)
-    data1_shifted = ProcessData.shift_energy(data1, mean1)
-    hist1_shifted = HandleHistograms.create(data1_shifted, bins)
-    _, _, _, _, res1_shifted, eres1_shifted = HandleHistograms.fit(hist1_shifted, pars1_shifted, histo_ranges1_shifted)
-
-    bokehplot.add_frame(os.path.join(output_html_dir,'clusterized_rechit_energy_shifted'+ecut_str+'.html'), nfigs=len(true_beam_energies_GeV))
-    pars2_shifted = tuple([x[0], x[1]*average_shift, x[2]] for x in pars2)
-    data2_shifted = ProcessData.shift_energy(data2, mean2)
-    hist2_shifted = HandleHistograms.create(data2_shifted, bins)
-    _, _, _, _, res2_shifted, eres2_shifted = HandleHistograms.fit(hist2_shifted, pars2_shifted, histo_ranges2_shifted)
-
-    bokehplot.add_frame(os.path.join(output_html_dir,'response_and_resolution'+ecut_str+'.html'), nfigs=3)
-    last_frame_id = bokehplot.get_nframes() - 1
-    final_graphs(resp1, eresp1, res1_shifted, eres1_shifted, resp2, eresp2, res2_shifted, eres2_shifted, last_frame_id)
+    response_and_resolution_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2, last_frame_id)
+    for i in range(len(nfigs)):
+        if i==len(nfigs)-1:
+            bokehplot.save_frame(iframe=i, plot_width=350, plot_height=350, nrows=2, ncols=2, show=False)
+        else:
+            bokehplot.save_frame(iframe=i, plot_width=350, plot_height=350, show=False)
 
 if __name__ == '__main__':
     ecut_str = '' if len(sys.argv)==1 else sys.argv[1]
@@ -207,14 +225,20 @@ if __name__ == '__main__':
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
     true_beam_energies_GeV = (20,30,49.99,79.93,99.83,119.65,149.14,197.32,243.61,287.18)
     true_beam_energies_MeV = tuple(x*1000 for x in true_beam_energies_GeV)
-    assert(len(beam_energies)==len(true_beam_energies_GeV))
+    size = len(beam_energies)
+    assert(size==len(true_beam_energies_GeV))
 
     cms_user = subprocess.check_output("echo $USER", shell=True).split('\n')[0]
     data_directory = 'TestBeamReconstruction'
     create_dir( os.path.join('/eos/user/', cms_user[0], cms_user, 'www', data_directory) )
     output_html_dir = os.path.join('/eos/user/', cms_user[0], cms_user, 'www', data_directory)
-    output_html_file = os.path.join(output_html_dir, 'pure_rechit_energy'+ecut_str+'.html')
-    bokehplot = bkp.BokehPlot(filenames=output_html_file, nfigs=len(true_beam_energies_GeV))
+    output_html_files = ( os.path.join(output_html_dir, 'pure_rechit_energy'+ecut_str+'.html'),
+                          os.path.join(output_html_dir, 'pure_rechit_energy'+ecut_str+'_shifted.html'),
+                          os.path.join(output_html_dir, 'clusterized_rechit_energy'+ecut_str+'_shifted.html'),
+                          os.path.join(output_html_dir, 'summary_graphs'+ecut_str+'.html') 
+    )
+    nfigs = (size, size, size, 4)
+    bokehplot = bkp.BokehPlot(filenames=output_html_files, nframes=len(nfigs), nfigs=nfigs)
     line_colors = ['black', 'blue', 'green', 'red', 'orange', 'purple', 'greenyellow', 'brown', 'pink', 'grey']
     main()
 
