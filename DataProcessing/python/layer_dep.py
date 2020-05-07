@@ -48,7 +48,7 @@ def histograms(dfs, field):
     """Plots responses and resolutions with their errors"""
     xlabelextra = ' of clusterized hits' if field=='nhitsfrac_' else ' of clusterized energy'
     axis_kwargs1 = {'y.axis_label': 'Fraction'+xlabelextra, 'x.axis_label': 'Layer'}
-    nbins = 15
+    nbins = 30
     bins = np.linspace(0,1,nbins+1)
     height_hits = height_for_plot_bins(bins, scale='linear')
     for i,idf in enumerate(dfs):
@@ -64,7 +64,7 @@ def histograms(dfs, field):
             yvalues.extend( bincenters ) #fraction values
             counts.extend( hist[0] ) #count values
 
-        fig_kwargs = {'plot_width': 500, 'plot_height': 300,
+        fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height,
                       't.text': 'True beam energy: {} GeV'.format(true_beam_energies_GeV[i])}
         fig_kwargs.update(axis_kwargs1)
         print('{}/{} 2d graphs...'.format(i+1,size))
@@ -109,5 +109,6 @@ if __name__ == '__main__':
     output_html_dir = os.path.join('/eos/user/', cms_user[0], cms_user, 'www', data_directory)
     output_html_file = os.path.join(output_html_dir, 'plot_layers_hits.html')
     bokehplot = bkp.BokehPlot(filenames=output_html_file, nfigs=size)
+    plot_width, plot_height = 600, 300
     line_colors = ['black', 'blue', 'green', 'red', 'orange', 'purple', 'greenyellow', 'brown', 'pink', 'grey']
     main()
