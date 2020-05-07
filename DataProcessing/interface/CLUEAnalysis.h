@@ -28,6 +28,7 @@ class CLUEAnalysis {
   /*Outliers are all identified to the 'cluster' of index = 0*/
 private:
   static const unsigned int nlayers_ = 28;
+  static const float W0_ = 2.9;
   std::vector<dataformats::position> pos_;
   std::vector< float > en_;
   std::array< std::tuple<unsigned int, float>, nlayers_> layerdep_vars_; //clusterized nhits and clusterized energy per event and per layer

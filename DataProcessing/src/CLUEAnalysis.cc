@@ -2,7 +2,7 @@
 
 //Simplified with respect to the CMSSW version, since
 //   1) Only considers the EE section
-//   2) Has W_0=2.9 hardcoded
+//   2) Has W0=2.9 hardcoded
 //Returns x and y position of the cluster
 void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, const std::vector<float>& ypos, const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
   assert(!xpos.empty() && !ypos.empty() && !weights.empty() && !clusterid.empty()&& !layerid.empty());
@@ -27,10 +27,10 @@ void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, c
   for (auto i: util::lang::indices(weights))
     {
       unsigned int weight_index = clusterid.at(i) + 1; //outliers will correspond to total_weight[0]
-      float Wi = std::max(2.9 + std::log(weights.at(i) / total_weight.at(weight_index)), 0.);
+      float Wi = std::max(W0_ + std::log(weights.at(i) / total_weight.at(weight_index)), 0.);
       x.at(weight_index) += xpos.at(i) * Wi;
-      y[weight_index] += ypos.at(i) * Wi;
-      total_weight_log[weight_index] += Wi;
+      y.at(weight_index) += ypos.at(i) * Wi;
+      total_weight_log.at(weight_index) += Wi;
       if(layers[weight_index] == 0 and weight_index != 0) 
 	layers[weight_index] = layerid.at(i); //all hits in a cluster will belong to the same layer
     }
@@ -53,7 +53,7 @@ void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, c
 
 //Simplified with respect to the CMSSW version, since
 //   1) Only considers the EE section
-//   2) Has W_0=2.9 hardcoded
+//   2) Has W0=2.9 hardcoded
 //Returns x and y position of the cluster
 void CLUEAnalysis::calculatePositions(const std::vector<float>& xpos, const std::vector<float>& ypos, const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
   auto start = std::chrono::high_resolution_clock::now();
@@ -74,7 +74,7 @@ void CLUEAnalysis::calculatePositions(const std::vector<float>& xpos, const std:
   for (auto i: util::lang::indices(weights))
     {
       unsigned int weight_index = clusterid[i] + 1; //outliers will correspond to total_weight[0]
-      float Wi = std::max(2.9 + std::log(weights[i] / total_weight[weight_index]), 0.);
+      float Wi = std::max(W0_ + std::log(weights[i] / total_weight[weight_index]), 0.);
       x[weight_index] += xpos[i] * Wi;
       y[weight_index] += ypos[i] * Wi;
       total_weight_log[weight_index] += Wi;
