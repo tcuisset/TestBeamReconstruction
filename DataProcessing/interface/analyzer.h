@@ -32,10 +32,10 @@ void __M_Assert(const char* expr_str, bool expr, const char* file, int line, con
 
 class Analyzer {
  public:
-  Analyzer(const std::vector< std::string >&, const std::string&);
-  Analyzer(const std::string&, const std::string&);
+  Analyzer(const std::vector< std::string >&, const std::string&, const float&, const float&, const float&);
+  Analyzer(const std::string&, const std::string&, const float&, const float&, const float&);
   ~Analyzer();
-  void runCLUE(float dc, float rhoc_300, float rhoc_200);
+  void runCLUE();
   void histogram_checks();
   void sum_energy(const bool&);
   void save_to_file(const std::string&);
@@ -52,8 +52,7 @@ class Analyzer {
   size_t nfiles_;
   static const int ncpus_ = 4;
   static const unsigned int nlayers_ = 28;
-  float ecut_ = 3.;
-  std::array<float, 2> snratio_ = {{7.2 /*300 micron sensors*/, 4.8 /*200 micron sensors*/}}; //values given by Thorben
+  float dc_, kappa_, ecut_;
   //weights and thickness corrections taken from the third column of Table 3 of CMS DN-19-019
   std::array<float, nlayers_> energy_weights_ = {{11.289,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,11.360,11.360,11.360,11.360,10.995,10.995,11.153,7.470}};
   std::array<float, 2> thickness_correction_ = {{0.0850, 0.0567}};

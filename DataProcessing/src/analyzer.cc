@@ -1,6 +1,6 @@
 #include "UserCode/DataProcessing/interface/analyzer.h"
 
-Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::string& in_tree_name)
+Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut): dc_(dc), kappa_(kappa), ecut_(ecut)
 {
   nfiles_ = in_file_path.size();
   std::cout << "Number of files being processed: " << nfiles_ << std::endl;
@@ -18,7 +18,7 @@ Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::st
 }
 
 //Overloaded constructor for job submission. Each job processes one file only.
-Analyzer::Analyzer(const std::string& in_file_path, const std::string& in_tree_name)
+Analyzer::Analyzer(const std::string& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut): dc_(dc), kappa_(kappa), ecut_(ecut)
 {
   nfiles_ = 1;
   std::cout << "Number of files being processed: " << nfiles_ << std::endl;
@@ -35,7 +35,7 @@ Analyzer::~Analyzer()
 {
 }
 
-void Analyzer::runCLUE(float dc, float rhoc_300, float rhoc_200) {
+void Analyzer::runCLUE() {
   float tot_en = 0;
   std::array< std::tuple<unsigned int, float>, nlayers_> layerdep_vars;
   cluster_dependent_type clusterdep_vars;
@@ -49,7 +49,7 @@ void Analyzer::runCLUE(float dc, float rhoc_300, float rhoc_200) {
   std::pair<unsigned int, float> out_pair;
   unsigned int nevents = 0;
   float beam_energy = -1;
-  CLUEAlgo clueAlgo(dc, rhoc_300, rhoc_200); //non-verbose
+  CLUEAlgo clueAlgo(dc_, kappa_, ecut_); //non-verbose
   CLUEAnalysis clueAna;
   for(unsigned int i=0; i<nfiles_; ++i) 
     {
@@ -186,9 +186,8 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
 
 bool Analyzer::ecut_selection(const unsigned int& layer, const float& energy)
 {
-  bool cond_until26 = layer<27 and energy>ecut_*snratio_[0];
-  bool cond_above26 = layer>=27 and layer<=nlayers_ and energy>ecut_*snratio_[1];
-  return cond_until26 or cond_above26;
+  const float sigmaNoise = CLUEAlgo::getSigmaNoise(layer, energy);
+  return energy < ecut_ * sigmaNoise;
 }
 
 void Analyzer::sum_energy(const bool& with_ecut)
@@ -237,29 +236,19 @@ void Analyzer::histogram_checks()
   auto sum_energies = [&](std::vector<float> en, std::vector<unsigned int> l) {
     std::vector<float> ensum(en.size(), 0.f);
     unsigned int layer = 0;
-    //float thick_corr = 0.;
     float weight = 1.;
     for(unsigned int i=0; i<en.size(); ++i)
       {
 	layer = l[i];
 	if(layer>0 && layer<27)
-	  {
-	    //thick_corr = this->thickness_correction_[0];
-	    weight = this->energy_weights_[layer];
-	  }
+	  weight = this->energy_weights_[layer];
 	else if(layer >= 27 && layer<29)
-	  {
-	    //thick_corr = this->thickness_correction_[1];
-	    weight = this->energy_weights_[layer];
-	  }
+	  weight = this->energy_weights_[layer];
 	else if(layer >= 29 && layer<=50)
-	  {
-	    //thick_corr = 0; //ignore hits in the hadronic section
-	    weight = 0;
-	  }
+	  weight = 0;
 	else
 	  throw std::out_of_range("Unphysical layer number: "+std::to_string(layer));
-	ensum.at(i) =  en[i] * /*thick_corr **/ weight;
+	ensum.at(i) =  en[i] * weight;
       }
     return std::accumulate(ensum.begin(), ensum.end(), 0.);
   };

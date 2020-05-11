@@ -27,7 +27,7 @@ void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, c
   for (auto i: util::lang::indices(weights))
     {
       unsigned int weight_index = clusterid.at(i) + 1; //outliers will correspond to total_weight[0]
-      float Wi = std::max(W0_ + std::log(weights.at(i) / total_weight.at(weight_index)), 0.);
+      float Wi = std::max(W0_ + std::log(weights.at(i) / total_weight.at(weight_index)), 0.f);
       x.at(weight_index) += xpos.at(i) * Wi;
       y.at(weight_index) += ypos.at(i) * Wi;
       total_weight_log.at(weight_index) += Wi;
@@ -74,7 +74,7 @@ void CLUEAnalysis::calculatePositions(const std::vector<float>& xpos, const std:
   for (auto i: util::lang::indices(weights))
     {
       unsigned int weight_index = clusterid[i] + 1; //outliers will correspond to total_weight[0]
-      float Wi = std::max(W0_ + std::log(weights[i] / total_weight[weight_index]), 0.);
+      float Wi = std::max(W0_ + std::log(weights[i] / total_weight[weight_index]), 0.f);
       x[weight_index] += xpos[i] * Wi;
       y[weight_index] += ypos[i] * Wi;
       total_weight_log[weight_index] += Wi;

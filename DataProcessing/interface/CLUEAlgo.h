@@ -18,10 +18,10 @@ class CLUEAlgo{
 
   public:
     // constructor
-  CLUEAlgo(float dc, float rhoc_300, float rhoc_200, bool verbose=false ){ 
+  CLUEAlgo(float dc, float kappa, float ecut, bool verbose=false ){ 
       dc_ = dc; 
-      rhoc_300_ = rhoc_300;
-      rhoc_200_ = rhoc_200;
+      ecut_ = ecut;
+      kappa_ = kappa;
       //dm_ =  std::max(deltao_, deltac_);
       outlierDeltaFactor_ = 2.;
       verbose_ = verbose;
@@ -31,8 +31,7 @@ class CLUEAlgo{
     ~CLUEAlgo(){} 
     
     // public variables
-    float dc_, rhoc_300_, rhoc_200_, outlierDeltaFactor_;
-    float ecut = 3.;
+    float dc_, ecut_, kappa_, outlierDeltaFactor_;
     std::array<float, 2> snratio = {{7.2 /*300 micron sensors*/, 4.8 /*200 micron sensors*/}}; //values given by Thorben
     bool verbose_;
     
@@ -45,14 +44,21 @@ class CLUEAlgo{
     std::vector<int> getHitsLayerId();
 
     // public methods
+    static const float getSigmaNoise(unsigned int layer, float weight) {
+      float enMip = 86.f; //value given by Thorben in keV
+      float noiseMip = enMip/6.f; //value given by Thorben in keV
+      float sigmaNoise = weight / enMip * noiseMip;
+      return sigmaNoise;
+    }
+
     void setPoints(int n, float* x, float* y, unsigned int* layer, float* weight) {
       points_.clear();
 
       // input variables
       for(int i=0; i<n; ++i)
 	{
-	  if( (layer[i] < 27 and weight[i] < ecut*snratio[0]) or
-	      (layer[i] >= 27 and layer[i] < 29 and weight[i] < ecut*snratio[1]) )
+	  float sigmaNoise = getSigmaNoise(layer[i], weight[i]);
+	  if( weight[i] < ecut_*sigmaNoise )
 	    continue;
 	  points_.x.push_back(x[i]);
 	  points_.y.push_back(y[i]);
@@ -126,7 +132,7 @@ class CLUEAlgo{
       
 	if (nVerbose ==-1) nVerbose=points_.n;
 
-	// verbose to screen
+	// verbose to screens
 	if (outputFileName.compare("cout") == 0 )  {
 	  std::cout << "index,rechit_id,x,y,layer,weight,rho,delta,nh,isSeed,clusterId"<< std::endl;
 	  for(int i = 0; i < nVerbose; i++) {

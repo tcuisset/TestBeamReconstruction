@@ -129,7 +129,7 @@ void CLUEAlgo::findAndAssignClusters(){
     // initialize clusterIndex
     points_.clusterIndex[i] = -1;
     // determine seed or outlier
-    float rhoc = points_.layer[i] < 27 ? this->rhoc_300_ : this->rhoc_200_;
+    float rhoc = kappa_ * getSigmaNoise(points_.layer[i], points_.weight[i]);
     bool isSeed = (points_.delta[i] > dc_) && (points_.rho[i] >= rhoc);
     bool isOutlier = (points_.delta[i] > outlierDeltaFactor_ * dc_) && (points_.rho[i] < rhoc);
     if (isSeed) {
