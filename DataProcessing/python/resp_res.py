@@ -1,5 +1,6 @@
 import sys
 import os
+import warnings
 import subprocess
 import errno
 import glob
@@ -223,6 +224,7 @@ def main():
     histo_ranges2_corrected2 = tuple(Range1d(x.start/calibration_slope2, x.end/calibration_slope2) for x in histo_ranges2)
     _, _, _, _, res2, eres2 = HandleHistograms.fit(hist2_corrected2, pars2_corrected2, histo_ranges2_corrected2, iframe=4)
 
+
     response_and_resolution_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2, last_frame_id)
     for i in range(len(nfigs)):
         if i==len(nfigs)-1:
@@ -232,6 +234,8 @@ def main():
 
 if __name__ == '__main__':
     ecut_str = '' if len(sys.argv)==1 else sys.argv[1]
+    if ecut_str == '':
+        warnings.warn('Plotting being done on data without ecut applied!')
 
     cmssw_base = subprocess.check_output("echo $CMSSW_BASE", shell=True).split('\n')[0]
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
