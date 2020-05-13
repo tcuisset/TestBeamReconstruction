@@ -8,6 +8,20 @@ import uproot as up
 import numpy as np
 import pandas as pd
 
+def get_mean_and_sigma(x, y):
+    mean_squared = np.sum(y*x**2)
+    mean = np.sum(y*x)
+    sumy = np.sum(y)
+    mean_squared /= sumy
+    mean /= sumy
+    sigma = np.sqrt( mean_squared - mean**2 )
+    return mean, sigma
+    
+def get_sigma_band(x, y, nsigmas=1):
+    mean, sigma = get_mean_and_sigma(x, y)
+    left, right = mean - nsigmas*sigma, mean + nsigmas*sigma
+    return left, right
+
 def create_dir(directory):
     try:
         os.makedirs(directory)
@@ -67,7 +81,7 @@ def number_clusters_graph2d(dfs, axis_kwargs, columns_field, iframe):
                 hits_min = m1
             if m2 > hits_max:
                 hits_max = m2
-        nbins = int(30.) if hits_max>30 else int(hits_max-1)
+        nbins = int(20.) if hits_max>20 else int(hits_max-1)
         bins = np.linspace(hits_min, hits_max, nbins+1)
         print('NBINS: ', nbins, hits_min, hits_max)
         height_hits = height_for_plot_bins(bins, scale='linear')
@@ -116,12 +130,13 @@ def hits_and_energies_graphs2d(dfs, axis_kwargs, columns_field, iframe, weight_b
                 hits_min = m1
             if m2 > hits_max:
                 hits_max = m2
-        nbins = int(30.) if hits_max>30 else int(hits_max-1)
+        nbins = int(20.) if hits_max>20 else int(hits_max-1)
         bins = np.linspace(hits_min, hits_max, nbins+1) #bins = np.logspace(np.log10(m1), np.log10(m2), nbins+1)
         height_hits = height_for_plot_bins(bins, scale='linear')
 
         #plot data as 2d graphs
         all_counts_hits, all_layers_hits, all_centers_hits = ([] for _ in range(3))
+        means, sigmas_l, sigmas_r = ([] for _ in range(3))
         for ilayer in range(1,nlayers+1):
             print('layer ', ilayer)
 
@@ -137,6 +152,14 @@ def hits_and_energies_graphs2d(dfs, axis_kwargs, columns_field, iframe, weight_b
             else:
                 counts, edges = np.histogram(arr, bins=bins)
             centers = (edges[:-1]+edges[1:])/2
+
+            mean, _ = get_mean_and_sigma(centers, counts)
+            sigma_left, sigma_right = get_sigma_band(centers, counts, nsigmas=1)
+            print(mean, sigma_left, sigma_right)
+            means.append(mean)
+            sigmas_l.append(sigma_left)
+            sigmas_r.append(sigma_right)
+
             assert(len(counts) == len(centers))
             same_layer_array = ilayer*np.ones(len(centers))
             all_counts_hits.extend(counts.tolist())
@@ -148,10 +171,21 @@ def hits_and_energies_graphs2d(dfs, axis_kwargs, columns_field, iframe, weight_b
         fig_kwargs.update(axis_kwargs)
         bokehplot.graph(data=[np.array(all_layers_hits), np.array(all_centers_hits), np.array(all_counts_hits)],
                         width=np.ones((len(all_layers_hits))), height=height_hits,
-                        idx=i, iframe=iframe, style='rect%Plasma', fig_kwargs=fig_kwargs)
+                        idx=i, iframe=iframe, style='rect%Plasma', fig_kwargs=fig_kwargs, alpha=0.5)
+        common_kwargs = {'style': 'square', 'line': True}
+        bokehplot.graph(data=[np.arange(1,29), np.array(means)],
+                        idx=i, iframe=iframe, color='red', **common_kwargs)
+        bokehplot.graph(data=[np.arange(1,29), np.array(sigmas_l)],
+                        idx=i, iframe=iframe, color='black', **common_kwargs)
+        bokehplot.graph(data=[np.arange(1,29), np.array(sigmas_r)],
+                        idx=i, iframe=iframe, color='black', **common_kwargs)
+
         del all_counts_hits
         del all_layers_hits
         del all_centers_hits
+        del means
+        del sigmas_l
+        del sigmas_r
 
 class CacheManager:
     def __init__(self, name):
@@ -198,7 +232,9 @@ def main():
 
     axis_kwargs_hits = {'x.axis_label': 'Layer', 'y.axis_label': '#hits / cluster'}
     hits_and_energies_graphs2d(df_split, axis_kwargs_hits, columns_field='Nhits', iframe=0, weight_by_energy=True)
+    print('after hits_and_energies_graphs2d 1')
     del df_split
+    print('save')
     bokehplot.save_frame(iframe=0, plot_width=plot_width, plot_height=plot_height, show=False)
 
     ###############################################
@@ -213,6 +249,8 @@ def main():
 
     axis_kwargs_en = {'x.axis_label': 'Layer', 'y.axis_label': 'Total energy per cluster [MeV]'}
     hits_and_energies_graphs2d(df_en_split, axis_kwargs_en, columns_field='Energy', iframe=1, weight_by_energy=False)
+    print('after hits_and_energies_graphs2d 2')
+    print("save")
     bokehplot.save_frame(iframe=1, plot_width=plot_width, plot_height=plot_height, show=False)
 
     ###############################################
@@ -220,6 +258,7 @@ def main():
     ###############################################
     axis_kwargs_en = {'x.axis_label': 'Layer', 'y.axis_label': 'Number of clusters'}
     number_clusters_graph2d(df_en_split, axis_kwargs_en, columns_field='Energy', iframe=2)
+    print('after numbers')
     bokehplot.save_frame(iframe=2, plot_width=plot_width, plot_height=plot_height, show=False)
 
 if __name__ == '__main__':
