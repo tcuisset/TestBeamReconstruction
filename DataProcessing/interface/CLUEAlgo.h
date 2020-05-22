@@ -10,9 +10,9 @@
 #include <functional>
 #include <chrono>
 
+#include "CLUEAnalysis.h"
 #include "LayerTiles.h"
 #include "Points.h"
-
 
 class CLUEAlgo{
 
@@ -32,7 +32,6 @@ class CLUEAlgo{
     
     // public variables
     float dc_, ecut_, kappa_, outlierDeltaFactor_;
-    std::array<float, 2> snratio = {{7.2 /*300 micron sensors*/, 4.8 /*200 micron sensors*/}}; //values given by Thorben
     bool verbose_;
     
     Points points_;
@@ -42,23 +41,17 @@ class CLUEAlgo{
     std::vector<float> getHitsWeight();
     std::vector<int> getHitsClusterId();
     std::vector<int> getHitsLayerId();
+    std::vector<float> getHitsRho();
+    std::vector<float> getHitsDistanceToHighest();
 
     // public methods
-    static const float getSigmaNoise(unsigned int layer, float weight) {
-      float enMip = 86.f; //value given by Thorben in keV
-      float noiseMip = enMip/6.f; //value given by Thorben in keV
-      float sigmaNoise = weight / enMip * noiseMip;
-      return sigmaNoise;
-    }
-
     void setPoints(int n, float* x, float* y, unsigned int* layer, float* weight) {
       points_.clear();
 
       // input variables
       for(int i=0; i<n; ++i)
 	{
-	  float sigmaNoise = getSigmaNoise(layer[i], weight[i]);
-	  if( weight[i] < ecut_*sigmaNoise )
+	  if( weight[i] < ecut_ * detectorConstants::sigmaNoise )
 	    continue;
 	  points_.x.push_back(x[i]);
 	  points_.y.push_back(y[i]);

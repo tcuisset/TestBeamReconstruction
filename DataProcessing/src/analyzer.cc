@@ -12,7 +12,7 @@ Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::st
       std::cout << "#" << std::to_string(i+1) << " " << in_file_path[i] << std::endl;
       names_.push_back( std::make_pair(in_file_path[i], in_tree_name) );
       en_total_.push_back( std::vector< std::tuple<float, float> >() );
-      fracs_.push_back( std::vector< std::array< std::tuple<float, float>, nlayers_ > >() );
+      fracs_.push_back( std::vector< std::array< std::tuple<float, float, std::vector<float>, std::vector<float>>, nlayers_ > >() );
       clusterdep_.push_back( std::vector< cluster_dependent_type >() );
     }
 }
@@ -27,7 +27,7 @@ Analyzer::Analyzer(const std::string& in_file_path, const std::string& in_tree_n
   names_.push_back( std::make_pair(in_file_path, in_tree_name) );
   beam_energies_.resize(1, 0.f);
   en_total_.push_back( std::vector< std::tuple<float, float> >() );
-  fracs_.push_back( std::vector< std::array< std::tuple<float, float>, nlayers_ > >() );
+  fracs_.push_back( std::vector< std::array< std::tuple<float, float, std::vector<float>, std::vector<float>>, nlayers_ > >() );
   clusterdep_.push_back( std::vector< cluster_dependent_type >() );
 }
 
@@ -37,7 +37,7 @@ Analyzer::~Analyzer()
 
 void Analyzer::runCLUE() {
   float tot_en = 0;
-  std::array< std::tuple<unsigned int, float>, nlayers_> layerdep_vars;
+  std::array< std::tuple<unsigned int, float, std::vector<float>, std::vector<float>>, nlayers_> layerdep_vars;
   cluster_dependent_type clusterdep_vars;
 
   std::vector< std::vector<float> > x_;
@@ -79,7 +79,7 @@ void Analyzer::runCLUE() {
 	      unsigned int layeridx = layer_.at(iEvent).at(j) - 1;
 	      if(layeridx > nlayers_ - 1)
 		continue;
-	      if( ! ecut_selection(layer_.at(iEvent).at(j), weight_.at(iEvent).at(j)) )
+	      if( ! ecut_selection(weight_.at(iEvent).at(j)) )
 		continue;
 	      tot_hits_per_layer.at(layeridx) += 1;
 	      tot_en_per_layer.at(layeridx) += weight_.at(iEvent).at(j);
@@ -95,16 +95,21 @@ void Analyzer::runCLUE() {
 	  this->en_total_[i].push_back( std::make_tuple(tot_en, beam_energy) ); 
 
 	  //calculate per layer fraction of clusterized number of hits and energy
-	  clueAna.calculateLayerDepVars( clueAlgo.getHitsWeight(), clueAlgo.getHitsClusterId(), clueAlgo.getHitsLayerId() );
+	  clueAna.calculateLayerDepVars( clueAlgo.getHitsWeight(), clueAlgo.getHitsClusterId(), clueAlgo.getHitsLayerId(),
+					 clueAlgo.getHitsRho(), clueAlgo.getHitsDistanceToHighest());
 	  layerdep_vars = clueAna.getTotalLayerDepOutput();
 	  //fill fractions (the denominators include outliers!)
-	  std::array< std::tuple<float, float>, nlayers_> eventarray_tmp;
+	  std::array< std::tuple<float, float, std::vector<float>, std::vector<float>>, nlayers_> eventarray_tmp;
 	  for(unsigned int j=0; j<nlayers_; ++j)
 	    {
 	      if (tot_hits_per_layer[j] != 0 and tot_en_per_layer[j] != 0)
-		eventarray_tmp[j] = std::make_tuple(static_cast<float>(std::get<0>(layerdep_vars[j]))/tot_hits_per_layer[j], std::get<1>(layerdep_vars[j])/tot_en_per_layer[j] );
+		eventarray_tmp[j] = std::make_tuple(static_cast<float>(std::get<0>(layerdep_vars[j]))/tot_hits_per_layer[j], std::get<1>(layerdep_vars[j])/tot_en_per_layer[j], std::get<2>(layerdep_vars[j]), std::get<3>(layerdep_vars[j]) );
 	      else
-		eventarray_tmp[j] = std::make_tuple(0., 0.);
+		{
+		  std::vector<float> tmpv1(0,0.f);
+		  std::vector<float> tmpv2(0,0.f);
+		  eventarray_tmp[j] = std::make_tuple(0., 0., std::move(tmpv1), std::move(tmpv2));
+		}
 	    }
 	  this->fracs_.at(i).push_back( eventarray_tmp );
 
@@ -184,10 +189,9 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
   return std::make_pair(nevents, beam_energy);
 }
 
-bool Analyzer::ecut_selection(const unsigned int& layer, const float& energy)
+bool Analyzer::ecut_selection(const float& energy)
 {
-  const float sigmaNoise = CLUEAlgo::getSigmaNoise(layer, energy);
-  return energy < ecut_ * sigmaNoise;
+  return energy > ecut_ * detectorConstants::sigmaNoise;
 }
 
 void Analyzer::sum_energy(const bool& with_ecut)
@@ -208,7 +212,7 @@ void Analyzer::sum_energy(const bool& with_ecut)
 	    {
 	      for(unsigned int ien=0; ien<en.size(); ++ien)
 		{
-		  if( ecut_selection(layer[ien], en[ien]) )
+		  if( ecut_selection(en[ien]) )
 		    entot += en[ien];
 		}
 	    }
@@ -328,6 +332,49 @@ void Analyzer::save_to_file_layer_dependent(const std::string& filename) {
   std::cout << std::endl;
   std::cout << "SAVE: " << filename << std::endl;
   std::cout << "NFILES: " << nfiles_ << std::endl;
+  for(unsigned int i=0; i<nfiles_; ++i)
+    {
+      //create TTree
+      std::string name = "tree" + std::to_string(i);
+      TFile file( filename.c_str(), "RECREATE");
+      TTree tmptree( name.c_str(), name.c_str());
+
+      //define branches
+      tmptree.Branch("BeamEnergy", &beam_energies_.at(i));
+      std::array< float, nlayers_> fracs_hits;
+      std::array< float, nlayers_> fracs_en;
+      std::array< std::vector<float>, nlayers_> rhos;
+      std::array< std::vector<float>, nlayers_> deltas;
+      for(unsigned int ilayer=0; ilayer<nlayers_; ++ilayer) 
+	{
+	  std::string bname_hits   = "Nhits_layer"     + std::to_string(ilayer + 1);
+	  std::string bname_energy = "Energy_layer"    + std::to_string(ilayer + 1);
+	  std::string bname_rho    = "Densities_layer" + std::to_string(ilayer + 1);
+	  std::string bname_delta  = "Distances_layer" + std::to_string(ilayer + 1);
+	  tmptree.Branch(bname_hits.c_str(),   &fracs_hits[ilayer]);
+	  tmptree.Branch(bname_energy.c_str(), &fracs_en[ilayer]);
+	  tmptree.Branch(bname_rho.c_str(),    &rhos[ilayer]);
+	  tmptree.Branch(bname_delta.c_str(),  &deltas[ilayer]);
+	}
+
+      //loop over TTree and fill branches
+      unsigned int nentries = this->clusterdep_.at(i).size(); // read the number of entries in the t3
+      for (unsigned int ientry = 0; ientry<nentries; ++ientry) 
+	{
+	  for(unsigned int ilayer=0; ilayer<nlayers_; ++ilayer) 
+	    {
+	      fracs_hits[ilayer] = std::get<0>( this->fracs_.at(i).at(ientry).at(ilayer) );
+	      fracs_en[ilayer]  = std::get<1>( this->fracs_.at(i).at(ientry).at(ilayer) );
+	      rhos[ilayer]      = std::get<2>( this->fracs_.at(i).at(ientry).at(ilayer) );
+	      deltas[ilayer]    = std::get<3>( this->fracs_.at(i).at(ientry).at(ilayer) );
+	    }
+	  tmptree.Fill();
+	}
+      file.Write();
+      file.Close();
+    }
+
+  /*
   oFile << "beamen" << ",";
   for(unsigned int i=0; i<nfiles_; ++i)
     {
@@ -377,6 +424,7 @@ void Analyzer::save_to_file_layer_dependent(const std::string& filename) {
 	}
       oFile << std::endl;
     }
+  */
 }
 
 void Analyzer::save_to_file_cluster_dependent(const std::string& filename) {

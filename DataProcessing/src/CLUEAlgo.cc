@@ -129,7 +129,7 @@ void CLUEAlgo::findAndAssignClusters(){
     // initialize clusterIndex
     points_.clusterIndex[i] = -1;
     // determine seed or outlier
-    float rhoc = kappa_ * getSigmaNoise(points_.layer[i], points_.weight[i]);
+    float rhoc = kappa_ * detectorConstants::sigmaNoise;
     bool isSeed = (points_.delta[i] > dc_) && (points_.rho[i] >= rhoc);
     bool isOutlier = (points_.delta[i] > outlierDeltaFactor_ * dc_) && (points_.rho[i] < rhoc);
     if (isSeed) {
@@ -200,6 +200,18 @@ std::vector<int> CLUEAlgo::getHitsLayerId() {
   if(points_.layer.empty())
     throw std::bad_function_call();
   return points_.layer;
+}
+
+std::vector<float> CLUEAlgo::getHitsRho() {
+  if(points_.rho.empty())
+    throw std::bad_function_call();
+  return points_.rho;
+}
+
+std::vector<float> CLUEAlgo::getHitsDistanceToHighest() {
+  if(points_.delta.empty())
+    throw std::bad_function_call();
+  return points_.delta;
 }
 
 inline float CLUEAlgo::distance(int i, int j) const {
