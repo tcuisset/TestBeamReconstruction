@@ -36,12 +36,12 @@ cd "${INIT_FOLDER}";
 
 INFILE="${1}";
 echo "Input file: ${INFILE}"
-PATH_REMAINDER="UserCode/DataProcessing/job_output/"
+EOS_PATH="/eos/user/b/bfontana/TestBeamReconstruction/job_output/"
 tuple_number="${INFILE#*ntuple_}"
 tuple_number=${tuple_number%.root}
 OUTNAME="outEcut_${tuple_number}" #extract ntuple number
-OUTFILE1="${FULL_PATH}${PATH_REMAINDER}${OUTNAME}.csv"; 
-OUTFILE2="${FULL_PATH}${PATH_REMAINDER}layer_dependent/${OUTNAME}.csv";
-OUTFILE3="${FULL_PATH}${PATH_REMAINDER}cluster_dependent/${OUTNAME}.root";
+OUTFILE1="${EOS_PATH}hit_dependent/${OUTNAME}.csv"; 
+OUTFILE2="${EOS_PATH}layer_dependent/${OUTNAME}.root";
+OUTFILE3="${EOS_PATH}cluster_dependent/${OUTNAME}.root";
 echo -e "Output files:\n${OUTFILE1}\n${OUTFILE2}\n${OUTFILE3}"
 analyze_data_exe "${INFILE}" "${OUTFILE1}" "${OUTFILE2}" "${OUTFILE3}";
