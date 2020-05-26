@@ -5,7 +5,7 @@ struct Points {
   
   std::vector<float> x;
   std::vector<float> y;
-  std::vector<int> layer;
+  std::vector<unsigned int> layer;
   std::vector<float> weight;
   
   std::vector<float> rho;

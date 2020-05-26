@@ -1,7 +1,7 @@
 #include "UserCode/DataProcessing/interface/CLUEAlgo.h"
 
 void CLUEAlgo::makeClusters(){
-  std::array<LayerTiles, NLAYERS> allLayerTiles;
+  std::array<LayerTiles, detectorConstants::nlayers> allLayerTiles;
   // start clustering
   auto start = std::chrono::high_resolution_clock::now();
   prepareDataStructures(allLayerTiles);
@@ -26,7 +26,7 @@ void CLUEAlgo::makeClusters(){
 }
 
 
-void CLUEAlgo::prepareDataStructures( std::array<LayerTiles, NLAYERS> & allLayerTiles ){
+void CLUEAlgo::prepareDataStructures( std::array<LayerTiles, detectorConstants::nlayers> & allLayerTiles ){
   for (int i=0; i<points_.n; i++){
     // push index of points into tiles
     allLayerTiles[points_.layer[i]].fill( points_.x[i], points_.y[i], i);
@@ -34,7 +34,7 @@ void CLUEAlgo::prepareDataStructures( std::array<LayerTiles, NLAYERS> & allLayer
 }
 
 
-void CLUEAlgo::calculateLocalDensity( std::array<LayerTiles, NLAYERS> & allLayerTiles ){
+void CLUEAlgo::calculateLocalDensity( std::array<LayerTiles, detectorConstants::nlayers> & allLayerTiles ){
   
   // loop over all points
   for(int i = 0; i < points_.n; i++) {
@@ -69,7 +69,7 @@ void CLUEAlgo::calculateLocalDensity( std::array<LayerTiles, NLAYERS> & allLayer
 }
 
 
-void CLUEAlgo::calculateDistanceToHigher( std::array<LayerTiles, NLAYERS> & allLayerTiles ){
+void CLUEAlgo::calculateDistanceToHigher( std::array<LayerTiles, detectorConstants::nlayers> & allLayerTiles ){
   // loop over all points
   float dm = outlierDeltaFactor_ * dc_;
   for(int i = 0; i < points_.n; i++) {
@@ -128,8 +128,10 @@ void CLUEAlgo::findAndAssignClusters(){
   for(int i = 0; i < points_.n; i++) {
     // initialize clusterIndex
     points_.clusterIndex[i] = -1;
-    // determine seed or outlier
-    float rhoc = kappa_ * detectorConstants::sigmaNoise;
+    //note that the layer array starts at 0
+    float endeposited_mip = points_.layer[i] < detectorConstants::layerBoundary ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
+    float rhoc = kappa_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * detectorConstants::dEdX[ points_.layer[i] ];
+    // determine seed or outlier 
     bool isSeed = (points_.delta[i] > dc_) && (points_.rho[i] >= rhoc);
     bool isOutlier = (points_.delta[i] > outlierDeltaFactor_ * dc_) && (points_.rho[i] < rhoc);
     if (isSeed) {
@@ -199,7 +201,10 @@ std::vector<int> CLUEAlgo::getHitsClusterId() {
 std::vector<int> CLUEAlgo::getHitsLayerId() {
   if(points_.layer.empty())
     throw std::bad_function_call();
-  return points_.layer;
+  std::vector<int> layer_output(points_.layer.size());
+  for(unsigned int i=0; i<points_.layer.size(); ++i)
+    layer_output[i] = points_.layer[i] + 1;
+  return layer_output;
 }
 
 std::vector<float> CLUEAlgo::getHitsRho() {

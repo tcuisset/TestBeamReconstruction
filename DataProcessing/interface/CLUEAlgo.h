@@ -45,17 +45,21 @@ class CLUEAlgo{
     std::vector<float> getHitsDistanceToHighest();
 
     // public methods
+    //Note: The layer input and output (see getHitsLayerId()) start counting at 1, but the calculations inside use a 0-based index
     void setPoints(int n, float* x, float* y, unsigned int* layer, float* weight) {
       points_.clear();
 
       // input variables
       for(int i=0; i<n; ++i)
 	{
-	  if( weight[i] < ecut_ * detectorConstants::sigmaNoise )
+	  if(layer[i] > detectorConstants::nlayers)
 	    continue;
+	  float endeposited_mip = layer[i] < 27 ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
+	  if( weight[i] < ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * detectorConstants::dEdX.at(layer[i]-1) )
+	      continue;
 	  points_.x.push_back(x[i]);
 	  points_.y.push_back(y[i]);
-	  points_.layer.push_back(layer[i]);
+	  points_.layer.push_back(layer[i]-1);
 	  points_.weight.push_back(weight[i]);
 	}
 
@@ -84,7 +88,7 @@ class CLUEAlgo{
         if (outputFileName.compare("cout") == 0 )  {
           std::cout << "index,x,y,layer,weight,rho,delta,nh,isSeed,clusterId"<< std::endl;
           for(int i = 0; i < nVerbose; i++) {
-            std::cout << i << ","<<points_.x[i]<< ","<<points_.y[i]<< ","<<points_.layer[i] << ","<<points_.weight[i];
+            std::cout << i << ","<<points_.x[i]<< ","<<points_.y[i]<< ","<<points_.layer[i]+1 << ","<<points_.weight[i];
             std::cout << "," << points_.rho[i];
             if (points_.delta[i] <= 999) 
               std::cout << ","<<points_.delta[i];
@@ -102,7 +106,7 @@ class CLUEAlgo{
           std::ofstream oFile(outputFileName);
           oFile << "index,x,y,layer,weight,rho,delta,nh,isSeed,clusterId\n";
           for(int i = 0; i < nVerbose; i++) {
-            oFile << i << ","<<points_.x[i]<< ","<<points_.y[i]<< ","<<points_.layer[i] << ","<<points_.weight[i];
+            oFile << i << ","<<points_.x[i]<< ","<<points_.y[i]<< ","<<points_.layer[i]+1 << ","<<points_.weight[i];
             oFile << "," << points_.rho[i];
             if (points_.delta[i] <= 999) 
               oFile << ","<<points_.delta[i];
@@ -129,7 +133,7 @@ class CLUEAlgo{
 	if (outputFileName.compare("cout") == 0 )  {
 	  std::cout << "index,rechit_id,x,y,layer,weight,rho,delta,nh,isSeed,clusterId"<< std::endl;
 	  for(int i = 0; i < nVerbose; i++) {
-	    std::cout << i << ","<<rechits_id[i]<<","<<points_.x[i]<< ","<<points_.y[i]<< ","<<points_.layer[i] << ","<<points_.weight[i];
+	    std::cout << i << ","<<rechits_id[i]<<","<<points_.x[i]<< ","<<points_.y[i]<< ","<<points_.layer[i]+1 << ","<<points_.weight[i];
 	    std::cout << "," << points_.rho[i];
 	    if (points_.delta[i] <= 999) 
 	      std::cout << ","<<points_.delta[i];
@@ -147,7 +151,7 @@ class CLUEAlgo{
 	  std::ofstream oFile(outputFileName);
 	  oFile << "index,rechit_id,x,y,layer,weight,rho,delta,nh,isSeed,clusterId\n";
 	  for(int i = 0; i < nVerbose; i++) {
-	    oFile << i << ","<<rechits_id[i]<< ","<<points_.x[i]<< ","<<points_.y[i]<< ","<<points_.layer[i] << ","<<points_.weight[i];
+	    oFile << i << ","<<rechits_id[i]<< ","<<points_.x[i]<< ","<<points_.y[i]<< ","<<points_.layer[i]+1 << ","<<points_.weight[i];
 	    oFile << "," << points_.rho[i];
 	    if (points_.delta[i] <= 999) 
 	      oFile << ","<<points_.delta[i];
@@ -166,9 +170,9 @@ class CLUEAlgo{
         
   private:
     // private member methods
-    void prepareDataStructures(std::array<LayerTiles, NLAYERS> & );
-    void calculateLocalDensity(std::array<LayerTiles, NLAYERS> & );
-    void calculateDistanceToHigher(std::array<LayerTiles, NLAYERS> & );
+    void prepareDataStructures(std::array<LayerTiles, detectorConstants::nlayers> & );
+    void calculateLocalDensity(std::array<LayerTiles, detectorConstants::nlayers> & );
+    void calculateDistanceToHigher(std::array<LayerTiles, detectorConstants::nlayers> & );
     void findAndAssignClusters();
     inline float distance(int , int) const ;
 };

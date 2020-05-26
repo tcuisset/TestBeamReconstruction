@@ -5,6 +5,7 @@
 #include "ROOT/RDataFrame.hxx"
 #include "ROOT/RDF/InterfaceUtils.hxx"
 #include "UserCode/DataProcessing/interface/range.h"
+#include "UserCode/DataProcessing/interface/CLUEAnalysis.h"
 
 class Selector {
  public:
@@ -17,9 +18,6 @@ class Selector {
   int sanity_checks(const std::string&);
   
   static const int ncpus_ = 4;
-  //weights and thickness corrections taken from the third column of Table 3 of CMS DN-19-019
-  std::array<float, 28> energy_weights_ = {{11.289,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,11.360,11.360,11.360,11.360,10.995,10.995,11.153,7.470}};
-  //std::array<float, 2> thickness_correction_ = {{0.0850, 0.0567}};
 
   //std::string newcol1_ = "rechit_energy_MeV";
   std::string newcol2_ = "rechit_weighted_energy_MeV";

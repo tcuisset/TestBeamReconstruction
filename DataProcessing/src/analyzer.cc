@@ -12,7 +12,7 @@ Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::st
       std::cout << "#" << std::to_string(i+1) << " " << in_file_path[i] << std::endl;
       names_.push_back( std::make_pair(in_file_path[i], in_tree_name) );
       en_total_.push_back( std::vector< std::tuple<float, float> >() );
-      fracs_.push_back( std::vector< std::array< std::tuple<float, float, std::vector<float>, std::vector<float>>, nlayers_ > >() );
+      fracs_.push_back( std::vector< std::array< std::tuple<float, float, std::vector<float>, std::vector<float>>, detectorConstants::nlayers > >() );
       clusterdep_.push_back( std::vector< cluster_dependent_type >() );
     }
 }
@@ -27,7 +27,7 @@ Analyzer::Analyzer(const std::string& in_file_path, const std::string& in_tree_n
   names_.push_back( std::make_pair(in_file_path, in_tree_name) );
   beam_energies_.resize(1, 0.f);
   en_total_.push_back( std::vector< std::tuple<float, float> >() );
-  fracs_.push_back( std::vector< std::array< std::tuple<float, float, std::vector<float>, std::vector<float>>, nlayers_ > >() );
+  fracs_.push_back( std::vector< std::array< std::tuple<float, float, std::vector<float>, std::vector<float>>, detectorConstants::nlayers > >() );
   clusterdep_.push_back( std::vector< cluster_dependent_type >() );
 }
 
@@ -37,7 +37,7 @@ Analyzer::~Analyzer()
 
 void Analyzer::runCLUE() {
   float tot_en = 0;
-  std::array< std::tuple<unsigned int, float, std::vector<float>, std::vector<float>>, nlayers_> layerdep_vars;
+  std::array< std::tuple<unsigned int, float, std::vector<float>, std::vector<float>>, detectorConstants::nlayers> layerdep_vars;
   cluster_dependent_type clusterdep_vars;
 
   std::vector< std::vector<float> > x_;
@@ -70,16 +70,16 @@ void Analyzer::runCLUE() {
 	{
 	  std::cout << "Inside this tree there are " << nevents << " events: ";
 	  std::cout << iEvent/static_cast<float>(nevents)*100 << "% \r";
-
+	 
 	  //calculate quantities including outliers
-	  std::array<unsigned int, nlayers_> tot_hits_per_layer = {{0}};
-	  std::array<float, nlayers_> tot_en_per_layer = {{0.f}};
+	  std::array<unsigned int, detectorConstants::nlayers> tot_hits_per_layer = {{0}};
+	  std::array<float, detectorConstants::nlayers> tot_en_per_layer = {{0.f}};
 	  for(unsigned int j=0; j<layer_[iEvent].size(); ++j)
 	    {
 	      unsigned int layeridx = layer_.at(iEvent).at(j) - 1;
-	      if(layeridx > nlayers_ - 1)
+	      if(layeridx > detectorConstants::nlayers - 1)
 		continue;
-	      if( ! ecut_selection(weight_.at(iEvent).at(j)) )
+	      if( ! ecut_selection(weight_.at(iEvent).at(j), layeridx) )
 		continue;
 	      tot_hits_per_layer.at(layeridx) += 1;
 	      tot_en_per_layer.at(layeridx) += weight_.at(iEvent).at(j);
@@ -99,8 +99,8 @@ void Analyzer::runCLUE() {
 					 clueAlgo.getHitsRho(), clueAlgo.getHitsDistanceToHighest());
 	  layerdep_vars = clueAna.getTotalLayerDepOutput();
 	  //fill fractions (the denominators include outliers!)
-	  std::array< std::tuple<float, float, std::vector<float>, std::vector<float>>, nlayers_> eventarray_tmp;
-	  for(unsigned int j=0; j<nlayers_; ++j)
+	  std::array< std::tuple<float, float, std::vector<float>, std::vector<float>>, detectorConstants::nlayers> eventarray_tmp;
+	  for(unsigned int j=0; j<detectorConstants::nlayers; ++j)
 	    {
 	      if (tot_hits_per_layer[j] != 0 and tot_en_per_layer[j] != 0)
 		eventarray_tmp[j] = std::make_tuple(static_cast<float>(std::get<0>(layerdep_vars[j]))/tot_hits_per_layer[j], std::get<1>(layerdep_vars[j])/tot_en_per_layer[j], std::get<2>(layerdep_vars[j]), std::get<3>(layerdep_vars[j]) );
@@ -189,9 +189,10 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
   return std::make_pair(nevents, beam_energy);
 }
 
-bool Analyzer::ecut_selection(const float& energy)
+bool Analyzer::ecut_selection(const float& energy, const unsigned int& layer)
 {
-  return energy > ecut_ * detectorConstants::sigmaNoise;
+  float endeposited_mip = layer < detectorConstants::layerBoundary ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
+  return energy > ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * detectorConstants::dEdX.at(layer);
 }
 
 void Analyzer::sum_energy(const bool& with_ecut)
@@ -204,20 +205,19 @@ void Analyzer::sum_energy(const bool& with_ecut)
 
   for(unsigned int i=0; i<nfiles_; ++i)
     {
-
       auto sum = [&](const std::vector<float>& en, const std::vector<unsigned int>& layer, float beamen)
 	{ 
 	  float entot = 0.f;
-	  if(with_ecut)
+	  for(unsigned int ien=0; ien<en.size(); ++ien)
 	    {
-	      for(unsigned int ien=0; ien<en.size(); ++ien)
-		{
-		  if( ecut_selection(en[ien]) )
-		    entot += en[ien];
-		}
+	      if(layer[ien] > detectorConstants::nlayers)
+		continue;
+
+	      if(with_ecut and ! ecut_selection(en[ien], layer[ien]-1))
+		continue;
+
+	      entot += en[ien];
 	    }
-	  else
-	    entot = std::accumulate(en.begin(), en.end(), 0.);
 	  { //mutex lock scope
 	    std::lock_guard lock(mut);
 	    this->en_total_[i].push_back(std::make_tuple(entot, beamen));
@@ -231,56 +231,6 @@ void Analyzer::sum_energy(const bool& with_ecut)
       d.Foreach(sum, {"rechit_weighted_energy_MeV", "rechit_layer", "beamEnergy"});
     }
 };
-
-void Analyzer::histogram_checks()
-{
-  //enable parallelism
-  ROOT::EnableImplicitMT( ncpus_ );
-
-  auto sum_energies = [&](std::vector<float> en, std::vector<unsigned int> l) {
-    std::vector<float> ensum(en.size(), 0.f);
-    unsigned int layer = 0;
-    float weight = 1.;
-    for(unsigned int i=0; i<en.size(); ++i)
-      {
-	layer = l[i];
-	if(layer>0 && layer<27)
-	  weight = this->energy_weights_[layer];
-	else if(layer >= 27 && layer<29)
-	  weight = this->energy_weights_[layer];
-	else if(layer >= 29 && layer<=50)
-	  weight = 0;
-	else
-	  throw std::out_of_range("Unphysical layer number: "+std::to_string(layer));
-	ensum.at(i) =  en[i] * weight;
-      }
-    return std::accumulate(ensum.begin(), ensum.end(), 0.);
-  };
-  
-  //define dataframe that owns the TTree
-  assert(this->names_.size() == 1);
-  ROOT::RDataFrame d(this->names_[0].second.c_str(), this->names_[0].first.c_str());
-  auto h1 = d.Histo2D<std::vector<unsigned int>, std::vector<float>>({"h1", "RecHit Energy vs. RecHit Layer", 41u, 0, 42, 200u, 0., 14.}, "rechit_layer", "rechit_energy");
-  auto d_def = d.Define("energy_sum", sum_energies, {"rechit_energy_MeV", "rechit_layer"}); 
-  auto h_sum = d_def.Histo1D("energy_sum");
-
-  TCanvas *c = new TCanvas("c", "c", 1600, 600);
-  c->Divide(2,1);
-  c->cd(1);
-  h_sum->SetLineColor(4);
-  h_sum->SetTitle("RecHit Energy Sum per Event");
-  h_sum->SetXTitle("Energy Sum [MeV]");
-  h_sum->SetYTitle("Counts");
-  h_sum->Draw();
-  c->cd(2);
-  h1->SetLineColor(4);
-  h1->SetYTitle("Rechit energy [MIP]");
-  h1->SetXTitle("Layer");
-  h1->Draw("colz");
-  c->SaveAs("histo.png");
-  delete c;
-};
-
 
 int Analyzer::sanity_checks(const std::string& fname) 
 {
@@ -343,11 +293,11 @@ void Analyzer::save_to_file_layer_dependent(const std::string& filename) {
 
       //define branches
       //tmptree.Branch("BeamEnergy", &beam_energies_.at(i));
-      std::array< float, nlayers_> fracs_hits;
-      std::array< float, nlayers_> fracs_en;
-      std::array< std::vector<float>, nlayers_> rhos;
-      std::array< std::vector<float>, nlayers_> deltas;
-      for(unsigned int ilayer=0; ilayer<nlayers_; ++ilayer) 
+      std::array< float, detectorConstants::nlayers> fracs_hits;
+      std::array< float, detectorConstants::nlayers> fracs_en;
+      std::array< std::vector<float>, detectorConstants::nlayers> rhos;
+      std::array< std::vector<float>, detectorConstants::nlayers> deltas;
+      for(unsigned int ilayer=0; ilayer<detectorConstants::nlayers; ++ilayer) 
 	{
 	  std::string bname_hits   = "Nhits_layer"     + std::to_string(ilayer + 1);
 	  std::string bname_energy = "Energy_layer"    + std::to_string(ilayer + 1);
@@ -363,7 +313,7 @@ void Analyzer::save_to_file_layer_dependent(const std::string& filename) {
       unsigned int nentries = this->fracs_.at(i).size(); // read the number of entries in the t3
       for (unsigned int ientry = 0; ientry<nentries; ++ientry) 
 	{
-	  for(unsigned int ilayer=0; ilayer<nlayers_; ++ilayer) 
+	  for(unsigned int ilayer=0; ilayer<detectorConstants::nlayers; ++ilayer) 
 	    {
 	      fracs_hits[ilayer] = std::get<0>( this->fracs_.at(i).at(ientry).at(ilayer) );
 	      fracs_en[ilayer]  = std::get<1>( this->fracs_.at(i).at(ientry).at(ilayer) );
@@ -389,9 +339,9 @@ void Analyzer::save_to_file_cluster_dependent(const std::string& filename) {
 
       //define branches
       tmptree.Branch("BeamEnergy", &beam_energies_.at(i));
-      std::array< std::vector<unsigned int>, nlayers_> arr_hits;
-      std::array< std::vector<float>, nlayers_> arr_en;
-      for(unsigned int ilayer=0; ilayer<nlayers_; ++ilayer) 
+      std::array< std::vector<unsigned int>, detectorConstants::nlayers> arr_hits;
+      std::array< std::vector<float>, detectorConstants::nlayers> arr_en;
+      for(unsigned int ilayer=0; ilayer<detectorConstants::nlayers; ++ilayer) 
 	{
 	  std::string bname_hits   = "Nhits_layer"  + std::to_string(ilayer + 1);
 	  std::string bname_energy = "Energy_layer" + std::to_string(ilayer + 1);
@@ -403,7 +353,7 @@ void Analyzer::save_to_file_cluster_dependent(const std::string& filename) {
       unsigned int nentries = this->clusterdep_.at(i).size(); // read the number of entries in the t3
       for (unsigned int ientry = 0; ientry<nentries; ++ientry) 
 	{
-	  for(unsigned int ilayer=0; ilayer<nlayers_; ++ilayer) 
+	  for(unsigned int ilayer=0; ilayer<detectorConstants::nlayers; ++ilayer) 
 	    {
 	      /*
 	      std::cout << std::endl;

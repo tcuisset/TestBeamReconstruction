@@ -70,7 +70,7 @@ void Selector::select_relevant_branches()
 	  {
 	    layer = l[i];
 	    if(layer > 0 && layer <= 28)
-	      weight = this->energy_weights_.at(layer-1);
+	      weight = detectorConstants::dEdX.at(layer-1);
 	    else if(layer > 28 && layer <= 50)
 	      {
 		weight = 0.; //ignore hits in the hadronic section

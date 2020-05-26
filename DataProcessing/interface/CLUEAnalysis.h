@@ -25,8 +25,12 @@ namespace dataformats {
 }
 
 namespace detectorConstants {
-    constexpr float sigmaNoise = 1e-3 * 86.f / 6.f; //value given by Thorben [MeV]
-    constexpr unsigned int nlayers = 28; //needs to be static to be used as array dimension
+  constexpr std::array<float, 2> energyDepositedByMIP = {{0.0850, 0.0567}}; //value given by Thorben [MeV]
+  constexpr float sigmaNoiseSiSensor = energyDepositedByMIP[0] / 6.f; //value given by Thorben [MeV]
+  constexpr unsigned int nlayers = 28;
+  constexpr unsigned int layerBoundary = 26;
+  constexpr std::array<float, nlayers> dEdX = {{11.289,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,11.360,11.360,11.360,11.360,10.995,10.995,11.153,7.470}}; //values in DN-19-019 [MeV/MIP]
+  
 }
 
 class CLUEAnalysis {
