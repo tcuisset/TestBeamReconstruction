@@ -154,7 +154,6 @@ def graphs_single(df, columns_field, idx, iframe, do_1D=False, do_2D=False):
         bokehplot.histogram(data=hist, idx=indexes, legend_label=leg_labels,
                             iframe=iframe+1, style='\%1.5%red', fig_kwargs=fig_kwargs_1D)
         if columns_field == 'Densities':
-            sigmaNoiseTimesKappa = 9 * 10. / 6.
             bokehplot.line(x=[[sigmaNoiseTimesKappa,sigmaNoiseTimesKappa] for _ in range(nlayers)], 
                            y=[[0,hist[i][0].max()] for i in range(nlayers)], 
                            idx=indexes, iframe=iframe+1, color='orange', legend_label='approximate kappa cut')
@@ -217,12 +216,9 @@ def graphs_double(df, columns_fields, idx, iframe):
     nbins_min_y = 8
     nbins = ( nbins_min_x if datamax>nbins_min_x else int(datamax-1),
               nbins_min_y if datamax>nbins_min_y else int(datamax-1) )
-    bins = ( np.linspace(datamin[0], 380, nbins[0]+1),
+    xmaxlimit = 380
+    bins = ( np.linspace(datamin[0], xmaxlimit, nbins[0]+1),
              np.linspace(datamin[1], datamax[1], nbins[1]+1) )
-    """
-    bins = ( np.linspace(datamin[0], datamax[0], nbins[0]+1),
-             np.linspace(datamin[1], datamax[1], nbins[1]+1) )
-    """
 
     #plot data as 2d graphs
     fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height,
@@ -234,6 +230,7 @@ def graphs_double(df, columns_fields, idx, iframe):
         bokehplot.histogram(data=(counts, xedges, yedges),
                             #width=width_hits, height=height_hits,
                             idx=ilayer, iframe=iframe, style='quad%Cividis', fig_kwargs=fig_kwargs)
+        bokehplot.box(x=[sigmaNoiseTimesKappa,xmaxlimit], y=[1.3, datamax[1]], idx=ilayer, color='red', line_width=3)
 
 class CacheManager:
     def __init__(self, name):
@@ -289,6 +286,7 @@ if __name__ == '__main__':
     #define analysis constants
     nlayers = 28
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
+    sigmaNoiseTimesKappa = 9 * 10. / 6.
     true_beam_energies_GeV = (20,30,49.99,79.93,99.83,119.65,149.14,197.32,243.61,287.18)
     true_beam_energies_MeV = tuple(x*1000 for x in true_beam_energies_GeV)
     size = len(true_beam_energies_GeV)
