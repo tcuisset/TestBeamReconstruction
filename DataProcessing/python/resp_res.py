@@ -75,7 +75,7 @@ class HandleHistograms:
             hist_modified = [hist[i][0][indexes_selected][:-1], hist[i][1][selection]]
             bokehplot.histogram(data=hist_modified, idx=i, iframe=iframe, style='step',
                                 legend_label=[str(x)+' GeV' for x in true_beam_energies_GeV], fill_color='white', line_color=line_colors[i], 
-                                alpha=1., fig_kwargs={'x_range': ranges[i], 'y_range': Range1d(-30.,850)})
+                                alpha=1., fig_kwargs={'x_range': ranges[i], 'y_range': Range1d(-30.,900)})
 
             #Second fit
             coeff, var = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=1, iframe=iframe, color=line_colors[i], **common_args)
@@ -85,8 +85,8 @@ class HandleHistograms:
             mean_label = 'mean='+str(round(coeff[1],2))+'+-'+str(err1)+' MeV'
             sigma_label = 'sigma='+str(round(coeff[2],2))+'+-'+str(err2)+' MeV'
             font_size = {'text_font_size': '10pt', 'x_units': 'screen'}
-            bokehplot.label(mean_label,  idx=i, iframe=iframe, x=10, y=600, **font_size)
-            bokehplot.label(sigma_label, idx=i, iframe=iframe, x=10, y=550, **font_size)
+            bokehplot.label(mean_label,  idx=i, iframe=iframe, x=10, y=850, **font_size)
+            bokehplot.label(sigma_label, idx=i, iframe=iframe, x=10, y=800, **font_size)
             means.append( coeff[1] )
             means_err.append( err1 )
             responses.append( (coeff[1]-true_beam_energies_MeV[i]) / (true_beam_energies_MeV[i]) ) 
@@ -125,7 +125,7 @@ def response_and_resolution_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, re
     #fig = bokehplot.get_figure(idx=3, iframe=frameid)
     #fig.legend.location = 'bottom_right'
 
-    axis_kwargs3 = {'t.text': 'Resolutions after original and clusterized RecHits calibrations',
+    axis_kwargs3 = {'t.text': u"\u03c3 / E after original and clust. RecHits calibrations",
                     'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': u" Fractional energy Resolution (\u03c3 / E)"}
     bokehplot.graph(idx=2, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(res1)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
@@ -162,7 +162,7 @@ def main():
     #files with sum of rechit energy
     usercode_path = 'src/UserCode/DataProcessing/job_output'
     path_start = '' if ecut_str == '' else 'Ecut'
-    path = os.path.join(cmssw_base, usercode_path, 'out'+path_start+'_')
+    path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 'job_output/hit_dependent/out'+path_start+'_')
     bins = (1000, 1800, 4200, 5000, 5000, 4200, 5700, 5500, 5500, 500)
     histo_ranges1 = (Range1d(0,30000), Range1d(11000, 35000), Range1d(27000, 58000), Range1d(52000, 94000), 
                     Range1d(64000, 120000), Range1d(88000,130000), Range1d(120000,165000), Range1d(160000, 210000), 
@@ -237,7 +237,7 @@ if __name__ == '__main__':
     if ecut_str == '':
         warnings.warn('Plotting being done on data without ecut applied!')
 
-    cmssw_base = subprocess.check_output("echo $CMSSW_BASE", shell=True).split('\n')[0]
+    eos_base = '/eos/user'
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
     true_beam_energies_GeV = (20,30,49.99,79.93,99.83,119.65,149.14,197.32,243.61,287.18)
     true_beam_energies_MeV = tuple(x*1000 for x in true_beam_energies_GeV)
@@ -246,8 +246,7 @@ if __name__ == '__main__':
 
     cms_user = subprocess.check_output("echo $USER", shell=True).split('\n')[0]
     data_directory = 'TestBeamReconstruction'
-    create_dir( os.path.join('/eos/user/', cms_user[0], cms_user, 'www', data_directory) )
-    output_html_dir = os.path.join('/eos/user/', cms_user[0], cms_user, 'www', data_directory)
+    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory)
     output_html_files = ( os.path.join(output_html_dir, 'pure_rechit_energy'+ecut_str+'.html'),
                           os.path.join(output_html_dir, 'pure_rechit_energy'+ecut_str+'_scaled.html'),
                           os.path.join(output_html_dir, 'clusterized_rechit_energy'+ecut_str+'.html'),

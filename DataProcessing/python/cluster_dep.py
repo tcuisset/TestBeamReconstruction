@@ -143,7 +143,7 @@ def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy
             interp_smooth = len(layers_x)#10*len(layers_x)
         elif variable == 'number':
             interp_degree = 1
-            interp_smooth = len(layers_x)
+            interp_smooth = len(layers_x)/50
         layers_x_fine = np.arange(1,28,interp_thickness)
         means_sp_func = UnivariateSpline(x=layers_x, y=np.array(means), k=interp_degree, s=interp_smooth)
         means_sp = means_sp_func(layers_x_fine)
@@ -155,13 +155,11 @@ def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy
         fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height,
                       't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[i])}
         fig_kwargs.update(axis_kwargs)
-        """
         bokehplot.graph(data=[np.array(all_layers_hits), np.array(all_centers_hits), np.array(all_counts_hits)],
                         width=np.ones((len(all_layers_hits))), height=height_hits,
                         idx=i, iframe=iframe, style='rect%Cividis', fig_kwargs=fig_kwargs, alpha=0.6)
-        """
-        bokehplot.graph(data=[layers_x_fine, means_sp],
-                        idx=i, iframe=iframe, color='red', style='circle', size=2, legend_label='mean')
+        bokehplot.graph(data=[layers_x, means],
+                        idx=i, iframe=iframe, color='brown', style='circle', size=2, legend_label='mean')
 
         #pm = (u'\u00B1').encode('utf-8')
         bokehplot.graph(data=[layers_x_fine, means_sp],
@@ -258,19 +256,17 @@ def main():
 
 if __name__ == '__main__':
     #define local data paths and variables
-    cmssw_base = '/afs/cern.ch/user/b/bfontana/CMSSW_11_1_0_pre2/'
-    usercode_path = 'src/UserCode/DataProcessing/job_output/cluster_dependent/'
-    data_path = os.path.join(cmssw_base, usercode_path, "hadd_clusterdep.root")
-    beamen_str = 'BeamEnergy'
+    eos_base = '/eos/user/'
     cms_user = subprocess.check_output("echo $USER", shell=True).split('\n')[0]
     data_directory = 'TestBeamReconstruction'
-    create_dir( os.path.join('/eos/user/', cms_user[0], cms_user, data_directory) )
+    data_path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, "job_output/cluster_dependent/hadd_clusterdep.root")
+    beamen_str = 'BeamEnergy'
 
     #define cache names and paths
     cache_name_hits = 'uproot_cache_hits.pickle'
-    cache_file_name_hits = os.path.join('/eos/user/', cms_user[0], cms_user, data_directory, cache_name_hits)
+    cache_file_name_hits = os.path.join(eos_base, cms_user[0], cms_user, data_directory, cache_name_hits)
     cache_name_en = 'uproot_cache_en.pickle'
-    cache_file_name_en = os.path.join('/eos/user/', cms_user[0], cms_user, data_directory, cache_name_en)
+    cache_file_name_en = os.path.join(eos_base, cms_user[0], cms_user, data_directory, cache_name_en)
 
     #define analysis constants
     nlayers = 28
@@ -283,8 +279,8 @@ if __name__ == '__main__':
     print("Input data read from {}".format(data_path))
 
     #create output files with plots
-    create_dir( os.path.join('/eos/user/', cms_user[0], cms_user, 'www', data_directory) )
-    output_html_dir = os.path.join('/eos/user/', cms_user[0], cms_user, 'www', data_directory)
+    create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory) )
+    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory)
     output_html_files = ( os.path.join(output_html_dir, 'plot_clusters_hits.html'),
                           os.path.join(output_html_dir, 'plot_clusters_energy.html'),
                           os.path.join(output_html_dir, 'plot_clusters_number.html'),

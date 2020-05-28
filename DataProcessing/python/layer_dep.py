@@ -82,7 +82,7 @@ def graphs_single(df, columns_field, idx, iframe, do_1D=False, do_2D=False):
                 raise ValueError('The dataframe {} in layer {} is empty!'.format(i, ilayer))
             arr = flatten_dataframe(arr)
             if columns_field == 'Distances':
-                arr = arr[ arr < 3.e38 ]
+                arr[ arr > 1.e38 ] = 0.5 #select distances == maxFloat (3.e38)
             data_per_layer.append( arr )
             del arr
 
@@ -196,9 +196,8 @@ def graphs_double(df, columns_fields, idx, iframe):
         if arr[0].size == 0 or arr[1].size == 0:
             raise ValueError('The dataframe {} in layer {} is empty!'.format(i, ilayer))
         arr = [flatten_dataframe(arr[0]), flatten_dataframe(arr[1])]
-        arr_selection = arr[1] < 3.e38 #avoid entries having distancies = MaxFloat
-        arr[0] = arr[0][arr_selection]
-        arr[1] = arr[1][arr_selection]
+        arr_selection = arr[1] > 1.e38 #entries having distancies = MaxFloat
+        arr[1][arr_selection] = 0.5
 
         data_per_layer[0].append( arr[0] )
         data_per_layer[1].append( arr[1] )
@@ -214,13 +213,16 @@ def graphs_double(df, columns_fields, idx, iframe):
             datamin[1] = m1[1]
         if m2[1] > datamax[1]:
             datamax[1] = m2[1]
-    nbins_min = 20
-    nbins = ( nbins_min if datamax>nbins_min else int(datamax-1),
-              nbins_min if datamax>nbins_min else int(datamax-1) )
+    nbins_min_x = 35
+    nbins_min_y = 8
+    nbins = ( nbins_min_x if datamax>nbins_min_x else int(datamax-1),
+              nbins_min_y if datamax>nbins_min_y else int(datamax-1) )
+    bins = ( np.linspace(datamin[0], 380, nbins[0]+1),
+             np.linspace(datamin[1], datamax[1], nbins[1]+1) )
+    """
     bins = ( np.linspace(datamin[0], datamax[0], nbins[0]+1),
              np.linspace(datamin[1], datamax[1], nbins[1]+1) )
-    #height_hits = calculate_rect_side_for_plot_bins(bins[1], scale='linear')
-    #width_hits = calculate_rect_side_for_plot_bins(bins[0], scale='linear')
+    """
 
     #plot data as 2d graphs
     fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height,
@@ -228,14 +230,7 @@ def graphs_double(df, columns_fields, idx, iframe):
                   'x.axis_label': 'Density [MeV]', 'y.axis_label': 'Distance to nearest higher density [cm]'}
 
     for ilayer in range(nlayers):
-        #print("---layer{}---".format(ilayer+1))
-        #print(data_per_layer[0][ilayer], len(data_per_layer[0][ilayer]))
-        #print(data_per_layer[1][ilayer], len(data_per_layer[1][ilayer]))
-        #print(bins, len(bins[0]), len(bins[1]))
         counts, xedges, yedges = np.histogram2d(x=data_per_layer[0][ilayer], y=data_per_layer[1][ilayer], bins=bins)
-        #print("Counts: ", counts)
-        #print("X: ", xedges)
-        #print("Y: ", yedges)
         bokehplot.histogram(data=(counts, xedges, yedges),
                             #width=width_hits, height=height_hits,
                             idx=ilayer, iframe=iframe, style='quad%Cividis', fig_kwargs=fig_kwargs)
@@ -281,7 +276,7 @@ def main():
             ######Densities per layer######################
             ###############################################
             do1D = False if i!=2 else True
-            do2D = False if i!=2 else True
+            do2D = True
             graphs_single(df, columns_field='Densities', idx=i, iframe=0, do_1D=do1D, do_2D=do2D)
             graphs_single(df, columns_field='Distances', idx=i, iframe=2, do_1D=do1D, do_2D=do2D)
             if i==2:
