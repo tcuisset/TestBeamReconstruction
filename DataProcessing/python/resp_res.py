@@ -4,8 +4,11 @@ import warnings
 import subprocess
 import errno
 import glob
+import argparse
 import pandas as pd
 import numpy as np
+import h5py
+import argparser
 from functools import reduce
 import bokehplot as bkp
 from bokeh.models import Range1d
@@ -104,20 +107,20 @@ def create_dir(directory):
 
 def response_and_resolution_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2, frameid):
     """Plots responses and resolutions with their errors"""
-    axis_kwargs1 = {'t.text': 'Responses after original RecHits calibration',
-                    'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Response (E/True - 1)'}
-    bokehplot.graph(idx=3, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(resp1)], 
+    #'t.text': 'Responses after original RecHits calibration',
+    axis_kwargs1 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Response (E/True - 1)'}
+    bokehplot.graph(idx=1, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(resp1)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.array(eresp1)/2,np.array(eresp1)/2]],
                     style='square', line=True, color='green', legend_label='Reconstructable', fig_kwargs=axis_kwargs1)
-    bokehplot.graph(idx=3, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(resp2)], 
+    bokehplot.graph(idx=1, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(resp2)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.array(eresp2)/2,np.array(eresp2)/2]],
                     style='triangle', line=True, color='orange', legend_label='Clusterized hits')
 
-    axis_kwargs2 = {'t.text': 'Differences after original RecHits calibration',
-                    'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Response difference', 'l.location': 'bottom_right'}
-    bokehplot.graph(idx=4, iframe=frameid, data=[np.array(true_beam_energies_GeV), np.array(resp2)-np.array(resp1)], 
+    #'t.text': 'Differences after original RecHits calibration',
+    axis_kwargs2 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Response difference', 'l.location': 'bottom_right'}
+    bokehplot.graph(idx=2, iframe=frameid, data=[np.array(true_beam_energies_GeV), np.array(resp2)-np.array(resp1)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.sqrt( ( np.power(np.array(eresp1),2)+np.power(np.array(eresp2),2) ) / 2 ), 
                              np.sqrt( ( np.power(np.array(eresp1),2)+np.power(np.array(eresp2),2) ) / 2 )]],
@@ -125,13 +128,13 @@ def response_and_resolution_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, re
     #fig = bokehplot.get_figure(idx=3, iframe=frameid)
     #fig.legend.location = 'bottom_right'
 
-    axis_kwargs3 = {'t.text': u"\u03c3 / E after original and clust. RecHits calibrations",
-                    'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': u" Fractional energy Resolution (\u03c3 / E)"}
-    bokehplot.graph(idx=2, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(res1)], 
+    #'t.text': u"\u03c3 / E after original and clust. RecHits calibrations",
+    axis_kwargs3 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': u" Fractional energy Resolution (\u03c3 / E)"}
+    bokehplot.graph(idx=0, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(res1)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.array(eres1)/2,np.array(eres1)/2]],
                     style='square', line=True, color='green', legend_label='Reconstructable', fig_kwargs=axis_kwargs3)
-    bokehplot.graph(idx=2, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(res2)], 
+    bokehplot.graph(idx=0, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(res2)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.array(eres2)/2,np.array(eres2)/2]],
                     style='triangle', line=True, color='orange', legend_label='Clusterized hits')
@@ -150,7 +153,7 @@ def linear_fit_graph(mean, emean, idx, iframe):
     err = np.sqrt(np.diag(var))
     err1 = round(err[0],2)
     err2 = round(err[1],2)
-    pm = (u'\u00B1').encode('utf-8')
+    pm = str( (u'\u00B1').encode('utf-8') )
     m_label = 'm = '+str(round(coeff[0],2))+pm+str(err1)
     b_label = 'b = '+str(round(coeff[1],2))+pm+str(err2)+' GeV'
     font_size = {'text_font_size': '9pt', 'x_units': 'data'}
@@ -158,11 +161,11 @@ def linear_fit_graph(mean, emean, idx, iframe):
     bokehplot.label(b_label, idx=idx, iframe=iframe, x=15, y=260, **font_size)
     return coeff[0], coeff[1]
 
-def main():
+
+def analyze_data():
     #files with sum of rechit energy
     usercode_path = 'src/UserCode/DataProcessing/job_output'
-    path_start = '' if ecut_str == '' else 'Ecut'
-    path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 'job_output/hit_dependent/out'+path_start+'_')
+    path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 'job_output/hit_dependent/outEcut_')
     bins = (1000, 1800, 4200, 5000, 5000, 4200, 5700, 5500, 5500, 500)
     histo_ranges1 = (Range1d(0,30000), Range1d(11000, 35000), Range1d(27000, 58000), Range1d(52000, 94000), 
                     Range1d(64000, 120000), Range1d(88000,130000), Range1d(120000,165000), Range1d(160000, 210000), 
@@ -186,7 +189,7 @@ def main():
     mean1, emean1, _, _, _, _ = HandleHistograms.fit(hist1, pars1, histo_ranges1, iframe=0)
 
     last_frame_id = bokehplot.get_nframes() - 1
-    calibration_slope1, calibration_shift1 = linear_fit_graph(mean1, emean1, idx=0, iframe=last_frame_id)
+    calibration_slope1, calibration_shift1 = linear_fit_graph(mean1, emean1, idx=0, iframe=last_frame_id-1)
     correction_value1 = 1 / calibration_slope1
 
     data1_corrected = ProcessData.scale_energy(data1, correction_value1*np.ones(size), -calibration_shift1*np.ones(size))
@@ -216,7 +219,7 @@ def main():
     histo_ranges2_corrected = tuple(Range1d(x.start/calibration_slope1, x.end/calibration_slope1) for x in histo_ranges2)
     _, _, resp2, eresp2, _, _ = HandleHistograms.fit(hist2_corrected, pars2_corrected, histo_ranges2_corrected, iframe=3)
 
-    calibration_slope2, calibration_shift2 = linear_fit_graph(mean2, emean2, idx=1, iframe=last_frame_id)
+    calibration_slope2, calibration_shift2 = linear_fit_graph(mean2, emean2, idx=1, iframe=last_frame_id-1)
     correction_value2 = 1 / calibration_slope2
     data2_corrected2 = ProcessData.scale_energy(data2, correction_value2*np.ones(size), -calibration_shift2*np.ones(size))
     hist2_corrected2 = HandleHistograms.create(data2_corrected2, bins, iframe=4)
@@ -224,44 +227,70 @@ def main():
     histo_ranges2_corrected2 = tuple(Range1d(x.start/calibration_slope2, x.end/calibration_slope2) for x in histo_ranges2)
     _, _, _, _, res2, eres2 = HandleHistograms.fit(hist2_corrected2, pars2_corrected2, histo_ranges2_corrected2, iframe=4)
 
+    for i in range(len(nfigs)-1):
+        bokehplot.save_frame(iframe=i, plot_width=350, plot_height=350, show=False)
+        bokehplot.save_figs(iframe=i, path='../../DN/figs/', mode='png')
 
-    response_and_resolution_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2, last_frame_id)
-    for i in range(len(nfigs)):
-        if i==len(nfigs)-1:
-            bokehplot.save_frame(iframe=i, plot_width=400, plot_height=400, nrows=2, ncols=3, show=False)
-        else:
-            bokehplot.save_frame(iframe=i, plot_width=350, plot_height=350, show=False)
+            
+    #Write data in the HDF5 format
+    variables_to_store = [resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2]
+    with h5py.File(h5filename, 'w') as hf:
+        for name,var in zip(variables_created,variables_to_store):
+            hf.create_dataset(name, data=var)
 
+def final_plots():
+    variables_stored = []
+    hf = h5py.File(h5filename, 'r') 
+    for name in variables_created:
+        variables_stored.append( hf.get(name) )
+
+    frameid = bokehplot.get_nframes()-1
+    response_and_resolution_graphs(*variables_stored, frameid=frameid)
+    bokehplot.save_frame(iframe=frameid, plot_width=400, plot_height=400, nrows=1, ncols=3, show=False)
+    bokehplot.save_figs(iframe=frameid, path='../../DN/figs/', mode='png')
+
+    hf.close()
+
+def main():
+    #analysis and some plotting (store data into HDF5)
+    if FLAGS.analyze:
+        analyze_data()
+
+    #final resolution and response plots (read data from HDF5)
+    if FLAGS.plot:
+        final_plots()
+
+#python python/resp_res.py --analyze 1 --plot 1
 if __name__ == '__main__':
-    ecut_str = '' if len(sys.argv)==1 else sys.argv[1]
-    if ecut_str == '':
-        warnings.warn('Plotting being done on data without ecut applied!')
+    #HDF5 data file related variables
+    h5filename = 'hdf5/' + os.path.splitext( os.path.basename(__file__) )[0] + '.h5'
+    variables_created = ('resp1', 'eresp1', 'res1', 'eres1', 'resp2', 'eresp2', 'res2', 'eres2')
 
-    eos_base = '/eos/user'
+    #beam energies used
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
     true_beam_energies_GeV = (20,30,49.99,79.93,99.83,119.65,149.14,197.32,243.61,287.18)
     true_beam_energies_MeV = tuple(x*1000 for x in true_beam_energies_GeV)
     size = len(beam_energies)
     assert(size==len(true_beam_energies_GeV))
 
-    cms_user = subprocess.check_output("echo $USER", shell=True).split('\n')[0]
+    #local CMSSW variables and paths
+    eos_base = '/eos/user'
+    cms_user = subprocess.check_output(b'echo $USER', shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
+
     output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory)
-    output_html_files = ( os.path.join(output_html_dir, 'pure_rechit_energy'+ecut_str+'.html'),
-                          os.path.join(output_html_dir, 'pure_rechit_energy'+ecut_str+'_scaled.html'),
-                          os.path.join(output_html_dir, 'clusterized_rechit_energy'+ecut_str+'.html'),
-                          os.path.join(output_html_dir, 'clusterized_rechit_energy'+ecut_str+'_scaled_with_original_calibration.html'),
-                          os.path.join(output_html_dir, 'clusterized_rechit_energy'+ecut_str+'_scaled_with_clusterized_calibration.html'),
-                          os.path.join(output_html_dir, 'summary_graphs'+ecut_str+'.html') 
+    output_html_files = ( os.path.join(output_html_dir, 'pure_rechit_energy_Ecut.html'),
+                          os.path.join(output_html_dir, 'pure_rechit_energy_Ecut_scaled.html'),
+                          os.path.join(output_html_dir, 'clusterized_rechit_energy_Ecut.html'),
+                          os.path.join(output_html_dir, 'clusterized_rechit_energy_Ecut_scaled_with_original_calibration.html'),
+                          os.path.join(output_html_dir, 'clusterized_rechit_energy_Ecut_scaled_with_clusterized_calibration.html'),
+                          os.path.join(output_html_dir, 'linear_regressions.html'),
+                          os.path.join(output_html_dir, 'responses_and_resolutions.html') 
     )
-    nfigs = (size, size, size, size, size, 5)
+    nfigs = (size, size, size, size, size, 2, 3)
     bokehplot = bkp.BokehPlot(filenames=output_html_files, nframes=len(nfigs), nfigs=nfigs)
     line_colors = ['black', 'blue', 'green', 'red', 'orange', 'purple', 'greenyellow', 'brown', 'pink', 'grey']
+
+    parser = argparse.ArgumentParser()
+    FLAGS, _ = argparser.add_args(parser)
     main()
-
-
-"""
-Errors for 'resp1 / resp2':
-[np.sqrt( ( np.power(np.array(eresp2),2)/np.power(np.array(resp1),2) + np.power(np.array(eresp1)*np.array(resp2),2)/np.power(resp1,4) ) / 2 ), 
-np.sqrt( ( np.power(np.array(eresp2),2)/np.power(np.array(resp1),2) + np.power(np.array(eresp1)*np.array(resp2),2)/np.power(resp1,4) ) / 2 )]],
-"""

@@ -219,6 +219,12 @@ std::vector<float> CLUEAlgo::getHitsDistanceToHighest() {
   return points_.delta;
 }
 
+std::vector<bool> CLUEAlgo::getHitsSeeds() {
+  if(points_.isSeed.empty())
+    throw std::bad_function_call();
+  return points_.isSeed;
+}
+
 inline float CLUEAlgo::distance(int i, int j) const {
 
   // 2-d distance on the layer

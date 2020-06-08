@@ -43,6 +43,7 @@ class CLUEAlgo{
     std::vector<int> getHitsLayerId();
     std::vector<float> getHitsRho();
     std::vector<float> getHitsDistanceToHighest();
+    std::vector<bool> getHitsSeeds();
 
     // public methods
     //Note: The layer input and output (see getHitsLayerId()) start counting at 1, but the calculations inside use a 0-based index

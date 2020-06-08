@@ -62,7 +62,7 @@ def get_layer_col(df, starts_with, ilayer):
     return layer_col
 
 def flatten_dataframe(df):
-    flat_df = df.values.flatten()
+    flat_df = df.to_numpy().flatten()
     flat_list = [item for items in flat_df for item in items]
     return np.array(flat_list)
 
@@ -82,7 +82,11 @@ def graphs_single(df, columns_field, idx, iframe, do_1D=False, do_2D=False):
                 raise ValueError('The dataframe {} in layer {} is empty!'.format(i, ilayer))
             arr = flatten_dataframe(arr)
             if columns_field == 'Distances':
-                arr[ arr > 1.e38 ] = 0.5 #select distances == maxFloat (3.e38)
+                layer_col_seeds = get_layer_col(df, starts_with='isSeed', ilayer=ilayer)
+                arr_seeds = df.loc[:, layer_col_seeds]
+                arr_seeds = flatten_dataframe(arr_seeds)
+                arr[ arr_seeds == True ] = 0.5 #select CLUE seeds
+                del arr_seeds
             data_per_layer.append( arr )
             del arr
 
@@ -116,19 +120,6 @@ def graphs_single(df, columns_field, idx, iframe, do_1D=False, do_2D=False):
             sigmas_r.append(sigma_right)
 
         print('creating the plot...')
-    """
-    layers_x = np.arange(1,29)
-    interp_thickness = 0.02
-    interp_degree = 1
-    interp_smooth = len(layers_x)
-    layers_x_fine = np.arange(1,28,interp_thickness)
-    means_sp_func = UnivariateSpline(x=layers_x, y=np.array(means), k=interp_degree, s=interp_smooth)
-    means_sp = means_sp_func(layers_x_fine)
-    sigmasl_sp_func = UnivariateSpline(x=layers_x, y=np.array(sigmas_l), k=interp_degree, s=interp_smooth)
-    sigmasl_sp = sigmasl_sp_func(layers_x_fine)
-    sigmasr_sp_func = UnivariateSpline(x=layers_x, y=np.array(sigmas_r), k=interp_degree, s=interp_smooth)
-    sigmasr_sp = sigmasr_sp_func(layers_x_fine)
-    """
 
     xlabel = 'Density [MeV]' if columns_field == 'Densities' else 'Distance to nearest higher density [cm]'
     if do_2D:
@@ -147,7 +138,7 @@ def graphs_single(df, columns_field, idx, iframe, do_1D=False, do_2D=False):
                          'x.axis_label': xlabel, 'y.axis_label': 'Counts'}
         hist, indexes, leg_labels = ([] for _ in range(3))
         for ilayer in range(nlayers):
-            hist.append( np.histogram(data_per_layer[ilayer], bins=100, density=False) )
+            hist.append( np.histogram(data_per_layer[ilayer], bins=100, density=True) )
                                       #range=(data_per_layer[ilayer].min(),data_per_layer[ilayer].max() * 2/3) ) )
             indexes.append( ilayer )
             leg_labels.append( 'Layer ' + str(ilayer+1) )
@@ -162,15 +153,6 @@ def graphs_single(df, columns_field, idx, iframe, do_1D=False, do_2D=False):
                            y=[[0,hist[i][0].max()] for i in range(nlayers)], 
                            idx=indexes, iframe=iframe+1, color='orange', legend_label='1.3cm')
 
-    """
-    #pm = (u'\u00B1').encode('utf-8')
-    bokehplot.graph(data=[layers_x_fine, means_sp],
-                    width=interp_thickness*np.ones(len(layers_x_fine)), height=abs(sigmasr_sp-sigmasl_sp),
-                    idx=idx, iframe=iframe+3, color='grey', style='rect', alpha=0.6, legend_label=u'std mean error (\u03c3/\u221an)', 
-                    fig_kwargs=fig_kwargs)
-    bokehplot.graph(data=[layers_x_fine, means_sp],
-                    idx=idx, iframe=iframe+3, color='red', style='circle', size=1.5, legend_label='mean')
-    """
 
     if do_1D == True or do_2D == True:
         del all_counts_hits
@@ -182,21 +164,33 @@ def graphs_single(df, columns_field, idx, iframe, do_1D=False, do_2D=False):
 
 def graphs_double(df, columns_fields, idx, iframe):
     """Plots density vs distance (variables defined according to CLUE)"""
-    if columns_fields != ('Densities', 'Distances'):
+    if columns_fields != ('Densities', 'Distances','isSeed'):
         raise ValueError('Wrong column_fields!')
+    len_col_fields = len(columns_fields)
     data_per_layer = ([], [])
 
-    #determine adequate binning
     datamax, datamin = [-np.inf,-np.inf], [np.inf,np.inf]
     for ilayer in range(1,nlayers+1):
-        layer_col = ( get_layer_col(df, starts_with=columns_fields[0], ilayer=ilayer),
-                      get_layer_col(df, starts_with=columns_fields[1], ilayer=ilayer) )
-        arr = [ df.loc[:, layer_col[0]], df.loc[:, layer_col[1]] ]
-        if arr[0].size == 0 or arr[1].size == 0:
-            raise ValueError('The dataframe {} in layer {} is empty!'.format(i, ilayer))
-        arr = [flatten_dataframe(arr[0]), flatten_dataframe(arr[1])]
-        arr_selection = arr[1] > 1.e38 #entries having distancies = MaxFloat
-        arr[1][arr_selection] = 0.5
+        layer_col = tuple( get_layer_col(df, starts_with=columns_fields[x], ilayer=ilayer) for x in range(len_col_fields) )
+        arr = [ df.loc[:, layer_col[x]] for x in range(len_col_fields) ]
+        for x in range(len(columns_fields)):
+            if arr[x].size == 0:
+                raise ValueError('The dataframe in layer {} of variable {} is empty!'.format(ilayer, x))
+        arr = [flatten_dataframe(arr[x]) for x in range(len_col_fields) ]
+
+        arr_selection_seeds = (arr[2] == True) #seeds
+        arr[1][arr_selection_seeds] = 0.5
+        print(len(arr[1][arr_selection_seeds]), len(arr[1]), float(len(arr[1][arr_selection_seeds]))/len(arr[1]))
+        print(arr[1])
+        arr_selection_outliers = (arr[1] > 1.e38) & (arr[2] == False) #outliers
+        print(len(arr[1]), len(arr[1][arr[1] > 1.e38]), len(arr[1][arr[2] == False]), len(arr[1][arr[2] == False])+len(arr[1][arr[2] == True]))
+        print('-')
+        print(arr_selection_outliers)
+        print(arr[1][arr_selection_outliers])
+        print('-')
+        print(arr[1][(arr[1] > 1.e38)])
+        #assert( arr[1][arr_selection_outliers] == arr[1][(arr[1] > 1.e38)] )
+        #arr[1][arr_selection_outliers] = 0.
 
         data_per_layer[0].append( arr[0] )
         data_per_layer[1].append( arr[1] )
@@ -214,9 +208,9 @@ def graphs_double(df, columns_fields, idx, iframe):
             datamax[1] = m2[1]
     nbins_min_x = 35
     nbins_min_y = 8
-    nbins = ( nbins_min_x if datamax>nbins_min_x else int(datamax-1),
-              nbins_min_y if datamax>nbins_min_y else int(datamax-1) )
-    xmaxlimit = 380
+    nbins = ( nbins_min_x if datamax[0]>nbins_min_x else int(datamax[0]-1),
+              nbins_min_y if datamax[1]>nbins_min_y else int(datamax[1]-1) )
+    xmaxlimit = 4000
     bins = ( np.linspace(datamin[0], xmaxlimit, nbins[0]+1),
              np.linspace(datamin[1], datamax[1], nbins[1]+1) )
 
@@ -226,11 +220,12 @@ def graphs_double(df, columns_fields, idx, iframe):
                   'x.axis_label': 'Density [MeV]', 'y.axis_label': 'Distance to nearest higher density [cm]'}
 
     for ilayer in range(nlayers):
-        counts, xedges, yedges = np.histogram2d(x=data_per_layer[0][ilayer], y=data_per_layer[1][ilayer], bins=bins)
+        counts, xedges, yedges = np.histogram2d(x=data_per_layer[0][ilayer], y=data_per_layer[1][ilayer], bins=bins,
+                                                weights=(data_per_layer[0][ilayer]**6)*1e-20, density=False)
         bokehplot.histogram(data=(counts, xedges, yedges),
-                            #width=width_hits, height=height_hits,
-                            idx=ilayer, iframe=iframe, style='quad%Cividis', fig_kwargs=fig_kwargs)
-        bokehplot.box(x=[sigmaNoiseTimesKappa,xmaxlimit], y=[1.3, datamax[1]], idx=ilayer, color='red', line_width=3)
+                            idx=ilayer, iframe=iframe, style='quad%fire', fig_kwargs=fig_kwargs,
+                            continuum_value=0, continuum_color='white')
+        #bokehplot.box(x=[sigmaNoiseTimesKappa,xmaxlimit], y=[1.3, datamax[1]], idx=ilayer, color='red', line_width=3)
 
 class CacheManager:
     def __init__(self, name):
@@ -245,7 +240,7 @@ class CacheManager:
     def load(self):
         try:
             obj = open(self.name_, 'rb')
-            self.cache = pickle.load(obj)
+            self.cache = pickle.load(obj, encoding='bytes')
             obj.close()
         except IOError:
             pass
@@ -266,21 +261,27 @@ def main():
             #load cache
             cacheobj = CacheManager( cache_file_names[i] )
             up_cache = cacheobj.load()
-            df = tree.arrays(['Distances*', 'Densities*'], entrystop=1000, outputtype=pd.DataFrame, cache=up_cache)
+            df = tree.arrays(['Distances*', 'Densities*', 'isSeed*'], outputtype=pd.DataFrame, cache=up_cache)
             cacheobj.dump()
 
             ###############################################
             ######Densities per layer######################
             ###############################################
             do1D = False if i!=2 else True
-            do2D = True
+            do2D = False
             graphs_single(df, columns_field='Densities', idx=i, iframe=0, do_1D=do1D, do_2D=do2D)
             graphs_single(df, columns_field='Distances', idx=i, iframe=2, do_1D=do1D, do_2D=do2D)
             if i==2:
-                graphs_double(df, columns_fields=('Densities','Distances'), idx=i, iframe=4)
+                graphs_double(df, columns_fields=('Densities','Distances','isSeed'), idx=i, iframe=4)
 
     print('saving frames...')
     bokehplot.save_frames(plot_width=plot_width, plot_height=plot_height, show=False)
+    for iframe in range(nframes):
+        layer_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep')
+        create_dir( layer_dep_folder )
+        if iframe!=0 or iframe!=2: #do not save 2D figures, since they are not being used
+            bokehplot.save_figs(iframe=iframe, path=layer_dep_folder, mode='png')
+            bokehplot.save_figs(iframe=iframe, path='../../DN/figs/', mode='png')
 
 if __name__ == '__main__':
     #define analysis constants
@@ -294,7 +295,7 @@ if __name__ == '__main__':
 
     #define local data paths and variables
     eos_base = '/eos/user/'
-    cms_user = subprocess.check_output("echo $USER", shell=True).split('\n')[0]
+    cms_user = subprocess.check_output("echo $USER", shell=True, encoding='utf-8').split('\n')[0]
     analysis_directory = 'TestBeamReconstruction/'
     data_directory = 'job_output/layer_dependent/'
     data_path = []

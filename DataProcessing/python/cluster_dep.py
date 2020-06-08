@@ -189,7 +189,7 @@ class CacheManager:
     def load(self):
         try:
             obj = open(self.name_, 'rb')
-            self.cache = pickle.load(obj)
+            self.cache = pickle.load(obj, encoding='bytes')
             obj.close()
         except IOError:
             pass
@@ -205,7 +205,7 @@ def main():
 
     #load cache
     cacheobj = CacheManager(cache_file_name_hits)
-    up_cache = cacheobj.load()
+    up_cache = {}#cacheobj.load()
 
     print('loading data...')
     df = tree.arrays(['*'], outputtype=pd.DataFrame, cache=up_cache)
@@ -226,7 +226,11 @@ def main():
     del df_split
     print('save')
     bokehplot.save_frame(iframe=0, plot_width=plot_width, plot_height=plot_height, show=False)
+    bokehplot.save_figs(iframe=0, path=cluster_dep_folder, mode='png')
+    bokehplot.save_figs(iframe=0, path='../../DN/figs/', mode='png')
     bokehplot.save_frame(iframe=3, plot_width=plot_width, plot_height=plot_height, show=False)
+    bokehplot.save_figs(iframe=3, path=cluster_dep_folder, mode='png')
+    bokehplot.save_figs(iframe=3, path='../../DN/figs/', mode='png')
 
     ###############################################
     ######Cluster dependent energy#################
@@ -243,7 +247,11 @@ def main():
     print('after hits_and_energies_graphs2d 2')
     print("save")
     bokehplot.save_frame(iframe=1, plot_width=plot_width, plot_height=plot_height, show=False)
+    bokehplot.save_figs(iframe=1, path=cluster_dep_folder, mode='png')
+    bokehplot.save_figs(iframe=1, path='../../DN/figs/', mode='png')
     bokehplot.save_frame(iframe=4, plot_width=plot_width, plot_height=plot_height, show=False)
+    bokehplot.save_figs(iframe=4, path=cluster_dep_folder, mode='png')
+    bokehplot.save_figs(iframe=4, path='../../DN/figs/', mode='png')
 
     ###############################################
     ######Number of clusters ######################
@@ -252,12 +260,16 @@ def main():
     graphs2d(df_en_split, axis_kwargs_en, columns_field='Energy', variable='number', iframe=2, weight_by_energy=False)
     print('after numbers')
     bokehplot.save_frame(iframe=2, plot_width=plot_width, plot_height=plot_height, show=False)
+    bokehplot.save_figs(iframe=2, path=cluster_dep_folder, mode='png')
+    bokehplot.save_figs(iframe=2, path='../../DN/figs/', mode='png')
     bokehplot.save_frame(iframe=5, plot_width=plot_width, plot_height=plot_height, show=False)
-
+    bokehplot.save_figs(iframe=5, path=cluster_dep_folder, mode='png')
+    bokehplot.save_figs(iframe=5, path='../../DN/figs/', mode='png')
+    
 if __name__ == '__main__':
     #define local data paths and variables
     eos_base = '/eos/user/'
-    cms_user = subprocess.check_output("echo $USER", shell=True).split('\n')[0]
+    cms_user = subprocess.check_output("echo $USER", shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
     data_path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, "job_output/cluster_dependent/hadd_clusterdep.root")
     beamen_str = 'BeamEnergy'
@@ -290,4 +302,6 @@ if __name__ == '__main__':
     nframes = 6
     bokehplot = bkp.BokehPlot(filenames=output_html_files, nfigs=nframes*(size,), nframes=nframes)
     plot_width, plot_height = 600, 400
+    cluster_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'layer_dep')
+    create_dir( cluster_dep_folder )
     main()

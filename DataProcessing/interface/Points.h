@@ -13,7 +13,7 @@ struct Points {
   std::vector<int> nearestHigher;
   std::vector<int> clusterIndex;
   std::vector<std::vector<int>> followers;
-  std::vector<int> isSeed;
+  std::vector<bool> isSeed;
   // why use int instead of bool?
   // https://en.cppreference.com/w/cpp/container/vector_bool
   // std::vector<bool> behaves similarly to std::vector, but in order to be space efficient, it:

@@ -55,7 +55,7 @@ class Analyzer {
   std::vector< std::pair<std::string, std::string> > names_; //file and tree names
   std::vector<float> beam_energies_;
   std::vector< std::vector< std::tuple<float, float> > > en_total_; //total energy per event (vector of RecHits) per file (run) and corresponding beam energy
-  std::vector< std::vector< std::array< std::tuple<float, float, std::vector<float>, std::vector<float>>, detectorConstants::nlayers> > > fracs_; //fraction of clusterized nhits and clusterized energy per event
+  std::vector< std::vector< std::array< std::tuple<float, float, std::vector<float>, std::vector<float>, std::vector<bool>>, detectorConstants::nlayers> > > fracs_; //fraction of clusterized nhits and clusterized energy per event
   using cluster_dependent_type = std::array< std::tuple< std::vector<unsigned int>, std::vector<float> >, detectorConstants::nlayers>;
   std::vector< std::vector< cluster_dependent_type > > clusterdep_;
 };
