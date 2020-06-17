@@ -7,6 +7,9 @@ import bokehplot as bkp
 import uproot as up
 import numpy as np
 import pandas as pd
+import concurrent.futures
+import argparse
+import argparser
 from scipy.interpolate import UnivariateSpline
 
 def get_mean_and_sigma(x, y=None):
@@ -18,15 +21,23 @@ def get_mean_and_sigma(x, y=None):
         mean_squared = np.sum(y*x**2)
         mean = np.sum(y*x)
         sumy = np.sum(y)
-        mean_squared /= sumy
-        mean /= sumy
-        sigma = np.sqrt( mean_squared - mean**2 )
+        if sumy == 0:
+            mean = 0
+            sigma = np.inf
+        else:
+            mean_squared /= sumy
+            mean /= sumy
+            sigma = np.sqrt( mean_squared - mean**2 )
     return mean, sigma
     
 def get_sigma_band(x, y=None):
     mean, sigma = get_mean_and_sigma(x, y)
-    sigma /= np.sqrt(len(x))
-    left, right = mean - sigma/2, mean + sigma/2
+    if mean==0 and sigma==np.inf:
+        left = mean
+        right = mean
+    else:
+        sigma /= np.sqrt(len(x))
+        left, right = mean - sigma/2, mean + sigma/2
     return left, right
 
 def create_dir(directory):
@@ -54,11 +65,15 @@ def single_true(iterable):
     i = iter(iterable)
     return any(i) and not any(i)
 
-def get_layer_col(df, starts_with, ilayer):
+def get_layer_col(df, starts_with, ilayer=None):
     """Obtains list of columns that match a specific column name ending."""
-    regex = '^'+starts_with+'.*_layer'+str(ilayer)+'$'
+    if ilayer is None:
+        regex = '^'+starts_with
+    else:
+        regex = '^'+starts_with+'.*_layer'+str(ilayer)+'$'
     layer_col = df.columns.str.contains(regex, regex=True)
-    assert( single_true(layer_col) )
+    if ilayer is not None:
+        assert( single_true(layer_col) )
     return layer_col
 
 def flatten_dataframe(df):
@@ -71,42 +86,44 @@ def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy
     if variable not in ('hits', 'energy', 'number'):
         raise ValueError('graphs2d: Variable {} is not supported.'.format(variable))
     for i,df in enumerate(dfs):
+        print('Processing the {} GeV dataset...'.format(beam_energies[i]))
         data_per_layer = []
 
-        #determine adequate binning
-        ndata = 0
         datamax, datamin = -np.inf, np.inf
         for ilayer in range(1,nlayers+1):
-            print('layer ', ilayer)
-
+            #determine adequate binning
             layer_col = get_layer_col(df, starts_with=columns_field, ilayer=ilayer)
             arr = df.loc[:, layer_col]
             if arr.size == 0:
                 raise ValueError('The dataframe {} in layer {} is empty!'.format(i, ilayer))
 
+            energy_lower_cut = 1500
             if variable == 'number':
-                data_per_layer.append( arr.apply( lambda x: len(x[columns_field+'_layer'+str(ilayer)]), axis=1, result_type='reduce') )
+                data_per_layer.append( arr.apply( lambda x: len(x[columns_field+'_layer'+str(ilayer)][ x[columns_field+'_layer'+str(ilayer)] > energy_lower_cut ]), axis=1, result_type='reduce') )
                 data_per_layer[-1] = data_per_layer[-1][ data_per_layer[-1] != 0 ] #filter out all events without clusters
-            elif variable == 'hits' or variable == 'energy':
+            elif variable == 'energy':
+                arr = flatten_dataframe(arr)
+                arr = arr[ arr > energy_lower_cut ]
+                data_per_layer.append( arr )
+            elif variable == 'hits':
                 data_per_layer.append( flatten_dataframe(arr) )
             del arr
 
-            ndata += len(data_per_layer[-1])
-            m1, m2 = data_per_layer[-1].min(), data_per_layer[-1].max()
-            if m1 < datamin:
-                datamin = m1
-            if m2 > datamax:
-                datamax = m2
+            if len(data_per_layer[-1]) != 0:
+                m1, m2 = data_per_layer[-1].min(), data_per_layer[-1].max()
+                if m1 < datamin:
+                    datamin = m1
+                if m2 > datamax:
+                    datamax = m2
+                
         nbins = 20 if datamax>20 else int(datamax-1)
-        bins = np.linspace(datamin, datamax, nbins+1) #bins = np.logspace(np.log10(m1), np.log10(m2), nbins+1)
+        bins = np.linspace(datamin, datamax, nbins+1)
         height_hits = height_for_plot_bins(bins, scale='linear')
+        all_counts, all_layers, all_centers = ([] for _ in range(3))
+        means, sigmas_l, sigmas_r = ([] for _ in range(3))
 
         #plot data as 2d graphs
-        all_counts_hits, all_layers_hits, all_centers_hits = ([] for _ in range(3))
-        means, sigmas_l, sigmas_r = ([] for _ in range(3))
-        for ilayer in range(1,nlayers+1):
-            print('layer ', ilayer)
-            
+        for ilayer in range(1,nlayers+1):                
             if weight_by_energy:
                 layer_col_weights = get_layer_col(df, starts_with='Energy', ilayer=ilayer)
                 data_weights = flatten_dataframe( df.loc[:, layer_col_weights] )
@@ -115,24 +132,24 @@ def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy
                 counts, edges = np.histogram(data_per_layer[ilayer-1], bins=bins, weights=data_weights)
             else:
                 counts, edges = np.histogram(data_per_layer[ilayer-1], bins=bins)
+
             centers = (edges[:-1]+edges[1:])/2
             assert(len(counts) == len(centers))
             same_layer_array = ilayer*np.ones(len(centers))
-            all_counts_hits.extend(counts.tolist())
-            all_layers_hits.extend(same_layer_array.tolist())
-            all_centers_hits.extend(centers.tolist())
+            all_counts.extend(counts.tolist())
+            all_layers.extend(same_layer_array.tolist())
+            all_centers.extend(centers.tolist())
             
             #use histogram and not original data to calculate mean and std/sqrt(n)
             #original data cannot be used for the case of weighted histograms
             mean, _ = get_mean_and_sigma(centers, counts)
             sigma_left, sigma_right = get_sigma_band(centers, counts)
-            print("sigmas: ", sigma_left, mean, sigma_right)
             means.append(mean)
             sigmas_l.append(sigma_left)
             sigmas_r.append(sigma_right)
 
-        print('graph')
-
+        del data_per_layer
+        
         layers_x = np.arange(1,29)
         interp_thickness = 0.02
         if variable == 'hits':
@@ -155,8 +172,8 @@ def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy
         fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height,
                       't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[i])}
         fig_kwargs.update(axis_kwargs)
-        bokehplot.graph(data=[np.array(all_layers_hits), np.array(all_centers_hits), np.array(all_counts_hits)],
-                        width=np.ones((len(all_layers_hits))), height=height_hits,
+        bokehplot.graph(data=[np.array(all_layers), np.array(all_centers), np.array(all_counts)],
+                        width=np.ones((len(all_layers))), height=height_hits,
                         idx=i, iframe=iframe, style='rect%Cividis', fig_kwargs=fig_kwargs, alpha=0.6)
         bokehplot.graph(data=[layers_x, means],
                         idx=i, iframe=iframe, color='brown', style='circle', size=2, legend_label='mean')
@@ -169,9 +186,9 @@ def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy
         bokehplot.graph(data=[layers_x_fine, means_sp],
                         idx=i, iframe=iframe+3, color='red', style='circle', size=1.5, legend_label='mean')
 
-        del all_counts_hits
-        del all_layers_hits
-        del all_centers_hits
+        del all_counts
+        del all_layers
+        del all_centers
         del means
         del sigmas_l
         del sigmas_r
@@ -179,7 +196,7 @@ def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy
 class CacheManager:
     def __init__(self, name):
         self.name_ = name
-        self.cache = {}
+        self.cache = up.ArrayCache("1 GB")
 
     def dump(self):
         obj = open(self.name_, 'wb')
@@ -198,74 +215,85 @@ class CacheManager:
             raise
         return self.cache
 
+def save_plots(frames_to_save):
+    mode = 'png'
+    second_folder = '../../DN/figs/'
+    #bokehplot.save_frame(iframe=0, plot_width=plot_width, plot_height=plot_height, show=False)
+    #bokehplot.save_frame(iframe=3, plot_width=plot_width, plot_height=plot_height, show=False)
+    bokehplot.save_figs(iframe=frames_to_save[0], path=cluster_dep_folder, mode=mode)
+    for i in range(size):
+        src_file = os.path.join( cluster_dep_folder, os.path.splitext( os.path.basename(output_html_files[frames_to_save[0]]) )[0] + '_' + str(i) + '.' + mode )
+        dst_file = os.path.join( second_folder, os.path.splitext( os.path.basename(output_html_files[frames_to_save[0]]) )[0] + '_' + str(i) + '.' + mode )
+        subprocess.run('cp '+src_file+' '+dst_file, shell=True, stderr=subprocess.PIPE)
+        print('copying from '+src_file+' to '+dst_file+'...')
+    bokehplot.save_figs(iframe=frames_to_save[1], path=cluster_dep_folder, mode=mode)
+    for i in range(size):
+        src_file = os.path.join( cluster_dep_folder, os.path.splitext( os.path.basename(output_html_files[frames_to_save[1]]) )[0] + '_' + str(i) + '.' + mode )
+        dst_file = os.path.join( second_folder, os.path.splitext( os.path.basename(output_html_files[frames_to_save[1]]) )[0] + '_' + str(i) + '.' + mode )
+        subprocess.run('cp '+src_file+' '+dst_file, shell=True, stderr=subprocess.PIPE)
+        print('copying from '+src_file+' to '+dst_file+'...')
+
 def main():
     #load ROOT TTree
     file = up.open( data_path )
     tree = file['tree0']
-
-    #load cache
-    cacheobj = CacheManager(cache_file_name_hits)
-    up_cache = {}#cacheobj.load()
-
-    print('loading data...')
-    df = tree.arrays(['*'], outputtype=pd.DataFrame, cache=up_cache)
-    print('dumping data...')
-    cacheobj.dump()
-    print('done!')
-
-    ###############################################
-    ######Cluster dependent number of hits#########
-    ###############################################
-    df_split = []
-    for en in beam_energies:
-        df_split.append(df[ df[beamen_str] == en])
-
-    axis_kwargs_hits = {'x.axis_label': 'Layer', 'y.axis_label': '#hits / cluster'}
-    graphs2d(df_split, axis_kwargs_hits, columns_field='Nhits', iframe=0, variable='hits', weight_by_energy=True)
-    print('after hits_and_energies_graphs2d 1')
-    del df_split
-    print('save')
-    bokehplot.save_frame(iframe=0, plot_width=plot_width, plot_height=plot_height, show=False)
-    bokehplot.save_figs(iframe=0, path=cluster_dep_folder, mode='png')
-    bokehplot.save_figs(iframe=0, path='../../DN/figs/', mode='png')
-    bokehplot.save_frame(iframe=3, plot_width=plot_width, plot_height=plot_height, show=False)
-    bokehplot.save_figs(iframe=3, path=cluster_dep_folder, mode='png')
-    bokehplot.save_figs(iframe=3, path='../../DN/figs/', mode='png')
-
-    ###############################################
-    ######Cluster dependent energy#################
-    ###############################################
-    en_cols   = [x for x in df.columns if 'Energy' in x] #only need a subset of the original data
-    df_en = df[en_cols]
-    df_en_split = []
-    for en in beam_energies:
-        df_en_split.append(df_en[ df_en[beamen_str] == en])    
-    del df_en #clears RAM
-
-    axis_kwargs_en = {'x.axis_label': 'Layer', 'y.axis_label': 'Total energy per cluster [MeV]'}
-    graphs2d(df_en_split, axis_kwargs_en, columns_field='Energy', iframe=1, variable='energy', weight_by_energy=False)
-    print('after hits_and_energies_graphs2d 2')
-    print("save")
-    bokehplot.save_frame(iframe=1, plot_width=plot_width, plot_height=plot_height, show=False)
-    bokehplot.save_figs(iframe=1, path=cluster_dep_folder, mode='png')
-    bokehplot.save_figs(iframe=1, path='../../DN/figs/', mode='png')
-    bokehplot.save_frame(iframe=4, plot_width=plot_width, plot_height=plot_height, show=False)
-    bokehplot.save_figs(iframe=4, path=cluster_dep_folder, mode='png')
-    bokehplot.save_figs(iframe=4, path='../../DN/figs/', mode='png')
-
-    ###############################################
-    ######Number of clusters ######################
-    ###############################################
-    axis_kwargs_en = {'x.axis_label': 'Layer', 'y.axis_label': 'Number of clusters'}
-    graphs2d(df_en_split, axis_kwargs_en, columns_field='Energy', variable='number', iframe=2, weight_by_energy=False)
-    print('after numbers')
-    bokehplot.save_frame(iframe=2, plot_width=plot_width, plot_height=plot_height, show=False)
-    bokehplot.save_figs(iframe=2, path=cluster_dep_folder, mode='png')
-    bokehplot.save_figs(iframe=2, path='../../DN/figs/', mode='png')
-    bokehplot.save_frame(iframe=5, plot_width=plot_width, plot_height=plot_height, show=False)
-    bokehplot.save_figs(iframe=5, path=cluster_dep_folder, mode='png')
-    bokehplot.save_figs(iframe=5, path='../../DN/figs/', mode='png')
+    executor = concurrent.futures.ThreadPoolExecutor() #executor for parallel data loading
+    up_cache = {}
     
+    ######Cluster dependent number of hits#########
+    if FLAGS.hits_analysis:
+        print('loading hits data...')
+        df_hits = tree.arrays(['BeamEnergy', 'Nhits*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
+        print('done!')
+
+        df_hits_split = []
+        for en in beam_energies:
+            df_hits_split.append(df_hits[ df_hits[beamen_str] == en])
+        del df_hits
+
+        axis_kwargs_hits = {'x.axis_label': 'Layer', 'y.axis_label': '#hits / cluster'}
+        graphs2d(df_hits_split, axis_kwargs_hits, columns_field='Nhits', iframe=0, variable='hits', weight_by_energy=True)
+        del df_hits_split
+        print('saving the plots...')
+        save_plots(frames_to_save=(0,3))
+        print('done!')
+
+    ######Cluster dependent energy#################
+    if FLAGS.energy_analysis:
+        print('loading energy data...')
+        df_energy = tree.arrays(['BeamEnergy', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
+        print('done!')
+
+        df_energy_split = []
+        for en in beam_energies:
+            df_energy_split.append(df_energy[ df_energy[beamen_str] == en])    
+        del df_energy #clears RAM
+
+        axis_kwargs_en = {'x.axis_label': 'Layer', 'y.axis_label': 'Total energy per cluster [MeV]'}
+        graphs2d(df_energy_split, axis_kwargs_en, columns_field='Energy', iframe=1, variable='energy', weight_by_energy=False)
+        del df_energy_split
+        print('saving the plots...')
+        save_plots(frames_to_save=(1,4))
+        print('done!')
+        
+    ######Number of clusters######################
+    if FLAGS.number_analysis:
+        print('loading number data...')
+        df_number = tree.arrays(['BeamEnergy', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
+        print('done!')
+
+        df_number_split = []
+        for en in beam_energies:
+            df_number_split.append(df_number[ df_number[beamen_str] == en])
+        del df_number
+
+        axis_kwargs_en = {'x.axis_label': 'Layer', 'y.axis_label': 'Number of clusters'}
+        graphs2d(df_number_split, axis_kwargs_en, columns_field='Energy', variable='number', iframe=2, weight_by_energy=False)
+        del df_number_split
+        print('saving the plots...')
+        save_plots(frames_to_save=(2,5))
+        print('done!')
+
 if __name__ == '__main__':
     #define local data paths and variables
     eos_base = '/eos/user/'
@@ -277,8 +305,10 @@ if __name__ == '__main__':
     #define cache names and paths
     cache_name_hits = 'uproot_cache_hits.pickle'
     cache_file_name_hits = os.path.join(eos_base, cms_user[0], cms_user, data_directory, cache_name_hits)
-    cache_name_en = 'uproot_cache_en.pickle'
-    cache_file_name_en = os.path.join(eos_base, cms_user[0], cms_user, data_directory, cache_name_en)
+    cache_name_energy = 'uproot_cache_energy.pickle'
+    cache_file_name_energy = os.path.join(eos_base, cms_user[0], cms_user, data_directory, cache_name_energy)
+    cache_name_number = 'uproot_cache_number.pickle'
+    cache_file_name_number = os.path.join(eos_base, cms_user[0], cms_user, data_directory, cache_name_number)
 
     #define analysis constants
     nlayers = 28
@@ -288,7 +318,7 @@ if __name__ == '__main__':
     size = len(true_beam_energies_GeV)
     assert(len(beam_energies)==size)
 
-    print("Input data read from {}".format(data_path))
+    print("Input data read from: {}".format(data_path))
 
     #create output files with plots
     create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory) )
@@ -302,6 +332,9 @@ if __name__ == '__main__':
     nframes = 6
     bokehplot = bkp.BokehPlot(filenames=output_html_files, nfigs=nframes*(size,), nframes=nframes)
     plot_width, plot_height = 600, 400
-    cluster_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'layer_dep')
+    cluster_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep')
     create_dir( cluster_dep_folder )
+
+    parser = argparse.ArgumentParser()
+    FLAGS, _ = argparser.add_args(parser)
     main()

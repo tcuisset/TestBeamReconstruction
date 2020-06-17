@@ -147,30 +147,36 @@ void CLUEAnalysis::calculateLayerDepVars(const std::vector<float>& weights, cons
 }
 
 //calculate the number of clusterized hits and clusterized energy per layer and per cluster
-void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
+void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const std::vector<float>& ypos, const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
   assert(!weights.empty() && !clusterid.empty() && !layerid.empty());
 
   std::array< unsigned int, detectorConstants::nlayers> nclusters_per_layer = {{0}}; //number of clusters per layer for resizing the vectors
   std::vector<unsigned int> clusterIds;
-  std::unordered_map<unsigned int, unsigned int> clusterIdsMap;
+  std::unordered_map<unsigned int, unsigned int> clusterIndexMap;
 
   //calculate number of clusters per layer
   for(auto i: util::lang::indices(weights))
     {
-      if(clusterid[i]!=-1 /*outliers are not considered*/ and clusterIdsMap.find(clusterid[i]) == clusterIdsMap.end())
+      if(clusterid[i]!=-1 /*outliers are not considered*/ and clusterIndexMap.find(clusterid[i]) == clusterIndexMap.end())
 	{
 	  int layeridx = layerid[i]-1; //layers start at 1
-	  clusterIdsMap.emplace(clusterid[i], nclusters_per_layer[layeridx]);
+	  clusterIndexMap.emplace(clusterid[i], nclusters_per_layer[layeridx]);
 	  nclusters_per_layer[layeridx] += 1;
 	}
     }
-
+  std::cout << "CHECK 1 " << std::endl;
   std::array< std::vector<float>, detectorConstants::nlayers> en_per_cluster;
+  std::array< std::vector<float>, detectorConstants::nlayers> en_per_cluster_log; //helper for calculating the positions
   std::array< std::vector<unsigned int>, detectorConstants::nlayers > hits_per_cluster;
+  std::array< std::vector<float>, detectorConstants::nlayers > x_per_cluster;
+  std::array< std::vector<float>, detectorConstants::nlayers > y_per_cluster;
   for(unsigned int i=0; i<detectorConstants::nlayers; ++i) 
     {
       en_per_cluster[i].resize( nclusters_per_layer[i], 0.f ); //resizes and default-initializes to zero
+      en_per_cluster_log[i].resize( nclusters_per_layer[i], 0.f ); //resizes and default-initializes to zero
       hits_per_cluster[i].resize( nclusters_per_layer[i], 0 ); //resizes and default-initializes to zero
+      x_per_cluster[i].resize( nclusters_per_layer[i], 0.f ); //resizes and default-initializes to zero
+      y_per_cluster[i].resize( nclusters_per_layer[i], 0.f ); //resizes and default-initializes to zero
     }
 
   for(auto i: util::lang::indices(weights))
@@ -178,21 +184,60 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& weights, co
       if(clusterid[i] != -1)  //outliers are not considered
 	{
 	  unsigned int layeridx = static_cast<unsigned int>(layerid[i]) - 1; //layers start at 1
-	  unsigned int vectoridx = clusterIdsMap[clusterid[i]];
+	  unsigned int vectoridx = clusterIndexMap[clusterid[i]];
 	  en_per_cluster.at(layeridx).at(vectoridx) += weights[i];
 	  hits_per_cluster.at(layeridx).at(vectoridx) += 1;
 	}
       //Note: We should get an out-of-bounds error for trying to access info at layers > 28. 
       //      It does not happen since all hits not in the CEE are marked as outliers by CLUE (clusterid == -1).
     }
+  std::cout << "CHECK 3 " << std::endl;
+   for (auto i: util::lang::indices(weights))
+    {
+      if(clusterid[i] != -1)  //outliers are not considered
+	{
+	  std::cout << "D1 " << std::endl;
+	  unsigned int layeridx = static_cast<unsigned int>(layerid[i]) - 1; //layers start at 1
+	  std::cout << "D2 " << std::endl;
+	  unsigned int vectoridx = clusterIndexMap[clusterid[i]];
+	  std::cout << "D3 " << std::endl;
+	  float Wi = std::max(W0_ + std::log(weights[i] / en_per_cluster.at(layeridx).at(vectoridx)), 0.f);
+	  std::cout << "D4 " << std::endl;
+	  x_per_cluster.at(layeridx).at(vectoridx) += xpos[i] * Wi;
+	  std::cout << "D5 " << std::endl;
+	  y_per_cluster.at(layeridx).at(vectoridx) += ypos[i] * Wi;
+	  std::cout << "D6 " << std::endl;
+	  en_per_cluster_log.at(layeridx).at(vectoridx) += Wi;
+	  std::cout << "D7 " << std::endl;
+	}
+    }
+  std::cout << "CHECK 4 " << std::endl;
+   for(unsigned int s1=0; s1<en_per_cluster_log.size(); ++s1) {
+     for(unsigned int s2=0; s2<en_per_cluster_log[s1].size(); ++s2)
+       {
+	 if (en_per_cluster_log.at(s1).at(s2) != 0.)
+	   {
+	     float inv_log = 1.f / en_per_cluster_log.at(s1).at(s2);
+	     x_per_cluster.at(s1).at(s2) *= inv_log;
+	     y_per_cluster.at(s1).at(s2) *= inv_log;
+	   }
+	 else
+	   {
+	     x_per_cluster.at(s1).at(s2) = -99.f;
+	     y_per_cluster.at(s1).at(s2) = -99.f;
+	   }
+       }
+   }
+
+   
   //fill std::array with clusterized cluster number of hits and energy
   //both vectors might well be empty, in case there was no cluster in a particular layer
   for(unsigned int ilayer=0; ilayer<detectorConstants::nlayers; ++ilayer)
-    clusterdep_vars_.at(ilayer) = std::make_tuple( hits_per_cluster.at(ilayer), en_per_cluster.at(ilayer));
+    clusterdep_vars_.at(ilayer) = std::make_tuple( hits_per_cluster.at(ilayer), en_per_cluster.at(ilayer), x_per_cluster.at(ilayer), y_per_cluster.at(ilayer));
 }
 
 //Returns quantities of interest of individual clusters
-std::vector<dataformats::data> CLUEAnalysis::getIndividualClusterOutput(std::string& outputFileName, bool verbose) {
+std::vector<dataformats::data> CLUEAnalysis::getTotalPositionsAndEnergyOutput(std::string& outputFileName, bool verbose) {
   bool pos_set = !pos_.empty(), en_set = !en_.empty();
 
   if(verbose) 
@@ -251,6 +296,6 @@ std::array< std::tuple<unsigned int, float, std::vector<float>, std::vector<floa
 }
 
 //Returns the number of clusterized hits and clusterized energy per layer and per cluster
-std::array< std::tuple< std::vector<unsigned int>, std::vector<float> >, detectorConstants::nlayers> CLUEAnalysis::getTotalClusterDepOutput() {
+std::array< std::tuple< std::vector<unsigned int>, std::vector<float>, std::vector<float>, std::vector<float> >, detectorConstants::nlayers> CLUEAnalysis::getTotalClusterDepOutput() {
   return this->clusterdep_vars_;
 }

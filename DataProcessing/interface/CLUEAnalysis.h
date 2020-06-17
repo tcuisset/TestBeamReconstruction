@@ -40,7 +40,7 @@ private:
   std::vector<dataformats::position> pos_;
   std::vector< float > en_;
   std::array< std::tuple<unsigned int, float, std::vector<float>, std::vector<float>, std::vector<bool>>, detectorConstants::nlayers> layerdep_vars_; //clusterized nhits and clusterized energy per event and per layer
-  std::array< std::tuple< std::vector<unsigned int>, std::vector<float> >, detectorConstants::nlayers> clusterdep_vars_; //clusterized nhits and clusterized energy per event, per layer and per cluster
+  std::array< std::tuple< std::vector<unsigned int>, std::vector<float>, std::vector<float>, std::vector<float> >, detectorConstants::nlayers> clusterdep_vars_; //clusterized nhits and clusterized energy per event, per layer and per cluster
   
 public:
   CLUEAnalysis(){};
@@ -52,11 +52,11 @@ public:
   void verboseResults(std::string&);
   void calculateLayerDepVars(const std::vector<float>&, const std::vector<int>&, const std::vector<int>&, 
 			     const std::vector<float>&, const std::vector<float>&, const std::vector<bool>&);
-  void calculateClusterDepVars(const std::vector<float>&, const std::vector<int>&, const std::vector<int>&);
-  std::vector<dataformats::data> getIndividualClusterOutput(std::string& outputFileName, bool verbose=0);
+  void calculateClusterDepVars(const std::vector<float>&, const std::vector<float>&, const std::vector<float>&, const std::vector<int>&, const std::vector<int>&);
+  std::vector<dataformats::data> getTotalPositionsAndEnergyOutput(std::string& outputFileName, bool verbose=0);
   float getTotalEnergyOutput(const std::string& outputFileName, bool verbose=0);
   std::array< std::tuple<unsigned int, float, std::vector<float>, std::vector<float>, std::vector<bool>>, detectorConstants::nlayers> getTotalLayerDepOutput();
-  std::array< std::tuple< std::vector<unsigned int>, std::vector<float> >, detectorConstants::nlayers> getTotalClusterDepOutput();
+  std::array< std::tuple< std::vector<unsigned int>, std::vector<float>, std::vector<float>, std::vector<float> >, detectorConstants::nlayers> getTotalClusterDepOutput();
 };
 
 #endif //CLUEAnalysis_h

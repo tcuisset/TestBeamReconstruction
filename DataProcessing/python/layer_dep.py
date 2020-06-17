@@ -110,7 +110,8 @@ def graphs_single(df, columns_field, idx, iframe, do_1D=False, do_2D=False):
             all_counts_hits.extend(counts.tolist())
             all_layers_hits.extend(same_layer_array.tolist())
             all_centers_hits.extend(centers.tolist())
-
+            print(counts)
+            print(centers)
             #use histogram and not original data to calculate mean and std/sqrt(n)
             #original data cannot be used for the case of weighted histograms
             mean, _ = get_mean_and_sigma(centers, counts)
@@ -123,6 +124,7 @@ def graphs_single(df, columns_field, idx, iframe, do_1D=False, do_2D=False):
 
     xlabel = 'Density [MeV]' if columns_field == 'Densities' else 'Distance to nearest higher density [cm]'
     if do_2D:
+        print('plotting 2D...')
         fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height,
                       't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[idx]),
                       'x.axis_label': 'Layer', 'y.axis_label': xlabel}
@@ -133,13 +135,17 @@ def graphs_single(df, columns_field, idx, iframe, do_1D=False, do_2D=False):
                         idx=idx, iframe=iframe, color='red', style='circle', size=2, legend_label='mean')
 
     if do_1D:
+        print('plotting 1D...')
         fig_kwargs_1D = {'plot_width': plot_width, 'plot_height': plot_height,
                          't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[idx]),
                          'x.axis_label': xlabel, 'y.axis_label': 'Counts'}
         hist, indexes, leg_labels = ([] for _ in range(3))
         for ilayer in range(nlayers):
-            hist.append( np.histogram(data_per_layer[ilayer], bins=100, density=True) )
-                                      #range=(data_per_layer[ilayer].min(),data_per_layer[ilayer].max() * 2/3) ) )
+            if columns_field == 'Densities':
+                hist.append( np.histogram(data_per_layer[ilayer], bins=100, density=True,
+                                          range=(data_per_layer[ilayer].min(),2000)) )
+            else:
+                hist.append( np.histogram(data_per_layer[ilayer], bins=100, density=True) )
             indexes.append( ilayer )
             leg_labels.append( 'Layer ' + str(ilayer+1) )
         bokehplot.histogram(data=hist, idx=indexes, legend_label=leg_labels,
@@ -269,10 +275,10 @@ def main():
             ###############################################
             do1D = False if i!=2 else True
             do2D = False
-            graphs_single(df, columns_field='Densities', idx=i, iframe=0, do_1D=do1D, do_2D=do2D)
+            #graphs_single(df, columns_field='Densities', idx=i, iframe=0, do_1D=do1D, do_2D=do2D)
             graphs_single(df, columns_field='Distances', idx=i, iframe=2, do_1D=do1D, do_2D=do2D)
-            if i==2:
-                graphs_double(df, columns_fields=('Densities','Distances','isSeed'), idx=i, iframe=4)
+            #if i==2:
+            #    graphs_double(df, columns_fields=('Densities','Distances','isSeed'), idx=i, iframe=4)
 
     print('saving frames...')
     bokehplot.save_frames(plot_width=plot_width, plot_height=plot_height, show=False)
@@ -280,8 +286,9 @@ def main():
         layer_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep')
         create_dir( layer_dep_folder )
         if iframe!=0 or iframe!=2: #do not save 2D figures, since they are not being used
-            bokehplot.save_figs(iframe=iframe, path=layer_dep_folder, mode='png')
-            bokehplot.save_figs(iframe=iframe, path='../../DN/figs/', mode='png')
+            if iframe==3:
+                bokehplot.save_figs(iframe=iframe, path=layer_dep_folder, mode='png')
+                bokehplot.save_figs(iframe=iframe, path='../../DN/figs/', mode='png')
 
 if __name__ == '__main__':
     #define analysis constants

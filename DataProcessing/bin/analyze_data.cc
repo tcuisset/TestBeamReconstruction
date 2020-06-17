@@ -7,14 +7,14 @@ void analysis_CLUE(const std::string& in_fname, const std::string& out_fname, co
   /*////////////////////////
     Run custom analyzer
   *////////////////////////
-  std::cout << "check" << std::endl;
   Analyzer ana(in_fname, in_tname, dc, kappa, ecut);
   ana.runCLUE();
-  ana.save_to_file(out_fname);
-  ana.save_to_file_layer_dependent(out_fname2);
+  //ana.save_to_file(out_fname);
+  //ana.save_to_file_layer_dependent(out_fname2);
   ana.save_to_file_cluster_dependent(out_fname3);
 
   //sum rechit energy directly without clustering
+  /*
   bool sum_with_ecut = true;
   ana.sum_energy(sum_with_ecut);
   std::string first_half = out_fname.substr(0,out_fname.find('.', 20)); //the 20 avoids the '.' in 'cern.ch'
@@ -22,6 +22,7 @@ void analysis_CLUE(const std::string& in_fname, const std::string& out_fname, co
   std::string first_half2 = out_fname2.substr(0,out_fname2.find('.', 20)); //the 20 avoids the '.' in 'cern.ch'
   std::string second_half2 = out_fname2.substr(out_fname2.find('.', 20), 4);
   ana.save_to_file(first_half + "_noclusters" + second_half);
+  */
 }
 
 //run example: analyze_data_exe /eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_437.root out_TEST.csv

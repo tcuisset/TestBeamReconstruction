@@ -153,7 +153,7 @@ def linear_fit_graph(mean, emean, idx, iframe):
     err = np.sqrt(np.diag(var))
     err1 = round(err[0],2)
     err2 = round(err[1],2)
-    pm = str( (u'\u00B1').encode('utf-8') )
+    pm = u'\u00B1'
     m_label = 'm = '+str(round(coeff[0],2))+pm+str(err1)
     b_label = 'b = '+str(round(coeff[1],2))+pm+str(err2)+' GeV'
     font_size = {'text_font_size': '9pt', 'x_units': 'data'}
