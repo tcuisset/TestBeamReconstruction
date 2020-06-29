@@ -1,0 +1,11 @@
+<use name="root"/>
+<use name="rootgraphics"/>
+<use name="roofit"/>
+<use name="rootxml"/>
+<use name="rootxmlio"/>
+<use name="UserCode/CondorJobs"/>
+<environment>
+  <bin name="write_dag" file="write_dag.cc"></bin>
+</environment>
+<Flags CXXFLAGS="-O0"/>
+<Flags CXXFLAGS="-g"/>

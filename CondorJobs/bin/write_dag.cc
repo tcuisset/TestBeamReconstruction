@@ -7,8 +7,10 @@ int main(int argc, char **argv) {
     Thorben recommended only using files with configuration 22
   *////////////////////////
   std::string cmssw_base = std::getenv("CMSSW_BASE");
+  std::string condorjobs = "/src/UserCode/CondorJobs/";
   std::string submission_folder = "submission/";
-  std::ifstream infile(cmssw_base + "/src/UserCode/CondorJobs/ntuple_ids.txt");
+  std::string condorjobs_base = cmssw_base + condorjobs;
+  std::ifstream infile(condorjobs_base + "ntuple_ids.txt");
   std::string end_str = ".sub";
   std::vector<int> a;
   int _a;
@@ -29,39 +31,53 @@ int main(int argc, char **argv) {
     }
 
   //write Direct Acyclic Graph (DAG) submission file
-  std::ofstream f_write(cmssw_base + "/src/UserCode/CondorJobs/clue.dag");
+  std::string filename = "clue";
+  std::ofstream f_write(condorjobs_base + filename + ".dag");
   for(auto i: util::lang::indices(file_id))
     {
       std::string n = std::to_string(file_id[i]);
-      std::string in = "JOB selection" + n + " " + submission_folder + "selection/selection" + n + end_str;
+      std::string in = "JOB selection" + n + "\t" + condorjobs_base + submission_folder + "selection/selection" + n + end_str;
       f_write << in << std::endl;
-      in = "JOB analysis" + n + " " + submission_folder + "analysis/analysis" + n + end_str;
+      in = "JOB analysis" + n + "\t\t" + condorjobs_base + submission_folder + "analysis/analysis" + n + end_str;
       f_write << in << std::endl;
     }
   f_write << std::endl;
   for(auto i: util::lang::indices(file_id))
     {
       std::string n = std::to_string(file_id[i]);
-      std::string in2 = "PARENT " + submission_folder + "selection/selection" + n + " CHILD " + submission_folder + "analysis/analysis" + n + end_str;
+      std::string in2 = "PARENT selection" + n + " CHILD analysis" + n;
       f_write << in2 << std::endl;
     }
-  f_write << "DAG clue.dot" << std::endl; //for visualization: dot -Tps clue.dot -o clue.ps
+  f_write << "DAG " + filename + ".dot" << std::endl; //for visualization: dot -Tps clue.dot -o clue.ps
+
+  //write test Direct Acyclic Graph (DAG) submission file: one ntuple only
+  std::string filename_test = "clue_TEST";
+  std::string n = std::to_string(437); //test number
+  std::ofstream f_write_test(condorjobs_base + filename_test + ".dag");
+  std::string in = "JOB selection" + n + "\t" + condorjobs_base + submission_folder + "selection/selection" + n + end_str;
+  f_write_test << in << std::endl;
+  in = "JOB analysis" + n + "\t\t" + condorjobs_base + submission_folder + "analysis/analysis" + n + end_str;
+  f_write_test << in << std::endl;
+  f_write_test << std::endl;
+  std::string in2 = "PARENT selection" + n + " CHILD analysis" + n;
+  f_write_test << in2 << std::endl;
+  f_write_test << "DAG " + filename_test + ".dot" << std::endl; //for visualization: dot -Tps name.dot -o name.ps
 
   //write all individual submission jobs: selection stage
   for(auto i: util::lang::indices(file_id))
     {
       std::string n = std::to_string(file_id[i]);
-      std::string subname = cmssw_base + "/src/UserCode/CondorJobs/submission/selection/selection" + n + ".sub";
+      std::string subname = condorjobs_base + submission_folder + "selection/selection" + n + ".sub";
       std::ofstream f_write_sel(subname);
       f_write_sel << "script_name=selector" << std::endl;
       f_write_sel << std::endl;
-      f_write_sel << "executable = selector.sh" << std::endl;
+      f_write_sel << "executable = " + condorjobs_base + "selector.sh" << std::endl;
       f_write_sel << "arguments = " + n << std::endl;
       f_write_sel << "universe = vanilla" << std::endl;
       f_write_sel << "requirements = (OpSysAndVer =?= \"CentOS7\")" << std::endl;
-      f_write_sel << "output = out/$(script_name)." + n + ".out" << std::endl;
-      f_write_sel << "error = out/$(script_name)." + n + ".err" << std::endl;
-      f_write_sel << "log = log/$(script_name)." + n + ".log" << std::endl;
+      f_write_sel << "output = " + condorjobs_base + "out/$(script_name)." + n + ".out" << std::endl;
+      f_write_sel << "error = " + condorjobs_base + "out/$(script_name)." + n + ".err" << std::endl;
+      f_write_sel << "log = " + condorjobs_base + "log/$(script_name)." + n + ".log" << std::endl;
       f_write_sel << "RequestMemory = 1GB" << std::endl;
       f_write_sel << "+JobFlavour = \"workday\"" << std::endl;
       f_write_sel << "queue" << std::endl;
@@ -71,17 +87,17 @@ int main(int argc, char **argv) {
   for(auto i: util::lang::indices(file_id))
     {
       std::string n = std::to_string(file_id[i]);
-      std::string subname = cmssw_base + "/src/UserCode/CondorJobs/submission/analysis/analysis" + n + ".sub";
+      std::string subname = condorjobs_base + submission_folder + "analysis/analysis" + n + ".sub";
       std::ofstream f_write_ana(subname);
       f_write_ana << "script_name=analyzer" << std::endl;
       f_write_ana << std::endl;
-      f_write_ana << "executable = analyzer.sh" << std::endl;
+      f_write_ana << "executable = " + condorjobs_base + "analyzer.sh" << std::endl;
       f_write_ana << "arguments = " + n << std::endl;
       f_write_ana << "universe = vanilla" << std::endl;
       f_write_ana << "requirements = (OpSysAndVer =?= \"CentOS7\")" << std::endl;
-      f_write_ana << "output = out/$(script_name)." + n + ".out" << std::endl;
-      f_write_ana << "error = out/$(script_name)." + n + ".err" << std::endl;
-      f_write_ana << "log = log/$(script_name)." + n + ".log" << std::endl;
+      f_write_ana << "output = " + condorjobs_base + "out/$(script_name)." + n + ".out" << std::endl;
+      f_write_ana << "error = " + condorjobs_base + "out/$(script_name)." + n + ".err" << std::endl;
+      f_write_ana << "log = " + condorjobs_base + "log/$(script_name)." + n + ".log" << std::endl;
       f_write_ana << "RequestMemory = 80MB" << std::endl;
       f_write_ana << "+JobFlavour = \"workday\"" << std::endl;
       f_write_ana << "queue" << std::endl;
