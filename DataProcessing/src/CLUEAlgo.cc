@@ -1,7 +1,7 @@
 #include "UserCode/DataProcessing/interface/CLUEAlgo.h"
 
 void CLUEAlgo::makeClusters(){
-  std::array<LayerTiles, detectorConstants::nlayers> allLayerTiles;
+  std::array<LayerTiles, detectorConstants::nlayers_emshowers> allLayerTiles;
   // start clustering
   auto start = std::chrono::high_resolution_clock::now();
   prepareDataStructures(allLayerTiles);
@@ -26,7 +26,7 @@ void CLUEAlgo::makeClusters(){
 }
 
 
-void CLUEAlgo::prepareDataStructures( std::array<LayerTiles, detectorConstants::nlayers> & allLayerTiles ){
+void CLUEAlgo::prepareDataStructures( std::array<LayerTiles, detectorConstants::nlayers_emshowers> & allLayerTiles ){
   for (int i=0; i<points_.n; i++){
     // push index of points into tiles
     allLayerTiles[points_.layer[i]].fill( points_.x[i], points_.y[i], i);
@@ -34,7 +34,7 @@ void CLUEAlgo::prepareDataStructures( std::array<LayerTiles, detectorConstants::
 }
 
 
-void CLUEAlgo::calculateLocalDensity( std::array<LayerTiles, detectorConstants::nlayers> & allLayerTiles ){
+void CLUEAlgo::calculateLocalDensity( std::array<LayerTiles, detectorConstants::nlayers_emshowers> & allLayerTiles ){
   
   // loop over all points
   for(int i = 0; i < points_.n; i++) {
@@ -69,7 +69,7 @@ void CLUEAlgo::calculateLocalDensity( std::array<LayerTiles, detectorConstants::
 }
 
 
-void CLUEAlgo::calculateDistanceToHigher( std::array<LayerTiles, detectorConstants::nlayers> & allLayerTiles ){
+void CLUEAlgo::calculateDistanceToHigher( std::array<LayerTiles, detectorConstants::nlayers_emshowers> & allLayerTiles ){
   // loop over all points
   float dm = outlierDeltaFactor_ * dc_;
   for(int i = 0; i < points_.n; i++) {

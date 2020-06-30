@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
       std::string in2 = "PARENT selection" + n + " CHILD analysis" + n;
       f_write << in2 << std::endl;
     }
-  f_write << "DAG " + filename + ".dot" << std::endl; //for visualization: dot -Tps clue.dot -o clue.ps
+  f_write << "DOT " + filename + ".dot" << std::endl; //for visualization: dot -Tps clue.dot -o clue.ps
 
   //write test Direct Acyclic Graph (DAG) submission file: one ntuple only
   std::string filename_test = "clue_TEST";
@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
   f_write_test << std::endl;
   std::string in2 = "PARENT selection" + n + " CHILD analysis" + n;
   f_write_test << in2 << std::endl;
-  f_write_test << "DAG " + filename_test + ".dot" << std::endl; //for visualization: dot -Tps name.dot -o name.ps
+  f_write_test << "DOT " + filename_test + ".dot" << std::endl; //for visualization: dot -Tps name.dot -o name.ps
 
   //write all individual submission jobs: selection stage
   for(auto i: util::lang::indices(file_id))

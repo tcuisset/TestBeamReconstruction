@@ -34,7 +34,7 @@ eval `scramv1 runtime -sh` #cmsenv substitute
 #back to the job folder
 cd "${INIT_FOLDER}";
 
-INFILE="${1}";
+INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${1}.root";
 echo "Input file: ${INFILE}"
 EOS_PATH="/eos/user/b/bfontana/TestBeamReconstruction/job_output/"
 tuple_number="${INFILE#*ntuple_}"

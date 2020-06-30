@@ -19,9 +19,14 @@ class Selector {
   
   static const int ncpus_ = 4;
 
-  //std::string newcol1_ = "rechit_energy_MeV";
-  std::string newcol2_ = "rechit_weighted_energy_MeV";
-  const ROOT::Detail::RDF::ColumnNames_t cols_ = {"event", "run", "NRechits", "rechit_detid", "rechit_x", "rechit_y", "rechit_z", "rechit_layer", "rechit_iu", "rechit_iv", "rechit_iU", "rechit_iV", "rechit_type", "rechit_energy", /*newcol1_,*/ newcol2_, "beamEnergy", "pdgID"};
+  std::string newcol_clean_detid_     = "rechit_clean_detid";
+  std::string newcol_clean_x_         = "rechit_clean_x";
+  std::string newcol_clean_y_         = "rechit_clean_y";
+  std::string newcol_clean_z_         = "rechit_clean_z";
+  std::string newcol_clean_layer_     = "rechit_clean_layer";
+  std::string newcol_clean_energy_    = "rechit_clean_energy_MeV";
+  //const ROOT::Detail::RDF::ColumnNames_t cols_ = {"event", "run", "NRechits", "rechit_detid", "rechit_x", "rechit_y", "rechit_z", "rechit_layer", "rechit_iu", "rechit_iv", "rechit_iU", "rechit_iV", "rechit_type", "rechit_energy", newcol1_, "beamEnergy", "pdgID"};
+  const ROOT::Detail::RDF::ColumnNames_t cols_ = {"event", "run", "NRechits", newcol_clean_detid_, newcol_clean_x_, newcol_clean_y_, newcol_clean_z_, newcol_clean_layer_, newcol_clean_energy_, "beamEnergy"};
   struct indata {
     std::string file_path = "/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/ntuple_1000.root";
     std::string tree_name = "rechitntupler/hits";

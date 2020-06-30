@@ -12,18 +12,17 @@ int main(int argc, char **argv) {
   int _a;
   while (infile >> _a)
       a.push_back(_a);
-  //some jobs failed, therefore some input files are lacking
-  std::vector<int> avoid = {453,508,601,607,639};
+  //std::vector<int> avoid = {453,508,601,607,639};   //some jobs failed, therefore some input files are lacking
 
   std::vector<int> file_id;
   for(unsigned int i=435; i<=509; ++i)
     {
-      if( std::find(a.begin(), a.end(), i) != a.end() and std::find(avoid.begin(), avoid.end(), i) == avoid.end() )
+      if( std::find(a.begin(), a.end(), i) != a.end() /*and std::find(avoid.begin(), avoid.end(), i) == avoid.end()*/ )
 	file_id.push_back(i);
     }
   for(unsigned int i=594; i<=676; ++i)
     {
-      if( std::find(a.begin(), a.end(), i) != a.end() and std::find(avoid.begin(), avoid.end(), i) == avoid.end() )
+      if( std::find(a.begin(), a.end(), i) != a.end() /*and std::find(avoid.begin(), avoid.end(), i) == avoid.end()*/ )
 	file_id.push_back(i);
     }
   std::string init_str = "/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_";

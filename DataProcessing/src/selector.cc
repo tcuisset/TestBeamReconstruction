@@ -27,69 +27,119 @@ void Selector::select_relevant_branches()
   //enable parallelism
   ROOT::EnableImplicitMT( ncpus_ );
 
-  /*
-  auto hadronic_contamination_filter = [](std::vector<float> en, std::vector<unsigned int> l) {
-    unsigned int counter = 0;
-    assert(en.size() == l.size());
-    for(auto i: util::lang::indices(en)) 
-      {
-	if(l[i]>28 and en[i]>0.5) //hadronic hit with more than half MIP deposited energy
-	  counter += 1;
-      }
-    return counter < 80; //filters out events with 80 hits or more in the hadronic section
-  };
-  */
-
-  /*
-  auto convert_energy = [&](std::vector<float> en, std::vector<unsigned int> l) {
-    std::vector<float> en_conv(en.size(), 0.f);
-    unsigned int layer = 0;
-    float thick_corr = 0.;
-    for(unsigned int i=0; i<en.size(); ++i)
-      {
-	layer = l[i];
-	if(layer>0 && layer<27)
-	  thick_corr = this->thickness_correction_[0];
-	else if(layer >= 27 && layer<29)
-	  thick_corr = this->thickness_correction_[1];
-	else if(layer >= 29 && layer<=50)
-	  thick_corr = 0; //ignore hits in the hadronic section
-	else
-	  throw std::out_of_range("Unphysical layer number: "+std::to_string(layer));
-	en_conv.at(i) =  en[i] * thick_corr;
-      }
-    return en_conv;
-  };
-  */
-  
-  auto weight_energy = [&](std::vector<float> en, std::vector<unsigned int> l) {
+  auto clean_float_arrays = [&](std::vector<float> var, std::vector<float> en, std::vector<unsigned int> l, std::vector<unsigned int> chip) {
 	unsigned int layer = 0;
-	float weight = 1.;
-	std::vector<float> en_conv(en.size(), 0.f);
-	for(unsigned int i=0; i<en.size(); ++i)
+	float energy = 0.f;
+	size_t ensize = en.size();
+	std::vector<float> var_clean;
+	var_clean.reserve(ensize);
+	
+	for(unsigned int i=0; i<ensize; ++i)
 	  {
+	    energy = en[i];
 	    layer = l[i];
-	    if(layer > 0 && layer <= 28)
-	      weight = detectorConstants::dEdX.at(layer-1);
-	    else if(layer > 28 && layer <= 50)
-	      {
-		weight = 0.; //ignore hits in the hadronic section
-	      }
-	    else
+	    if(layer>detectorConstants::nlayers_emshowers && layer<=detectorConstants::totalnlayers)
+	      continue;
+	    else if(layer<1 || layer>detectorConstants::totalnlayers)
 	      throw std::out_of_range("Unphysical layer number: "+std::to_string(layer));
-	    en_conv.at(i) = en[i] * weight;
+	    if(energy<=0.5) //MIP noise cut
+	      continue;
+	    if(chip[i]==0 and layer==1) //mask noisy chip
+	      continue;
+	    var_clean.push_back( var[i] );
 	  }
-	return en_conv;  
+	return var_clean;  
       };
+
+  auto clean_detids = [&](std::vector<unsigned int> detid, std::vector<float> en, std::vector<unsigned int> l, std::vector<unsigned int> chip) {
+	unsigned int layer = 0;
+	float energy = 0.f;
+	size_t ensize = en.size();
+	std::vector<unsigned int> detid_clean;
+	detid_clean.reserve(ensize);
+	
+	for(unsigned int i=0; i<ensize; ++i)
+	  {
+	    energy = en[i];
+	    layer = l[i];
+	    if(layer>detectorConstants::nlayers_emshowers && layer<=detectorConstants::totalnlayers)
+	      continue;
+	    else if(layer<1 || layer>detectorConstants::totalnlayers)
+	      throw std::out_of_range("Unphysical layer number: "+std::to_string(layer));
+	    if(energy<=0.5) //MIP noise cut
+	      continue;
+	    if(chip[i]==0 and layer==1) //mask noisy chip
+	      continue;
+	    detid_clean.push_back( detid[i] );
+	  }
+	return detid_clean;  
+      };
+
+  auto clean_layers = [&](std::vector<float> en, std::vector<unsigned int> l, std::vector<unsigned int> chip) {
+	unsigned int layer = 0;
+	float energy = 0.f;
+	size_t ensize = en.size();
+	std::vector<unsigned int> layer_clean;
+	layer_clean.reserve(ensize);
+
+	for(unsigned int i=0; i<ensize; ++i)
+	  {
+	    energy = en[i];
+	    layer = l[i];
+	    if(layer>detectorConstants::nlayers_emshowers and layer<=detectorConstants::totalnlayers)
+	      continue;
+	    else if(layer<1 or layer>detectorConstants::totalnlayers)
+	      {
+		throw std::out_of_range("Unphysical layer number: "+std::to_string(layer));
+		continue;
+	      }
+	    if(energy<=0.5) //MIP noise cut
+	      continue;
+	    if(chip[i]==0 and layer==1) //mask noisy chip
+	      continue;
+
+	    layer_clean.push_back( layer );
+	  }
+	return layer_clean;  
+      };
+      
+  auto weight_and_clean_energy = [&](std::vector<float> en, std::vector<unsigned int> l, std::vector<unsigned int> chip) {
+	unsigned int layer = 0;
+	float energy = 0.f;
+	float weight = 1.f;
+	size_t ensize = en.size();
+	std::vector<float> en_weighted;
+	en_weighted.reserve(ensize); //maximum possible size
+
+	for(unsigned int i=0; i<ensize; ++i)
+	  {
+	    energy = en[i];
+	    layer = l[i];
+	    if(energy<=0.5)  //MIP noise cut
+	      continue;
+	    if(chip[i]==0 and layer==1) //mask noisy chip
+	      continue;
+	    
+	    if(layer>0 and layer<=detectorConstants::nlayers_emshowers)
+	      weight = detectorConstants::dEdX.at(layer-1);
+	    else
+	      continue;
+	    en_weighted.push_back( energy * weight );
+	  }
+	return en_weighted;  
+      };
+ 
 
   //define dataframe that owns the TTree
   ROOT::RDataFrame d(this->indata_.tree_name.c_str(), this->indata_.file_path.c_str());
   //convert from MIPs to MeV
-  /*d.Filter(hadronic_contamination_filter, {"rechit_energy", "rechit_layer"})*/
-  d.Define(newcol2_, weight_energy, {"rechit_energy", "rechit_layer"})
-    //Define(newcol1_, convert_energy, {"rechit_energy", "rechit_layer"})
-    //store the contents of the TTree according to the specified columns
-    .Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), cols_);
+  d.Define(this->newcol_clean_detid_,      clean_detids,              {"rechit_detid", "rechit_energy", "rechit_layer", "rechit_chip"})
+    .Define(this->newcol_clean_x_,         clean_float_arrays,        {"rechit_x",     "rechit_energy", "rechit_layer", "rechit_chip"})
+    .Define(this->newcol_clean_y_,         clean_float_arrays,        {"rechit_y",     "rechit_energy", "rechit_layer", "rechit_chip"})
+    .Define(this->newcol_clean_z_,         clean_float_arrays,        {"rechit_z",     "rechit_energy", "rechit_layer", "rechit_chip"})
+    .Define(this->newcol_clean_layer_,     clean_layers,              {"rechit_energy", "rechit_layer", "rechit_chip"})
+    .Define(this->newcol_clean_energy_,    weight_and_clean_energy,   {"rechit_energy", "rechit_layer", "rechit_chip"})
+    .Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), this->cols_);
 };
 
 void Selector::print_relevant_branches(const int& nrows=5, std::optional<std::string> filename)

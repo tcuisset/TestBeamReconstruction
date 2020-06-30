@@ -97,7 +97,7 @@ def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy
             if arr.size == 0:
                 raise ValueError('The dataframe {} in layer {} is empty!'.format(i, ilayer))
 
-            energy_lower_cut = 1500
+            energy_lower_cut = 0
             if variable == 'number':
                 data_per_layer.append( arr.apply( lambda x: len(x[columns_field+'_layer'+str(ilayer)][ x[columns_field+'_layer'+str(ilayer)] > energy_lower_cut ]), axis=1, result_type='reduce') )
                 data_per_layer[-1] = data_per_layer[-1][ data_per_layer[-1] != 0 ] #filter out all events without clusters
@@ -324,11 +324,11 @@ if __name__ == '__main__':
     create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory) )
     output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory)
     output_html_files = ( os.path.join(output_html_dir, 'plot_clusters_hits.html'),
-                          os.path.join(output_html_dir, 'plot_clusters_energy.html'),
-                          os.path.join(output_html_dir, 'plot_clusters_number.html'),
+                          os.path.join(output_html_dir, 'plot_clusters_energy_nocut.html'),
+                          os.path.join(output_html_dir, 'plot_clusters_number_nocut.html'),
                           os.path.join(output_html_dir, 'profile_clusters_hits.html'),
-                          os.path.join(output_html_dir, 'profile_clusters_energy.html'),
-                          os.path.join(output_html_dir, 'profile_clusters_number.html') )
+                          os.path.join(output_html_dir, 'profile_clusters_energy_nocut.html'),
+                          os.path.join(output_html_dir, 'profile_clusters_number_nocut.html') )
     nframes = 6
     bokehplot = bkp.BokehPlot(filenames=output_html_files, nfigs=nframes*(size,), nframes=nframes)
     plot_width, plot_height = 600, 400

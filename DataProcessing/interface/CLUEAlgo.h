@@ -53,7 +53,7 @@ class CLUEAlgo{
       // input variables
       for(int i=0; i<n; ++i)
 	{
-	  if(layer[i] > detectorConstants::nlayers)
+	  if(layer[i] > detectorConstants::nlayers_emshowers)
 	    continue;
 	  float endeposited_mip = layer[i] < 27 ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
 	  if( weight[i] < ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * detectorConstants::dEdX.at(layer[i]-1) )
@@ -171,9 +171,9 @@ class CLUEAlgo{
         
   private:
     // private member methods
-    void prepareDataStructures(std::array<LayerTiles, detectorConstants::nlayers> & );
-    void calculateLocalDensity(std::array<LayerTiles, detectorConstants::nlayers> & );
-    void calculateDistanceToHigher(std::array<LayerTiles, detectorConstants::nlayers> & );
+    void prepareDataStructures(std::array<LayerTiles, detectorConstants::nlayers_emshowers> & );
+    void calculateLocalDensity(std::array<LayerTiles, detectorConstants::nlayers_emshowers> & );
+    void calculateDistanceToHigher(std::array<LayerTiles, detectorConstants::nlayers_emshowers> & );
     void findAndAssignClusters();
     inline float distance(int , int) const ;
 };
