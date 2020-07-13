@@ -42,6 +42,7 @@ private:
   std::vector< float > en_;
   std::array< std::tuple<unsigned int, float, std::vector<float>, std::vector<float>, std::vector<bool>>, detectorConstants::nlayers_emshowers> layerdep_vars_; //clusterized nhits and clusterized energy per event and per layer
   std::array< std::tuple< std::vector<unsigned int>, std::vector<float>, std::vector<float>, std::vector<float> >, detectorConstants::nlayers_emshowers> clusterdep_vars_; //clusterized nhits and clusterized energy per event, per layer and per cluster
+  std::vector<float> frac_clust_hits_;
   
 public:
   CLUEAnalysis(){};

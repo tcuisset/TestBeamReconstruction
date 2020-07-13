@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import concurrent.futures
 import argparse
-import argparser
+from argparser import add_args
 from scipy.interpolate import UnivariateSpline
 
 def get_mean_and_sigma(x, y=None):
@@ -83,11 +83,12 @@ def flatten_dataframe(df):
 
 def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy=False):
     """Plots cluster-related quantities per layer"""
-    if variable not in ('hits', 'energy', 'number'):
+    if variable not in ('hits', 'energy', 'number', 'pos'):
         raise ValueError('graphs2d: Variable {} is not supported.'.format(variable))
     for i,df in enumerate(dfs):
         print('Processing the {} GeV dataset...'.format(beam_energies[i]))
         data_per_layer = []
+        data_per_layer_cut = []
 
         datamax, datamin = -np.inf, np.inf
         for ilayer in range(1,nlayers+1):
@@ -97,16 +98,24 @@ def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy
             if arr.size == 0:
                 raise ValueError('The dataframe {} in layer {} is empty!'.format(i, ilayer))
 
-            energy_lower_cut = 0
+            energy_lower_cut = 0#1500
             if variable == 'number':
-                data_per_layer.append( arr.apply( lambda x: len(x[columns_field+'_layer'+str(ilayer)][ x[columns_field+'_layer'+str(ilayer)] > energy_lower_cut ]), axis=1, result_type='reduce') )
+                data_per_layer.append( arr.apply( lambda x: len(x[columns_field+'_layer'+str(ilayer)]), axis=1, result_type='reduce') )
                 data_per_layer[-1] = data_per_layer[-1][ data_per_layer[-1] != 0 ] #filter out all events without clusters
+                data_per_layer_cut.append( arr.apply( lambda x: len(x[columns_field+'_layer'+str(ilayer)][ x[columns_field+'_layer'+str(ilayer)] > energy_lower_cut ]), axis=1, result_type='reduce') )
+                data_per_layer_cut[-1] = data_per_layer[-1][ data_per_layer[-1] != 0 ] #filter out all events without clusters
             elif variable == 'energy':
                 arr = flatten_dataframe(arr)
-                arr = arr[ arr > energy_lower_cut ]
                 data_per_layer.append( arr )
-            elif variable == 'hits':
-                data_per_layer.append( flatten_dataframe(arr) )
+                arr = arr[ arr > energy_lower_cut ]
+                data_per_layer_cut.append( arr )
+            elif variable == 'hits' or variable == 'pos':
+                extra_layer_col = get_layer_col(df, starts_with='Energy', ilayer=ilayer)
+                extra_arr = df.loc[:, extra_layer_col]
+                arr = flatten_dataframe(arr)
+                data_per_layer.append( arr )
+                arr = arr[ extra_arr > energy_lower_cut ]
+                data_per_layer_cut.append( arr )
             del arr
 
             if len(data_per_layer[-1]) != 0:
@@ -115,8 +124,10 @@ def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy
                     datamin = m1
                 if m2 > datamax:
                     datamax = m2
-                
-        nbins = 20 if datamax>20 else int(datamax-1)
+        if variable == 'pos':
+            nbins = 50 
+        else:
+            nbins = 20 if datamax>20 else int(datamax-1)
         bins = np.linspace(datamin, datamax, nbins+1)
         height_hits = height_for_plot_bins(bins, scale='linear')
         all_counts, all_layers, all_centers = ([] for _ in range(3))
@@ -130,13 +141,16 @@ def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy
                 if data_weights.size == 0:
                     raise ValueError('The weights dataframe {} in layer {} is empty!'.format(i, ilayer))
                 counts, edges = np.histogram(data_per_layer[ilayer-1], bins=bins, weights=data_weights)
+                counts_cut, _ = np.histogram(data_per_layer_cut[ilayer-1], bins=bins, weights=data_weights)
             else:
                 counts, edges = np.histogram(data_per_layer[ilayer-1], bins=bins)
+                counts_cut, _ = np.histogram(data_per_layer_cut[ilayer-1], bins=bins)
 
             centers = (edges[:-1]+edges[1:])/2
             assert(len(counts) == len(centers))
             same_layer_array = ilayer*np.ones(len(centers))
             all_counts.extend(counts.tolist())
+            all_counts_cut.extend(counts_cut.tolist())
             all_layers.extend(same_layer_array.tolist())
             all_centers.extend(centers.tolist())
             
@@ -158,7 +172,7 @@ def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy
         elif variable == 'energy':
             interp_degree = 1
             interp_smooth = len(layers_x)#10*len(layers_x)
-        elif variable == 'number':
+        elif variable == 'number' or variable == 'pos':
             interp_degree = 1
             interp_smooth = len(layers_x)/50
         layers_x_fine = np.arange(1,28,interp_thickness)
@@ -177,16 +191,20 @@ def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy
                         idx=i, iframe=iframe, style='rect%Cividis', fig_kwargs=fig_kwargs, alpha=0.6)
         bokehplot.graph(data=[layers_x, means],
                         idx=i, iframe=iframe, color='brown', style='circle', size=2, legend_label='mean')
+        #with cut
+        bokehplot.graph(data=[np.array(all_layers), np.array(all_centers), np.array(all_counts_cuts)],
+                        width=np.ones((len(all_layers))), height=height_hits,
+                        idx=i+size, iframe=iframe, style='rect%Cividis', fig_kwargs=fig_kwargs, alpha=0.6)
 
-        #pm = (u'\u00B1').encode('utf-8')
         bokehplot.graph(data=[layers_x_fine, means_sp],
                         width=interp_thickness*np.ones(len(layers_x_fine)), height=abs(sigmasr_sp-sigmasl_sp),
                         idx=i, iframe=iframe+3, color='grey', style='rect', alpha=0.6, legend_label=u'std mean error (\u03c3/\u221an)', 
-                        fig_kwargs=fig_kwargs)
+                        fig_kwargs=fig_kwargs)  #pm = (u'\u00B1').encode('utf-8')
         bokehplot.graph(data=[layers_x_fine, means_sp],
                         idx=i, iframe=iframe+3, color='red', style='circle', size=1.5, legend_label='mean')
 
         del all_counts
+        del all_counts_cut
         del all_layers
         del all_centers
         del means
@@ -239,11 +257,12 @@ def main():
     tree = file['tree0']
     executor = concurrent.futures.ThreadPoolExecutor() #executor for parallel data loading
     up_cache = {}
+    frame_shift = int(nframes/2)
     
     ######Cluster dependent number of hits#########
-    if FLAGS.hits_analysis:
+    if FLAGS.hits or FLAGS.all:
         print('loading hits data...')
-        df_hits = tree.arrays(['BeamEnergy', 'Nhits*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
+        df_hits = tree.arrays([beamen_str, 'Nhits*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
         print('done!')
 
         df_hits_split = []
@@ -255,13 +274,13 @@ def main():
         graphs2d(df_hits_split, axis_kwargs_hits, columns_field='Nhits', iframe=0, variable='hits', weight_by_energy=True)
         del df_hits_split
         print('saving the plots...')
-        save_plots(frames_to_save=(0,3))
+        save_plots(frames_to_save=(0,0+frame_shift))
         print('done!')
 
     ######Cluster dependent energy#################
-    if FLAGS.energy_analysis:
+    if FLAGS.energies or FLAGS.all:
         print('loading energy data...')
-        df_energy = tree.arrays(['BeamEnergy', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
+        df_energy = tree.arrays([beamen_str, 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
         print('done!')
 
         df_energy_split = []
@@ -273,13 +292,13 @@ def main():
         graphs2d(df_energy_split, axis_kwargs_en, columns_field='Energy', iframe=1, variable='energy', weight_by_energy=False)
         del df_energy_split
         print('saving the plots...')
-        save_plots(frames_to_save=(1,4))
+        save_plots(frames_to_save=(1,1+frame_shift))
         print('done!')
         
     ######Number of clusters######################
-    if FLAGS.number_analysis:
+    if FLAGS.numbers or FLAGS.all:
         print('loading number data...')
-        df_number = tree.arrays(['BeamEnergy', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
+        df_number = tree.arrays([beamen_str, 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True) #'Energy*' is used by len() function to get the number of clusters
         print('done!')
 
         df_number_split = []
@@ -287,11 +306,47 @@ def main():
             df_number_split.append(df_number[ df_number[beamen_str] == en])
         del df_number
 
-        axis_kwargs_en = {'x.axis_label': 'Layer', 'y.axis_label': 'Number of clusters'}
-        graphs2d(df_number_split, axis_kwargs_en, columns_field='Energy', variable='number', iframe=2, weight_by_energy=False)
+        axis_kwargs_numbers = {'x.axis_label': 'Layer', 'y.axis_label': 'Number of clusters'}
+        graphs2d(df_number_split, axis_kwargs_numbers, columns_field='Energy', variable='number', iframe=2, weight_by_energy=False)
         del df_number_split
         print('saving the plots...')
-        save_plots(frames_to_save=(2,5))
+        save_plots(frames_to_save=(2,2+frame_shift))
+        print('done!')
+
+    ######Custer X positions######################
+    if FLAGS.posx or FLAGS.all:
+        print('loading x positions data...')
+        df_posx = tree.arrays([beamen_str, 'X*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
+        print('done!')
+
+        df_posx_split = []
+        for en in beam_energies:
+            df_posx_split.append(df_posx[ df_posx[beamen_str] == en])
+        del df_posx
+
+        axis_kwargs_posx = {'x.axis_label': 'Layer', 'y.axis_label': "Clusters' X position"}
+        graphs2d(df_posx_split, axis_kwargs_posx, columns_field='X', variable='pos', iframe=3, weight_by_energy=False)
+        del df_posx_split
+        print('saving the plots...')
+        save_plots(frames_to_save=(3,3+frame_shift))
+        print('done!')
+
+    ######Custer Y positions######################
+    if FLAGS.posy or FLAGS.all:
+        print('loading y positions data...')
+        df_posy = tree.arrays([beamen_str, 'Y*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
+        print('done!')
+
+        df_posy_split = []
+        for en in beam_energies:
+            df_posy_split.append(df_posy[ df_posy[beamen_str] == en])
+        del df_posy
+
+        axis_kwargs_posy = {'x.axis_label': 'Layer', 'y.axis_label': "Clusters' Y position"}
+        graphs2d(df_posy_split, axis_kwargs_posy, columns_field='Y', variable='pos', iframe=4, weight_by_energy=False)
+        del df_posy_split
+        print('saving the plots...')
+        save_plots(frames_to_save=(4,4+frame_shift))
         print('done!')
 
 if __name__ == '__main__':
@@ -315,8 +370,8 @@ if __name__ == '__main__':
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
     true_beam_energies_GeV = (20,30,49.99,79.93,99.83,119.65,149.14,197.32,243.61,287.18)
     true_beam_energies_MeV = tuple(x*1000 for x in true_beam_energies_GeV)
-    size = len(true_beam_energies_GeV)
-    assert(len(beam_energies)==size)
+    size = 2*len(true_beam_energies_GeV)
+    assert(len(beam_energies)==size/2)
 
     print("Input data read from: {}".format(data_path))
 
@@ -326,15 +381,19 @@ if __name__ == '__main__':
     output_html_files = ( os.path.join(output_html_dir, 'plot_clusters_hits.html'),
                           os.path.join(output_html_dir, 'plot_clusters_energy_nocut.html'),
                           os.path.join(output_html_dir, 'plot_clusters_number_nocut.html'),
+                          os.path.join(output_html_dir, 'plot_clusters_posx_nocut.html'),
+                          os.path.join(output_html_dir, 'plot_clusters_posy_nocut.html'),
                           os.path.join(output_html_dir, 'profile_clusters_hits.html'),
                           os.path.join(output_html_dir, 'profile_clusters_energy_nocut.html'),
-                          os.path.join(output_html_dir, 'profile_clusters_number_nocut.html') )
-    nframes = 6
+                          os.path.join(output_html_dir, 'profile_clusters_number_nocut.html'),
+                          os.path.join(output_html_dir, 'profile_clusters_posx_nocut.html'),
+                          os.path.join(output_html_dir, 'profile_clusters_posy_nocut.html') )
+    nframes = len(output_html_files)
     bokehplot = bkp.BokehPlot(filenames=output_html_files, nfigs=nframes*(size,), nframes=nframes)
     plot_width, plot_height = 600, 400
     cluster_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep')
     create_dir( cluster_dep_folder )
 
     parser = argparse.ArgumentParser()
-    FLAGS, _ = argparser.add_args(parser)
+    FLAGS, _ = add_args(parser, 'clusters')
     main()

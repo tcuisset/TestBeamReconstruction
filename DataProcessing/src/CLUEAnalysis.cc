@@ -5,9 +5,10 @@
 //   2) Has W0=2.9 hardcoded
 //Returns x and y position of the cluster
 void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, const std::vector<float>& ypos, const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
+  std::cout << "check in 1 " << std::endl;
   assert(!xpos.empty() && !ypos.empty() && !weights.empty() && !clusterid.empty()&& !layerid.empty());
   auto start = std::chrono::high_resolution_clock::now();
-
+  std::cout << "check in 2 " << std::endl;
   const int nclusters = ( *( std::max_element(clusterid.begin(), clusterid.end()) ) 
 			  + 1 /*cluster index starts at zero*/  + 1 /*outliers*/ );
   std::vector<float> total_weight(nclusters, 0.);
@@ -15,13 +16,13 @@ void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, c
   std::vector<float> x(nclusters, 0.);
   std::vector<float> y(nclusters, 0.);
   std::vector<float> layers(nclusters, 0.);
-
+  std::cout << "check in 3 " << std::endl;
   for(auto i: util::lang::indices(weights))
     {
       unsigned int weight_index = clusterid.at(i) + 1; //outliers will correspond to total_weight[0]
       total_weight.at(weight_index) += weights.at(i);
     }
-
+  std::cout << "check in 4 " << std::endl;
   en_ = total_weight; //copy
 
   for (auto i: util::lang::indices(weights))
@@ -34,7 +35,7 @@ void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, c
       if(layers[weight_index] == 0 and weight_index != 0) 
 	layers[weight_index] = layerid.at(i); //all hits in a cluster will belong to the same layer
     }
-
+  std::cout << "check in 5 " << std::endl;
   for(auto i : util::lang::indices(total_weight_log))
     {
       if (total_weight_log.at(i) != 0.) {
@@ -44,9 +45,10 @@ void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, c
       else
 	pos_.push_back( std::make_tuple(0.f, 0.f, 0.f) );
     }
-
+  std::cout << "check in 6 " << std::endl;
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
+  std::cout << "check in 7 " << std::endl;
   //std::cout << "--- calculatePositions      " << elapsed.count() *1000 << " ms\n\n";
 }
 

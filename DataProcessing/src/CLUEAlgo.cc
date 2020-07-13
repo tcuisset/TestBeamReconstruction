@@ -175,32 +175,42 @@ void CLUEAlgo::findAndAssignClusters(){
 }
 
 std::vector<float> CLUEAlgo::getHitsClusterX() {
-  if(points_.x.empty())
+  if(points_.x.empty()) {
+    std::cout << "ERROR: CLUEAlgo::getHitsClusterX()" << std::endl;
     throw std::bad_function_call();
+  }
   return points_.x;
 }
 
 std::vector<float> CLUEAlgo::getHitsClusterY() {
-  if(points_.y.empty())
+  if(points_.y.empty()) {
+    std::cout << "ERROR: CLUEAlgo::getHitsClusterY()" << std::endl;
     throw std::bad_function_call();
+  }
   return points_.y;
 }
 
 std::vector<float> CLUEAlgo::getHitsWeight() {
-  if(points_.weight.empty())
+  if(points_.weight.empty()) {
+    std::cout << "ERROR: CLUEAlgo::getHitsWeight()" << std::endl;
     throw std::bad_function_call();
+  }
   return points_.weight;
 }
 
 std::vector<int> CLUEAlgo::getHitsClusterId() {
-  if(points_.clusterIndex.empty())
+  if(points_.clusterIndex.empty()) {
+    std::cout << "ERROR: CLUEAlgo::getHitsClusterId()" << std::endl;
     throw std::bad_function_call();
+  }
   return points_.clusterIndex;
 }
 
 std::vector<int> CLUEAlgo::getHitsLayerId() {
-  if(points_.layer.empty())
+  if(points_.layer.empty()) {
+    std::cout << "ERROR: CLUEAlgo::getHitsLayerId()" << std::endl;
     throw std::bad_function_call();
+  }
   std::vector<int> layer_output(points_.layer.size());
   for(unsigned int i=0; i<points_.layer.size(); ++i)
     layer_output[i] = points_.layer[i] + 1;
@@ -208,20 +218,26 @@ std::vector<int> CLUEAlgo::getHitsLayerId() {
 }
 
 std::vector<float> CLUEAlgo::getHitsRho() {
-  if(points_.rho.empty())
+  if(points_.rho.empty()) {
+    std::cout << "ERROR: CLUEAlgo::getHitsRho()" << std::endl;
     throw std::bad_function_call();
+  }
   return points_.rho;
 }
 
 std::vector<float> CLUEAlgo::getHitsDistanceToHighest() {
-  if(points_.delta.empty())
+  if(points_.delta.empty()) {
+    std::cout << "ERROR: CLUEAlgo::getDistanceToHighest()" << std::endl;
     throw std::bad_function_call();
+  }
   return points_.delta;
 }
 
 std::vector<bool> CLUEAlgo::getHitsSeeds() {
-  if(points_.isSeed.empty())
+  if(points_.isSeed.empty()) {
+    std::cout << "ERROR: CLUEAlgo::getHitsSeeds()" << std::endl;
     throw std::bad_function_call();
+  }
   return points_.isSeed;
 }
 

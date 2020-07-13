@@ -8,6 +8,8 @@ import uproot as up
 import numpy as np
 import pandas as pd
 from scipy.interpolate import UnivariateSpline
+import argparse
+from argparser import add_args
 
 def get_mean_and_sigma(x, y=None):
     """calculate mean and std for 1D and 2D distributions"""
@@ -67,77 +69,91 @@ def flatten_dataframe(df):
     return np.array(flat_list)
 
 
-def graphs_single(df, columns_field, idx, iframe, do_1D=False, do_2D=False):
-    """Plots layer-related densities or distances to nearest highest density (as defined by the CLUE algorith)
-    Works for one beam energy at a time"""
-    if do_1D == True or do_2D == True:
-        data_per_layer = []
+def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
+    """Plots layer-related quantities; `df` refers to one single beam energy"""
+    if do_2D == False and energy_index == None:
+        raise ValueError('graphs_single: When doing 1D plots, please specify the energy you want to plot.')
 
-        #determine adequate binning
-        datamax, datamin = -np.inf, np.inf
-        for ilayer in range(1,nlayers+1):
-            layer_col = get_layer_col(df, starts_with=columns_field, ilayer=ilayer)
-            arr = df.loc[:, layer_col]
-            if arr.size == 0:
-                raise ValueError('The dataframe {} in layer {} is empty!'.format(i, ilayer))
-            arr = flatten_dataframe(arr)
-            if columns_field == 'Distances':
-                layer_col_seeds = get_layer_col(df, starts_with='isSeed', ilayer=ilayer)
-                arr_seeds = df.loc[:, layer_col_seeds]
-                arr_seeds = flatten_dataframe(arr_seeds)
-                arr[ arr_seeds == True ] = 0.5 #select CLUE seeds
-                del arr_seeds
-            data_per_layer.append( arr )
-            del arr
+    #determine adequate binning
+    data_per_layer = []
+    datamax, datamin = -np.inf, np.inf
+    for ilayer in range(1,nlayers+1):
+        layer_col = get_layer_col(df, starts_with=columns_field, ilayer=ilayer)
+        arr = df.loc[:, layer_col]
+        if arr.size == 0:
+            raise ValueError('The dataframe {} in layer {} is empty!'.format(i, ilayer))
+        arr = flatten_dataframe(arr)
+        if columns_field == 'Distances':
+            layer_col_seeds = get_layer_col(df, starts_with='isSeed', ilayer=ilayer)
+            arr_seeds = df.loc[:, layer_col_seeds]
+            arr_seeds = flatten_dataframe(arr_seeds)
+            arr[ arr_seeds == True ] = 0.5 #select CLUE seeds
+            del arr_seeds
+        data_per_layer.append( arr )
+        del arr
 
-            m1, m2 = data_per_layer[-1].min(), data_per_layer[-1].max()
-            if m1 < datamin:
-                datamin = m1
-            if m2 > datamax:
-                datamax = m2
+        m1, m2 = data_per_layer[-1].min(), data_per_layer[-1].max()
+        if m1 < datamin:
+            datamin = m1
+        if m2 > datamax:
+            datamax = m2
+
+    if columns_field == 'Nhits' or columns_field == 'Energy':
+        nbins = 60
+    else:
         nbins = 20 if datamax>20 else int(datamax-1)
-        bins = np.linspace(datamin, datamax*0.5, nbins+1) #bins = np.logspace(np.log10(m1), np.log10(m2), nbins+1)
-        height_hits = calculate_rect_side_for_plot_bins(bins, scale='linear')
+    bins = np.linspace(datamin, datamax, nbins+1) #bins = np.logspace(np.log10(m1), np.log10(m2), nbins+1)
+    height = calculate_rect_side_for_plot_bins(bins, scale='linear')
 
-        #plot data as 2d graphs
-        all_counts_hits, all_layers_hits, all_centers_hits = ([] for _ in range(3))
-        means, sigmas_l, sigmas_r = ([] for _ in range(3))
-        for ilayer in range(1,nlayers+1):
-            counts, edges = np.histogram(data_per_layer[ilayer-1], bins=bins)
-            centers = (edges[:-1]+edges[1:])/2
-            assert(len(counts) == len(centers))
-            same_layer_array = ilayer*np.ones(len(centers))
-            all_counts_hits.extend(counts.tolist())
-            all_layers_hits.extend(same_layer_array.tolist())
-            all_centers_hits.extend(centers.tolist())
-            print(counts)
-            print(centers)
-            #use histogram and not original data to calculate mean and std/sqrt(n)
-            #original data cannot be used for the case of weighted histograms
-            mean, _ = get_mean_and_sigma(centers, counts)
-            sigma_left, sigma_right = get_sigma_band(centers, counts)
-            means.append(mean)
-            sigmas_l.append(sigma_left)
-            sigmas_r.append(sigma_right)
+    #plot data as 2d graphs
+    all_counts, all_layers, all_centers = ([] for _ in range(3))
+    means, sigmas_l, sigmas_r = ([] for _ in range(3))
+    for ilayer in range(1,nlayers+1):
+        counts, edges = np.histogram(data_per_layer[ilayer-1], bins=bins)
+        centers = (edges[:-1]+edges[1:])/2
+        assert(len(counts) == len(centers))
+        same_layer_array = ilayer*np.ones(len(centers))
+        all_counts.extend(counts.tolist())
+        all_layers.extend(same_layer_array.tolist())
+        all_centers.extend(centers.tolist())
 
-        print('creating the plot...')
+        if columns_field == 'Nhits' or columns_field == 'Energy': #do not include events with fraction set to a negative value (no hits)
+            counts, edges = np.histogram(data_per_layer[ilayer-1][ data_per_layer[ilayer-1]>=0 ] , bins=bins)
 
-    xlabel = 'Density [MeV]' if columns_field == 'Densities' else 'Distance to nearest higher density [cm]'
+        #use histogram and not original data to calculate mean and std/sqrt(n)
+        #original data cannot be used for the case of weighted histograms
+        mean, _ = get_mean_and_sigma(centers, counts)
+        sigma_left, sigma_right = get_sigma_band(centers, counts)
+        means.append(mean)
+        sigmas_l.append(sigma_left)
+        sigmas_r.append(sigma_right)
+
+    print('creating the plot...')
+
+    if columns_field == 'Densities':
+        xlabel = 'Density [MeV]'
+    elif columns_field == 'Distances':
+        xlabel = 'Distance to nearest higher density [cm]'
+    elif columns_field == 'Nhits':
+        xlabel = 'Fraction of clusterized hits'
+    elif columns_field == 'Energy':
+        xlabel = 'Fraction of clusterized energy'
+
     if do_2D:
-        print('plotting 2D...')
+        print('plotting 2D (=as a function of the layer)...')
         fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height,
-                      't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[idx]),
+                      't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[i]),
                       'x.axis_label': 'Layer', 'y.axis_label': xlabel}
-        bokehplot.graph(data=[np.array(all_layers_hits), np.array(all_centers_hits), np.array(all_counts_hits)],
-                        width=np.ones((len(all_layers_hits))), height=height_hits,
-                        idx=idx, iframe=iframe, style='rect%Cividis', fig_kwargs=fig_kwargs, alpha=0.6)
+        bokehplot.graph(data=[np.array(all_layers), np.array(all_centers), np.array(all_counts)],
+                        width=np.ones((len(all_layers))), height=height,
+                        idx=energy_index, iframe=iframe, style='rect%Cividis', fig_kwargs=fig_kwargs, alpha=0.6)
         bokehplot.graph(data=[np.arange(1,29), np.array(means)],
-                        idx=idx, iframe=iframe, color='red', style='circle', size=2, legend_label='mean')
+                        idx=energy_index, iframe=iframe, color='red', style='circle', size=2, legend_label='mean')
 
-    if do_1D:
-        print('plotting 1D...')
+    else:
+        print('plotting 1D (=counts in the Y axis) ...')
         fig_kwargs_1D = {'plot_width': plot_width, 'plot_height': plot_height,
-                         't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[idx]),
+                         't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[energy_index]),
                          'x.axis_label': xlabel, 'y.axis_label': 'Counts'}
         hist, indexes, leg_labels = ([] for _ in range(3))
         for ilayer in range(nlayers):
@@ -146,10 +162,13 @@ def graphs_single(df, columns_field, idx, iframe, do_1D=False, do_2D=False):
                                           range=(data_per_layer[ilayer].min(),2000)) )
             else:
                 hist.append( np.histogram(data_per_layer[ilayer], bins=100, density=True) )
-            indexes.append( ilayer )
-            leg_labels.append( 'Layer ' + str(ilayer+1) )
+                indexes.append( ilayer )
+                leg_labels.append( 'Layer ' + str(ilayer+1) )
+                
         bokehplot.histogram(data=hist, idx=indexes, legend_label=leg_labels,
                             iframe=iframe+1, style='\%1.5%red', fig_kwargs=fig_kwargs_1D)
+
+        #plotting additional vertical lines
         if columns_field == 'Densities':
             bokehplot.line(x=[[sigmaNoiseTimesKappa,sigmaNoiseTimesKappa] for _ in range(nlayers)], 
                            y=[[0,hist[i][0].max()] for i in range(nlayers)], 
@@ -159,24 +178,28 @@ def graphs_single(df, columns_field, idx, iframe, do_1D=False, do_2D=False):
                            y=[[0,hist[i][0].max()] for i in range(nlayers)], 
                            idx=indexes, iframe=iframe+1, color='orange', legend_label='1.3cm')
 
+    del all_counts
+    del all_layers
+    del all_centers
+    del means
+    del sigmas_l
+    del sigmas_r
 
-    if do_1D == True or do_2D == True:
-        del all_counts_hits
-        del all_layers_hits
-        del all_centers_hits
-        del means
-        del sigmas_l
-        del sigmas_r
-
-def graphs_double(df, columns_fields, idx, iframe):
+def graphs_double(df, columns_fields, iframe, energy_index=2): #default to energy_index=2 (=50GeV)
     """Plots density vs distance (variables defined according to CLUE)"""
     if columns_fields != ('Densities', 'Distances','isSeed'):
-        raise ValueError('Wrong column_fields!')
+        raise ValueError('Wrong columns_fields!')
     len_col_fields = len(columns_fields)
-    data_per_layer = ([], [])
 
-    datamax, datamin = [-np.inf,-np.inf], [np.inf,np.inf]
+    nbins_max_x = 35
+    nbins_max_y = 8
+    nbins = (nbins_max_x, nbins_max_y)
+    fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height,
+                  't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[energy_index]),
+                  'x.axis_label': 'Density [MeV]', 'y.axis_label': 'Distance to nearest higher density [cm]'}
+
     for ilayer in range(1,nlayers+1):
+        datamax, datamin = [-np.inf,-np.inf], [np.inf,np.inf]
         layer_col = tuple( get_layer_col(df, starts_with=columns_fields[x], ilayer=ilayer) for x in range(len_col_fields) )
         arr = [ df.loc[:, layer_col[x]] for x in range(len_col_fields) ]
         for x in range(len(columns_fields)):
@@ -186,24 +209,13 @@ def graphs_double(df, columns_fields, idx, iframe):
 
         arr_selection_seeds = (arr[2] == True) #seeds
         arr[1][arr_selection_seeds] = 0.5
-        print(len(arr[1][arr_selection_seeds]), len(arr[1]), float(len(arr[1][arr_selection_seeds]))/len(arr[1]))
-        print(arr[1])
+        #print("Seeds: ", len(arr[1][arr_selection_seeds]), len(arr[1]), float(len(arr[1][arr_selection_seeds]))/len(arr[1]))
         arr_selection_outliers = (arr[1] > 1.e38) & (arr[2] == False) #outliers
-        print(len(arr[1]), len(arr[1][arr[1] > 1.e38]), len(arr[1][arr[2] == False]), len(arr[1][arr[2] == False])+len(arr[1][arr[2] == True]))
-        print('-')
-        print(arr_selection_outliers)
-        print(arr[1][arr_selection_outliers])
-        print('-')
-        print(arr[1][(arr[1] > 1.e38)])
         #assert( arr[1][arr_selection_outliers] == arr[1][(arr[1] > 1.e38)] )
         #arr[1][arr_selection_outliers] = 0.
 
-        data_per_layer[0].append( arr[0] )
-        data_per_layer[1].append( arr[1] )
-        del arr
-
-        m1 = (data_per_layer[0][-1].min(), data_per_layer[1][-1].min()) 
-        m2 = (data_per_layer[0][-1].max(), data_per_layer[1][-1].max()) 
+        m1 = (arr[0].min(), arr[1].min()) 
+        m2 = (arr[0].max(), arr[1].max()) 
         if m1[0] < datamin[0]:
             datamin[0] = m1[0]
         if m2[0] > datamax[0]:
@@ -212,26 +224,18 @@ def graphs_double(df, columns_fields, idx, iframe):
             datamin[1] = m1[1]
         if m2[1] > datamax[1]:
             datamax[1] = m2[1]
-    nbins_min_x = 35
-    nbins_min_y = 8
-    nbins = ( nbins_min_x if datamax[0]>nbins_min_x else int(datamax[0]-1),
-              nbins_min_y if datamax[1]>nbins_min_y else int(datamax[1]-1) )
-    xmaxlimit = 4000
-    bins = ( np.linspace(datamin[0], xmaxlimit, nbins[0]+1),
-             np.linspace(datamin[1], datamax[1], nbins[1]+1) )
 
-    #plot data as 2d graphs
-    fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height,
-                  't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[idx]),
-                  'x.axis_label': 'Density [MeV]', 'y.axis_label': 'Distance to nearest higher density [cm]'}
+        bins = ( np.linspace(datamin[0], datamax[0], nbins[0]+1),
+                 np.linspace(datamin[1], datamax[1], nbins[1]+1) )
 
-    for ilayer in range(nlayers):
-        counts, xedges, yedges = np.histogram2d(x=data_per_layer[0][ilayer], y=data_per_layer[1][ilayer], bins=bins,
-                                                weights=(data_per_layer[0][ilayer]**6)*1e-20, density=False)
+        counts, xedges, yedges = np.histogram2d(x=arr[0], y=arr[1], bins=bins, weights=(arr[0]**6)*1e-20, density=False)
         bokehplot.histogram(data=(counts, xedges, yedges),
-                            idx=ilayer, iframe=iframe, style='quad%fire', fig_kwargs=fig_kwargs,
+                            idx=ilayer-1, iframe=iframe, style='quad%fire', fig_kwargs=fig_kwargs,
                             continuum_value=0, continuum_color='white')
-        #bokehplot.box(x=[sigmaNoiseTimesKappa,xmaxlimit], y=[1.3, datamax[1]], idx=ilayer, color='red', line_width=3)
+        layer_label = 'Layer '+str(ilayer)
+        font_size = {'text_font_size': '10pt', 'x_units': 'screen'}
+        bokehplot.label(layer_label, idx=ilayer-1, iframe=iframe, x=0.95*plot_width, y=0.95*plot_height, **font_size)
+        #bokehplot.box(x=[sigmaNoiseTimesKappa,xmaxlimit], y=[1.3, datamax[1]], idx=ilayer-1, color='red', line_width=3)
 
 class CacheManager:
     def __init__(self, name):
@@ -251,44 +255,77 @@ class CacheManager:
         except IOError:
             pass
         except EOFError:
-            print('Perhaps the cache was not properly saved in a previous session?')
-            raise
+            print('WARNING: The cache was reset.')
+            self.cache = {} 
         return self.cache
 
 def main():
-    for i in range(len(beam_energies)):
-        print('Processing {}GeV ntuples...'.format(beam_energies[i]))
 
-        #load ROOT TTree
-        if i==2:
-            file = up.open( data_path[i] )
-            tree = file['tree0']
+    chosen_energy = 50 #density vs densities plots will only refer to this energy (one plot per layer)
+    assert(chosen_energy in beam_energies)
+    
+    for iEn,thisEn in enumerate(beam_energies):
+        
+        #load ROOT TTree for a specific energy
+        file = up.open( data_paths[iEn] )
+        tree = file['tree0']
 
-            #load cache
-            cacheobj = CacheManager( cache_file_names[i] )
-            up_cache = cacheobj.load()
-            df = tree.arrays(['Distances*', 'Densities*', 'isSeed*'], outputtype=pd.DataFrame, cache=up_cache)
-            cacheobj.dump()
+        #load cache for a specific energy
+        cacheobj = CacheManager( cache_file_names[iEn] )
+        up_cache = cacheobj.load()
 
-            ###############################################
-            ######Densities per layer######################
-            ###############################################
-            do1D = False if i!=2 else True
-            do2D = False
-            #graphs_single(df, columns_field='Densities', idx=i, iframe=0, do_1D=do1D, do_2D=do2D)
-            graphs_single(df, columns_field='Distances', idx=i, iframe=2, do_1D=do1D, do_2D=do2D)
-            #if i==2:
-            #    graphs_double(df, columns_fields=('Densities','Distances','isSeed'), idx=i, iframe=4)
+        if FLAGS.densities_distances or FLAGS.all:
+            if thisEn == chosen_energy:
+                print('loading density and distance data for {}GeV...'.format(beam_energies[iEn]))
+                df = tree.arrays(['Distances*', 'Densities*', 'isSeed*'], outputtype=pd.DataFrame, cache=up_cache)
+                index = beam_energies.index(chosen_energy)
+                graphs_double(df, columns_fields=('Densities','Distances','isSeed'), iframe=output_html_files_map['densities_distances'][1], energy_index=index )
 
+        if FLAGS.densities or FLAGS.densities_2D or FLAGS.all:
+            if thisEn == chosen_energy:
+                if not FLAGS.densities_distances and not FLAGS.all: #avoid loading the same data again
+                    print('loading density data for {}GeV...'.format(beam_energies[iEn]))
+                    df = tree.arrays(['Densities*', 'isSeed*'], outputtype=pd.DataFrame, cache=up_cache)
+                index = beam_energies.index(chosen_energy)
+                if FLAGS.densities or FLAGS.all:
+                    graphs_single(df, columns_field='Densities', energy_index=index, iframe=output_html_files_map['densities'][1], do_2D=False)
+                if FLAGS.densities_2D or FLAGS.all:
+                    graphs_single(df, columns_field='Densities', iframe=output_html_files_map['densities_2D'][1], do_2D=True)
+                        
+        if FLAGS.distances or FLAGS.distances_2D or FLAGS.all:
+            if thisEn == chosen_energy:
+                if not FLAGS.densities_distances and not FLAGS.all: #avoid loading the same data again
+                    print('loading distance data for {}GeV...'.format(beam_energies[iEn]))
+                    df = tree.arrays(['Distances*', 'isSeed*'], outputtype=pd.DataFrame, cache=up_cache)
+                index = beam_energies.index(chosen_energy)
+                if FLAGS.distances or FLAGS.all:
+                    graphs_single(df, columns_field='Distances', energy_index=index, iframe=output_html_files_map['distances'][1], do_2D=False)
+                if FLAGS.distances_2D or FLAGS.all:
+                    graphs_single(df, columns_field='Distances', iframe=output_html_files_map['distances_2D'][1], do_2D=True)
+
+        if FLAGS.densities or FLAGS.distances or FLAGS.densities_2D or FLAGS.distances_2D or FLAGS.densities_distances or FLAGS.all:
+            if thisEn == chosen_energy:
+                del df
+
+        if FLAGS.hits_fraction:
+            print('loading hits fraction data for {}GeV...'.format(beam_energies[iEn]))
+            df = tree.arrays(['Nhits*'], outputtype=pd.DataFrame, cache=up_cache)
+            graphs_single(df, columns_field='Nhits', iframe=output_html_files_map['hits_fraction'][1], do_2D=True)
+
+        if FLAGS.energy_fraction:
+            print('loading energy fraction data {}GeV...'.format(beam_energies[iEn]))
+            df = tree.arrays(['Energy*'], outputtype=pd.DataFrame, cache=up_cache)
+            graphs_single(df, columns_field='Energy', iframe=output_html_files_map['energy_fraction'][1], do_2D=True)
+
+        cacheobj.dump() #dump cache for specific energy
+    
     print('saving frames...')
     bokehplot.save_frames(plot_width=plot_width, plot_height=plot_height, show=False)
     for iframe in range(nframes):
         layer_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep')
         create_dir( layer_dep_folder )
-        if iframe!=0 or iframe!=2: #do not save 2D figures, since they are not being used
-            if iframe==3:
-                bokehplot.save_figs(iframe=iframe, path=layer_dep_folder, mode='png')
-                bokehplot.save_figs(iframe=iframe, path='../../DN/figs/', mode='png')
+        bokehplot.save_figs(iframe=iframe, path=layer_dep_folder, mode='png')
+        #bokehplot.save_figs(iframe=iframe, path='../../DN/figs/', mode='png')
 
 if __name__ == '__main__':
     #define analysis constants
@@ -305,31 +342,49 @@ if __name__ == '__main__':
     cms_user = subprocess.check_output("echo $USER", shell=True, encoding='utf-8').split('\n')[0]
     analysis_directory = 'TestBeamReconstruction/'
     data_directory = 'job_output/layer_dependent/'
-    data_path = []
-    for en in beam_energies:
-        data_path.append( os.path.join(eos_base, cms_user[0], cms_user, analysis_directory, data_directory, 
-                                       'hadd_layerdep_beamen'+str(en)+'.root') )
+    data_path_start = os.path.join(eos_base, cms_user[0], cms_user, analysis_directory, data_directory)
+    data_paths = [os.path.join(data_path_start, 'hadd_layerdep_beamen' + str(x) + '.root') for x in beam_energies]
+    beamen_str = 'BeamEnergy'
 
     #define cache names and paths
-    cache_name = 'uproot_cache_densities'
-    cache_file_names = []
-    for en in beam_energies:
-        cache_file_names.append( os.path.join(eos_base, cms_user[0], cms_user, analysis_directory, 
-                                              cache_name + '_beamen' + str(en) + '.pickle') )
+    cache_file_name_start = os.path.join(eos_base, cms_user[0], cms_user, analysis_directory)
+    cache_file_names = [os.path.join(cache_file_name_start, 'uproot_cache_beamen' + str(x) + '.root') for x in beam_energies]
 
     print("Input data read from:")
-    for i in range(len(beam_energies)):
-        print(data_path[i])
+    for x in data_paths:
+        print(x)
 
     #create output files with plots
     create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory) )
     output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory)
-    output_html_files = ( os.path.join(output_html_dir, 'densities_2D.html'),
-                          os.path.join(output_html_dir, 'densities_1D.html'),
-                          os.path.join(output_html_dir, 'distances_2D.html'),
-                          os.path.join(output_html_dir, 'distances_1D.html'),
-                          os.path.join(output_html_dir, 'dens_vs_dist.html') )
-    nframes = len(output_html_files)
-    bokehplot = bkp.BokehPlot(filenames=output_html_files, nfigs=(size,nlayers,size,nlayers,nlayers), nframes=nframes)
     plot_width, plot_height = 600, 400
+    
+    parser = argparse.ArgumentParser()
+    FLAGS, _ = add_args(parser, 'layers')
+
+    #the keys are the attributes of FLAGS (except 'all')
+    #the values are: 1) the name of all potential bokehplot frames, 2) number of bokehplot figures in each frame
+    output_html_potential_files_map = { 'densities':           ( os.path.join(output_html_dir, 'densities_1D.html'),       nlayers ),
+                                        'distances':           ( os.path.join(output_html_dir, 'distances_1D.html'),       nlayers ),
+                                        'densities_distances': ( os.path.join(output_html_dir, 'dens_vs_dist.html'),       nlayers ),
+                                        'densities_2D':        ( os.path.join(output_html_dir, 'densities_2D.html'),       size    ),
+                                        'distances_2D':        ( os.path.join(output_html_dir, 'distances_2D.html'),       size    ),
+                                        'hits_fraction':       ( os.path.join(output_html_dir, 'hits_fraction_2D.html'),   size    ),
+                                        'energy_fraction':     ( os.path.join(output_html_dir, 'energy_fraction_2D.html'), size    )  }
+
+    #select only the frames requested by the user
+    counter = 0
+    if FLAGS.all:
+        output_html_files_map = output_html_potential_files_map
+    else:
+        output_html_files_map = dict()
+        for k,tup in output_html_potential_files_map.items():
+            if getattr(FLAGS,k) == 1:
+                output_html_files_map.update({k: (tup[0],counter,tup[1])})
+                counter += 1
+
+    output_html_files_list = [tup[0] for k,tup in output_html_files_map.items()]
+    nfigs = [tup[2] for k,tup in output_html_files_map.items()]
+    nframes = len(output_html_files_list)
+    bokehplot = bkp.BokehPlot(filenames=output_html_files_list, nfigs=nfigs, nframes=nframes)
     main()

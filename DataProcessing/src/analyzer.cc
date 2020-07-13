@@ -53,7 +53,7 @@ void Analyzer::runCLUE() {
   CLUEAnalysis clueAna;
   for(unsigned int i=0; i<nfiles_; ++i) 
     {
-      std::cout << "Progress: " << i/static_cast<float>(nfiles_)*100 << "%" << std::endl;
+      std::cout << "Processing file number " << i+1 << std::endl;
       //clear data vectors reading a new file
       x_.clear();
       y_.clear();
@@ -66,11 +66,14 @@ void Analyzer::runCLUE() {
       beam_energy = out_pair.second;
       beam_energies_[i] = beam_energy;
 
-      for(unsigned int iEvent=0; iEvent<nevents-nevents+3; ++iEvent)
+      for(unsigned int iEvent=0; iEvent<nevents; ++iEvent)
 	{	  
 	  std::cout << "Inside this tree there are " << nevents << " events: ";
 	  std::cout << iEvent/static_cast<float>(nevents)*100 << "% \r";
-	 
+
+	  if( x_[iEvent].size() == 0) //empty event
+	    continue;
+	  
 	  //calculate quantities including outliers
 	  std::array<unsigned int, detectorConstants::nlayers_emshowers> tot_hits_per_layer = {{0}};
 	  std::array<float, detectorConstants::nlayers_emshowers> tot_en_per_layer = {{0.f}};
@@ -87,12 +90,15 @@ void Analyzer::runCLUE() {
 
 	  //run the algorithm per event
 	  clueAlgo.setPoints(x_[iEvent].size(), &x_[iEvent][0], &y_[iEvent][0], &layer_[iEvent][0], &weight_[iEvent][0]);
-	  clueAlgo.makeClusters();	  
+	  clueAlgo.makeClusters();
+
 	  //calculate the total energy that was clusterized (excluding outliers)
+	  std::cout << "before " << iEvent << std::endl;
 	  clueAna.calculatePositionsAndEnergy( clueAlgo.getHitsClusterX(), clueAlgo.getHitsClusterY(), clueAlgo.getHitsWeight(), clueAlgo.getHitsClusterId(), clueAlgo.getHitsLayerId() );
+	  std::cout << "after " << iEvent << std::endl;
 	  tot_en = clueAna.getTotalEnergyOutput("", false); //non-verbose
 	  this->en_total_[i].push_back( std::make_tuple( tot_en, beam_energy) ); 
-		  
+
 	  //calculate per layer fraction of clusterized number of hits and energy
 	  clueAna.calculateLayerDepVars( clueAlgo.getHitsWeight(), clueAlgo.getHitsClusterId(), clueAlgo.getHitsLayerId(),
 					 clueAlgo.getHitsRho(), clueAlgo.getHitsDistanceToHighest(), clueAlgo.getHitsSeeds());
@@ -106,10 +112,10 @@ void Analyzer::runCLUE() {
 		eventarray_tmp[j] = std::make_tuple(static_cast<float>(std::get<0>(layerdep_vars[j]))/tot_hits_per_layer[j], std::get<1>(layerdep_vars[j])/tot_en_per_layer[j], std::get<2>(layerdep_vars[j]), std::get<3>(layerdep_vars[j]), std::get<4>(layerdep_vars[j]) );
 	      else
 		{
-		  std::vector<float> tmpv1(0,0.f);
-		  std::vector<float> tmpv2(0,0.f);
+		  std::vector<float> tmpv1(0,-.1f);
+		  std::vector<float> tmpv2(0,-.1f);
 		  std::vector<bool> tmpv3(0,false);
-		  eventarray_tmp[j] = std::make_tuple(0., 0., std::move(tmpv1), std::move(tmpv2), std::move(tmpv3));
+		  eventarray_tmp[j] = std::make_tuple(-.1f, -.1f, std::move(tmpv1), std::move(tmpv2), std::move(tmpv3));
 		}
 	    }
 	  this->fracs_.at(i).push_back( eventarray_tmp );
@@ -149,14 +155,7 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
     weight_split[slot].push_back(weight_);
     rechits_id_split[slot].push_back(rechits_id_);
     if(beam_energy == 0)
-      {
-	beam_energy = beamen; //only changes the first time to avoid extra operations
-	std::cout << x_.size() << std::endl;
-	std::cout << y_.size() << std::endl;
-	std::cout << layer_.size() << std::endl;
-	std::cout << weight_.size() << std::endl;
-	std::cout << rechits_id_.size() << std::endl;
-      }
+      beam_energy = beamen; //only changes the first time to avoid extra operations
   };
 
   //loop over the TTree pointed by the RDataFrame
@@ -192,8 +191,11 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
     layer.push_back(layer_split[iThread_new][iEvent - padding]);
     weight.push_back(weight_split[iThread_new][iEvent - padding]);
     rechits_id.push_back(rechits_id_split[iThread_new][iEvent - padding]);
-      
   }
+  assert( x.size() == y.size() );
+  assert( x.size() == layer.size() );
+  assert( x.size() == weight.size() );
+  assert( x.size() == rechits_id.size() );
   return std::make_pair(nevents, beam_energy);
 }
 
@@ -300,7 +302,7 @@ void Analyzer::save_to_file_layer_dependent(const std::string& filename) {
       TTree tmptree( name.c_str(), name.c_str());
 
       //define branches
-      //tmptree.Branch("BeamEnergy", &beam_energies_.at(i));
+      tmptree.Branch("BeamEnergy", &beam_energies_.at(i));
       std::array< float, detectorConstants::nlayers_emshowers> fracs_hits;
       std::array< float, detectorConstants::nlayers_emshowers> fracs_en;
       std::array< std::vector<float>, detectorConstants::nlayers_emshowers> rhos;
