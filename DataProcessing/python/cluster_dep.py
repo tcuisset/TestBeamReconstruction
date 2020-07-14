@@ -260,7 +260,7 @@ def main():
     frame_shift = int(nframes/2)
     
     ######Cluster dependent number of hits#########
-    if FLAGS.hits or FLAGS.all:
+    if FLAGS.hits:
         print('loading hits data...')
         df_hits = tree.arrays([beamen_str, 'Nhits*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
         print('done!')
@@ -278,7 +278,7 @@ def main():
         print('done!')
 
     ######Cluster dependent energy#################
-    if FLAGS.energies or FLAGS.all:
+    if FLAGS.energies:
         print('loading energy data...')
         df_energy = tree.arrays([beamen_str, 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
         print('done!')
@@ -296,7 +296,7 @@ def main():
         print('done!')
         
     ######Number of clusters######################
-    if FLAGS.numbers or FLAGS.all:
+    if FLAGS.numbers:
         print('loading number data...')
         df_number = tree.arrays([beamen_str, 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True) #'Energy*' is used by len() function to get the number of clusters
         print('done!')
@@ -314,7 +314,7 @@ def main():
         print('done!')
 
     ######Custer X positions######################
-    if FLAGS.posx or FLAGS.all:
+    if FLAGS.posx:
         print('loading x positions data...')
         df_posx = tree.arrays([beamen_str, 'X*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
         print('done!')
@@ -332,7 +332,7 @@ def main():
         print('done!')
 
     ######Custer Y positions######################
-    if FLAGS.posy or FLAGS.all:
+    if FLAGS.posy:
         print('loading y positions data...')
         df_posy = tree.arrays([beamen_str, 'Y*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
         print('done!')
@@ -357,6 +357,10 @@ if __name__ == '__main__':
     data_path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, "job_output/cluster_dependent/hadd_clusterdep.root")
     beamen_str = 'BeamEnergy'
 
+    #define parser for user input arguments
+    parser = argparse.ArgumentParser()
+    FLAGS, _ = add_args(parser, 'clusters')
+
     #define cache names and paths
     cache_name_hits = 'uproot_cache_hits.pickle'
     cache_file_name_hits = os.path.join(eos_base, cms_user[0], cms_user, data_directory, cache_name_hits)
@@ -378,22 +382,20 @@ if __name__ == '__main__':
     #create output files with plots
     create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory) )
     output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory)
-    output_html_files = ( os.path.join(output_html_dir, 'plot_clusters_hits.html'),
-                          os.path.join(output_html_dir, 'plot_clusters_energy_nocut.html'),
-                          os.path.join(output_html_dir, 'plot_clusters_number_nocut.html'),
-                          os.path.join(output_html_dir, 'plot_clusters_posx_nocut.html'),
-                          os.path.join(output_html_dir, 'plot_clusters_posy_nocut.html'),
-                          os.path.join(output_html_dir, 'profile_clusters_hits.html'),
-                          os.path.join(output_html_dir, 'profile_clusters_energy_nocut.html'),
-                          os.path.join(output_html_dir, 'profile_clusters_number_nocut.html'),
-                          os.path.join(output_html_dir, 'profile_clusters_posx_nocut.html'),
-                          os.path.join(output_html_dir, 'profile_clusters_posy_nocut.html') )
+    output_html_files = ( os.path.join(output_html_dir, FLAGS.datatype + 'plot_clusters_hits.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + 'plot_clusters_energy_nocut.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + 'plot_clusters_number_nocut.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + 'plot_clusters_posx_nocut.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + 'plot_clusters_posy_nocut.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + 'profile_clusters_hits.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + 'profile_clusters_energy_nocut.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + 'profile_clusters_number_nocut.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + 'profile_clusters_posx_nocut.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + 'profile_clusters_posy_nocut.html') )
     nframes = len(output_html_files)
     bokehplot = bkp.BokehPlot(filenames=output_html_files, nfigs=nframes*(size,), nframes=nframes)
     plot_width, plot_height = 600, 400
     cluster_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep')
     create_dir( cluster_dep_folder )
 
-    parser = argparse.ArgumentParser()
-    FLAGS, _ = add_args(parser, 'clusters')
     main()

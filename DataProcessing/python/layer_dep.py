@@ -65,8 +65,9 @@ def get_layer_col(df, starts_with, ilayer):
 
 def flatten_dataframe(df):
     flat_df = df.to_numpy().flatten()
-    flat_list = [item for items in flat_df for item in items]
-    return np.array(flat_list)
+    if isinstance(flat_df[0], (list,np.ndarray)):
+        flat_df = [item for items in flat_df for item in items]
+    return np.array(flat_df)
 
 
 def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
@@ -128,8 +129,6 @@ def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
         sigmas_l.append(sigma_left)
         sigmas_r.append(sigma_right)
 
-    print('creating the plot...')
-
     if columns_field == 'Densities':
         xlabel = 'Density [MeV]'
     elif columns_field == 'Distances':
@@ -140,9 +139,9 @@ def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
         xlabel = 'Fraction of clusterized energy'
 
     if do_2D:
-        print('plotting 2D (=as a function of the layer)...')
+        print('plotting 2D (i.e., as a function of the layers)...')
         fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height,
-                      't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[i]),
+                      't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[energy_index]),
                       'x.axis_label': 'Layer', 'y.axis_label': xlabel}
         bokehplot.graph(data=[np.array(all_layers), np.array(all_centers), np.array(all_counts)],
                         width=np.ones((len(all_layers))), height=height,
@@ -151,7 +150,7 @@ def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
                         idx=energy_index, iframe=iframe, color='red', style='circle', size=2, legend_label='mean')
 
     else:
-        print('plotting 1D (=counts in the Y axis) ...')
+        print('plotting 1D (i.e., counts in the Y axis) ...')
         fig_kwargs_1D = {'plot_width': plot_width, 'plot_height': plot_height,
                          't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[energy_index]),
                          'x.axis_label': xlabel, 'y.axis_label': 'Counts'}
@@ -162,21 +161,21 @@ def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
                                           range=(data_per_layer[ilayer].min(),2000)) )
             else:
                 hist.append( np.histogram(data_per_layer[ilayer], bins=100, density=True) )
-                indexes.append( ilayer )
-                leg_labels.append( 'Layer ' + str(ilayer+1) )
+            indexes.append( ilayer )
+            leg_labels.append( 'Layer ' + str(ilayer+1) )
                 
         bokehplot.histogram(data=hist, idx=indexes, legend_label=leg_labels,
-                            iframe=iframe+1, style='\%1.5%red', fig_kwargs=fig_kwargs_1D)
+                            iframe=iframe, style='\%1.5%red', fig_kwargs=fig_kwargs_1D)
 
         #plotting additional vertical lines
         if columns_field == 'Densities':
             bokehplot.line(x=[[sigmaNoiseTimesKappa,sigmaNoiseTimesKappa] for _ in range(nlayers)], 
                            y=[[0,hist[i][0].max()] for i in range(nlayers)], 
-                           idx=indexes, iframe=iframe+1, color='orange', legend_label='approximate kappa cut')
+                           idx=indexes, iframe=iframe, color='orange', legend_label='approximate kappa cut')
         elif columns_field == 'Distances':
             bokehplot.line(x=[[1.3,1.3] for _ in range(nlayers)], 
                            y=[[0,hist[i][0].max()] for i in range(nlayers)], 
-                           idx=indexes, iframe=iframe+1, color='orange', legend_label='1.3cm')
+                           idx=indexes, iframe=iframe, color='orange', legend_label='1.3cm')
 
     del all_counts
     del all_layers
@@ -206,7 +205,6 @@ def graphs_double(df, columns_fields, iframe, energy_index=2): #default to energ
             if arr[x].size == 0:
                 raise ValueError('The dataframe in layer {} of variable {} is empty!'.format(ilayer, x))
         arr = [flatten_dataframe(arr[x]) for x in range(len_col_fields) ]
-
         arr_selection_seeds = (arr[2] == True) #seeds
         arr[1][arr_selection_seeds] = 0.5
         #print("Seeds: ", len(arr[1][arr_selection_seeds]), len(arr[1]), float(len(arr[1][arr_selection_seeds]))/len(arr[1]))
@@ -274,55 +272,55 @@ def main():
         cacheobj = CacheManager( cache_file_names[iEn] )
         up_cache = cacheobj.load()
 
-        if FLAGS.densities_distances or FLAGS.all:
+        if FLAGS.densities_distances:
             if thisEn == chosen_energy:
                 print('loading density and distance data for {}GeV...'.format(beam_energies[iEn]))
                 df = tree.arrays(['Distances*', 'Densities*', 'isSeed*'], outputtype=pd.DataFrame, cache=up_cache)
                 index = beam_energies.index(chosen_energy)
                 graphs_double(df, columns_fields=('Densities','Distances','isSeed'), iframe=output_html_files_map['densities_distances'][1], energy_index=index )
 
-        if FLAGS.densities or FLAGS.densities_2D or FLAGS.all:
+        if FLAGS.densities or FLAGS.densities_2D:
             if thisEn == chosen_energy:
-                if not FLAGS.densities_distances and not FLAGS.all: #avoid loading the same data again
+                if not FLAGS.densities_distances: #avoid loading the same data again
                     print('loading density data for {}GeV...'.format(beam_energies[iEn]))
                     df = tree.arrays(['Densities*', 'isSeed*'], outputtype=pd.DataFrame, cache=up_cache)
                 index = beam_energies.index(chosen_energy)
-                if FLAGS.densities or FLAGS.all:
+                if FLAGS.densities:
                     graphs_single(df, columns_field='Densities', energy_index=index, iframe=output_html_files_map['densities'][1], do_2D=False)
-                if FLAGS.densities_2D or FLAGS.all:
-                    graphs_single(df, columns_field='Densities', iframe=output_html_files_map['densities_2D'][1], do_2D=True)
+            if FLAGS.densities_2D:
+                graphs_single(df, columns_field='Densities', energy_index=index, iframe=output_html_files_map['densities_2D'][1], do_2D=True)
                         
-        if FLAGS.distances or FLAGS.distances_2D or FLAGS.all:
+        if FLAGS.distances or FLAGS.distances_2D:
             if thisEn == chosen_energy:
-                if not FLAGS.densities_distances and not FLAGS.all: #avoid loading the same data again
+                if not FLAGS.densities_distances: #avoid loading the same data again
                     print('loading distance data for {}GeV...'.format(beam_energies[iEn]))
                     df = tree.arrays(['Distances*', 'isSeed*'], outputtype=pd.DataFrame, cache=up_cache)
                 index = beam_energies.index(chosen_energy)
-                if FLAGS.distances or FLAGS.all:
+                if FLAGS.distances:
                     graphs_single(df, columns_field='Distances', energy_index=index, iframe=output_html_files_map['distances'][1], do_2D=False)
-                if FLAGS.distances_2D or FLAGS.all:
-                    graphs_single(df, columns_field='Distances', iframe=output_html_files_map['distances_2D'][1], do_2D=True)
+            if FLAGS.distances_2D:
+                graphs_single(df, columns_field='Distances', energy_index=index, iframe=output_html_files_map['distances_2D'][1], do_2D=True)
 
-        if FLAGS.densities or FLAGS.distances or FLAGS.densities_2D or FLAGS.distances_2D or FLAGS.densities_distances or FLAGS.all:
+        if FLAGS.densities or FLAGS.distances or FLAGS.densities_2D or FLAGS.distances_2D or FLAGS.densities_distances:
             if thisEn == chosen_energy:
                 del df
 
         if FLAGS.hits_fraction:
             print('loading hits fraction data for {}GeV...'.format(beam_energies[iEn]))
             df = tree.arrays(['Nhits*'], outputtype=pd.DataFrame, cache=up_cache)
-            graphs_single(df, columns_field='Nhits', iframe=output_html_files_map['hits_fraction'][1], do_2D=True)
+            graphs_single(df, columns_field='Nhits', iframe=output_html_files_map['hits_fraction'][1], energy_index=iEn, do_2D=True)
 
         if FLAGS.energy_fraction:
-            print('loading energy fraction data {}GeV...'.format(beam_energies[iEn]))
+            print('loading energy fraction data for {}GeV...'.format(beam_energies[iEn]))
             df = tree.arrays(['Energy*'], outputtype=pd.DataFrame, cache=up_cache)
-            graphs_single(df, columns_field='Energy', iframe=output_html_files_map['energy_fraction'][1], do_2D=True)
+            graphs_single(df, columns_field='Energy', iframe=output_html_files_map['energy_fraction'][1], energy_index=iEn, do_2D=True)
 
         cacheobj.dump() #dump cache for specific energy
     
     print('saving frames...')
+    layer_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep')
     bokehplot.save_frames(plot_width=plot_width, plot_height=plot_height, show=False)
     for iframe in range(nframes):
-        layer_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep')
         create_dir( layer_dep_folder )
         bokehplot.save_figs(iframe=iframe, path=layer_dep_folder, mode='png')
         #bokehplot.save_figs(iframe=iframe, path='../../DN/figs/', mode='png')
@@ -337,13 +335,17 @@ if __name__ == '__main__':
     size = len(true_beam_energies_GeV)
     assert(len(beam_energies)==size)
 
+    #define parser for user input arguments
+    parser = argparse.ArgumentParser()
+    FLAGS, _ = add_args(parser, 'layers')
+    
     #define local data paths and variables
     eos_base = '/eos/user/'
     cms_user = subprocess.check_output("echo $USER", shell=True, encoding='utf-8').split('\n')[0]
     analysis_directory = 'TestBeamReconstruction/'
     data_directory = 'job_output/layer_dependent/'
     data_path_start = os.path.join(eos_base, cms_user[0], cms_user, analysis_directory, data_directory)
-    data_paths = [os.path.join(data_path_start, 'hadd_layerdep_beamen' + str(x) + '.root') for x in beam_energies]
+    data_paths = [os.path.join(data_path_start, 'hadd_layerdep_' + FLAGS.datatype + '_beamen' + str(x) + '.root') for x in beam_energies]
     beamen_str = 'BeamEnergy'
 
     #define cache names and paths
@@ -359,29 +361,24 @@ if __name__ == '__main__':
     output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory)
     plot_width, plot_height = 600, 400
     
-    parser = argparse.ArgumentParser()
-    FLAGS, _ = add_args(parser, 'layers')
-
     #the keys are the attributes of FLAGS (except 'all')
-    #the values are: 1) the name of all potential bokehplot frames, 2) number of bokehplot figures in each frame
-    output_html_potential_files_map = { 'densities':           ( os.path.join(output_html_dir, 'densities_1D.html'),       nlayers ),
-                                        'distances':           ( os.path.join(output_html_dir, 'distances_1D.html'),       nlayers ),
-                                        'densities_distances': ( os.path.join(output_html_dir, 'dens_vs_dist.html'),       nlayers ),
-                                        'densities_2D':        ( os.path.join(output_html_dir, 'densities_2D.html'),       size    ),
-                                        'distances_2D':        ( os.path.join(output_html_dir, 'distances_2D.html'),       size    ),
-                                        'hits_fraction':       ( os.path.join(output_html_dir, 'hits_fraction_2D.html'),   size    ),
-                                        'energy_fraction':     ( os.path.join(output_html_dir, 'energy_fraction_2D.html'), size    )  }
+    #the values are: 1) the name of all potential bokehplot frames, 2) number of bokehplot figures in each frame       
+    output_html_potential_files_map = { 'densities':           ( os.path.join(output_html_dir, FLAGS.datatype + '_densities_1D.html'),       nlayers ),
+                                        'distances':           ( os.path.join(output_html_dir, FLAGS.datatype + '_distances_1D.html'),       nlayers ),
+                                        'densities_distances': ( os.path.join(output_html_dir, FLAGS.datatype + '_dens_vs_dist.html'),       nlayers ),
+                                        'densities_2D':        ( os.path.join(output_html_dir, FLAGS.datatype + '_densities_2D.html'),       size    ),
+                                        'distances_2D':        ( os.path.join(output_html_dir, FLAGS.datatype + '_distances_2D.html'),       size    ),
+                                        'hits_fraction':       ( os.path.join(output_html_dir, FLAGS.datatype + '_hits_fraction_2D.html'),   size    ),
+                                        'energy_fraction':     ( os.path.join(output_html_dir, FLAGS.datatype + '_energy_fraction_2D.html'), size    )  }
 
     #select only the frames requested by the user
+    #the values will become: 1) the name of all potential bokehplot frames, 2) a frame identifier, 3) number of bokehplot figures in each frame       
     counter = 0
-    if FLAGS.all:
-        output_html_files_map = output_html_potential_files_map
-    else:
-        output_html_files_map = dict()
-        for k,tup in output_html_potential_files_map.items():
-            if getattr(FLAGS,k) == 1:
-                output_html_files_map.update({k: (tup[0],counter,tup[1])})
-                counter += 1
+    output_html_files_map = dict()
+    for k,tup in output_html_potential_files_map.items():
+        if getattr(FLAGS,k) == True:
+            output_html_files_map.update({k: (tup[0],counter,tup[1])})
+            counter += 1
 
     output_html_files_list = [tup[0] for k,tup in output_html_files_map.items()]
     nfigs = [tup[2] for k,tup in output_html_files_map.items()]

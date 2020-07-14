@@ -27,6 +27,7 @@ class ProcessData:
         for b in beam_energies:
             #energy sum columns that correspond to a specific beam energy
             #columns with the same energy are put into the same histogram
+            print(df_reduced.columns)
             cols = [x for x in df_reduced.columns if ( 'ensum' in x and df_reduced.at[1,'beamen'+x[-3:]]==b ) ]
             df_beamen.append( df_reduced.loc[:, cols].stack() if cols != [] else None )
         return df_beamen
@@ -165,7 +166,7 @@ def linear_fit_graph(mean, emean, idx, iframe):
 def analyze_data():
     #files with sum of rechit energy
     usercode_path = 'src/UserCode/DataProcessing/job_output'
-    path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 'job_output/hit_dependent/outEcut_')
+    path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 'job_output/hit_dependent/outEcut_' + FLAGS.datatype)
     bins = (1000, 1800, 4200, 5000, 5000, 4200, 5700, 5500, 5500, 500)
     histo_ranges1 = (Range1d(0,30000), Range1d(11000, 35000), Range1d(27000, 58000), Range1d(52000, 94000), 
                     Range1d(64000, 120000), Range1d(88000,130000), Range1d(120000,165000), Range1d(160000, 210000), 
@@ -209,7 +210,7 @@ def analyze_data():
              [750, 185000., 3500.], #200GeV
              [750, 220000., 4000.], #250GeV
              [750, 270000., 4500.]) #300GeV 
-    data2 = ProcessData.join(path + '*[0-9][0-9][0-9].csv')
+    data2 = ProcessData.join(path + '*[0-9].csv')
     hist2 = HandleHistograms.create(data2, bins, iframe=2)
     mean2, emean2, _, _, _, _ = HandleHistograms.fit(hist2, pars2, histo_ranges2, iframe=2)
 
@@ -244,10 +245,12 @@ def final_plots():
     for name in variables_created:
         variables_stored.append( hf.get(name) )
 
+    save_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res')
     frameid = bokehplot.get_nframes()-1
     response_and_resolution_graphs(*variables_stored, frameid=frameid)
     bokehplot.save_frame(iframe=frameid, plot_width=400, plot_height=400, nrows=1, ncols=3, show=False)
-    bokehplot.save_figs(iframe=frameid, path='../../DN/figs/', mode='png')
+    bokehplot.save_figs(iframe=frameid, path=save_folder, mode='png')
+    #bokehplot.save_figs(iframe=frameid, path='../../DN/figs/', mode='png')
 
     hf.close()
 
@@ -262,8 +265,11 @@ def main():
 
 #python python/resp_res.py --analyze 1 --plot 1
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    FLAGS, _ = argparser.add_args(parser, 'resp_res')
+
     #HDF5 data file related variables
-    h5filename = 'hdf5/' + os.path.splitext( os.path.basename(__file__) )[0] + '.h5'
+    h5filename = os.path.join('hdf5', FLAGS.datatype + "_" + os.path.splitext( os.path.basename(__file__) )[0] + '.h5')
     variables_created = ('resp1', 'eresp1', 'res1', 'eres1', 'resp2', 'eresp2', 'res2', 'eres2')
 
     #beam energies used
@@ -279,18 +285,16 @@ if __name__ == '__main__':
     data_directory = 'TestBeamReconstruction'
 
     output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory)
-    output_html_files = ( os.path.join(output_html_dir, 'pure_rechit_energy_Ecut.html'),
-                          os.path.join(output_html_dir, 'pure_rechit_energy_Ecut_scaled.html'),
-                          os.path.join(output_html_dir, 'clusterized_rechit_energy_Ecut.html'),
-                          os.path.join(output_html_dir, 'clusterized_rechit_energy_Ecut_scaled_with_original_calibration.html'),
-                          os.path.join(output_html_dir, 'clusterized_rechit_energy_Ecut_scaled_with_clusterized_calibration.html'),
-                          os.path.join(output_html_dir, 'linear_regressions.html'),
-                          os.path.join(output_html_dir, 'responses_and_resolutions.html') 
+    output_html_files = ( os.path.join(output_html_dir, FLAGS.datatype + '_pure_rechit_energy_Ecut.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + '_pure_rechit_energy_Ecut_scaled.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + '_clusterized_rechit_energy_Ecut.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + '_clusterized_rechit_energy_Ecut_scaled_with_original_calibration.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + '_clusterized_rechit_energy_Ecut_scaled_with_clusterized_calibration.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + '_linear_regressions.html'),
+                          os.path.join(output_html_dir, FLAGS.datatype + '_responses_and_resolutions.html') 
     )
     nfigs = (size, size, size, size, size, 2, 3)
     bokehplot = bkp.BokehPlot(filenames=output_html_files, nframes=len(nfigs), nfigs=nfigs)
     line_colors = ['black', 'blue', 'green', 'red', 'orange', 'purple', 'greenyellow', 'brown', 'pink', 'grey']
 
-    parser = argparse.ArgumentParser()
-    FLAGS, _ = argparser.add_args(parser)
     main()

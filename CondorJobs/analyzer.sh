@@ -16,7 +16,7 @@ varExists() {
 ##########################
 ########PARSING###########
 ##########################
-ARGS=`getopt -o "" -l ",data_type:,ntupleid:,energy:" -n "getopts_${0}" -- "$@"`
+ARGS=`getopt -o "" -l ",datatype:,ntupleid:,energy:" -n "getopts_${0}" -- "$@"`
 
 #Bad arguments
 if [ $? -ne 0 ];
@@ -34,13 +34,13 @@ while true; do
 	    fi
 	    shift 2;;
 	
-	--data_type)
+	--datatype)
 	    if [ -n "$2" ]; then
 		if [[ " ${DATATYPES[@]} " =~ " ${2} " ]]; then
 		    DATATYPE="${2}";
 		    echo "Data type: ${DATATYPE}";
 		else
-		    echo "'--data_type' can be one of the following:"
+		    echo "'--datatype' can be one of the following:"
 		    echo "sim_proton / sim_noproton / data"
 		    exit 1;
 		fi

@@ -255,7 +255,7 @@ void Analyzer::save_to_file(const std::string& filename) {
   for(unsigned int i=0; i<nfiles_; ++i)
     {
       std::string curr_name = std::get<0>(names_[i]);
-      curr_name = curr_name.substr(curr_name.length()-8, 3);
+      curr_name = curr_name.substr(curr_name.length()-10, 5);
       oFile << "ensum" << curr_name << ",";
       oFile << "beamen" << curr_name;
       if(i<nfiles_-1)

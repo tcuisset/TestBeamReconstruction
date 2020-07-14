@@ -33,7 +33,7 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
     fw << "executable = " + base + "analyzer.sh" << std::endl;
   }
   
-  fw << "arguments = --ntupleid " + n + " --data_type " + datatype;
+  fw << "arguments = --ntupleid " + n + " --datatype " + datatype;
   if (datatype.find("sim") != std::string::npos)
       fw << " --energy " + std::to_string(energy);
   fw << std::endl;
@@ -143,17 +143,25 @@ void write_data(const std::string& submission_folder, const std::string& base)
     }
 }
 
-void write_simulation(const std::string& submission_folder, const std::string& base, const std::string& datatype)
+void write_simulation(const std::string& submission_folder, const std::string& base, const std::string& datatype, const bool& last_step_only)
 {
   constexpr unsigned int ntuples_per_energy = 5; //ntuples indexes with simulation data range from 0 to 4
   std::vector<unsigned int> energies = {{20, 30, 50, 80, 100, 120, 150, 200, 250, 300}};
   const unsigned int nenergies = energies.size();
   const unsigned int njobs = nenergies*ntuples_per_energy;
-  
-  std::vector<std::string> steps = {"selection", "analysis"};
+
+  std::string filepath;
+  std::vector<std::string> steps;
+  if(last_step_only) {
+    steps = {"analysis"};
+    filepath = base + "clue_" + datatype + "_" + steps[0] + "_only.dag";
+  }
+  else {
+    steps = {"selection", "analysis"};
+    filepath = base + "clue_" + datatype + ".dag";
+  }
   const unsigned int nsteps = steps.size();
   
-  std::string filepath = base + "clue_" + datatype + ".dag";
   std::vector< std::vector<std::string> > jobnames(nsteps, std::vector<std::string>(njobs));
   std::vector< std::vector<std::string> > jobpaths(nsteps, std::vector<std::string>(njobs));
   for(auto thisStep: util::lang::indices(steps)) {
@@ -173,40 +181,71 @@ void write_simulation(const std::string& submission_folder, const std::string& b
 	write_dag_jobs(filepath, jobnames[thisStep], jobpaths[thisStep], std::ios_base::app);
     }
 
-  write_dag_hierarchy(filepath, jobnames[0], jobnames[1]);
+  if(!last_step_only)
+    {
+      write_dag_hierarchy(filepath, jobnames[0], jobnames[1]);
+      write_dag_repetitions(filepath, jobnames[1], 2);
+    }
   write_dag_repetitions(filepath, jobnames[0], 1);
-  write_dag_repetitions(filepath, jobnames[1], 2);
 
   //write individual analysis jobs which will be submitted all at once by the DAG written above
   for(auto i: util::lang::indices(energies)) {
     for(unsigned int j=0; j<ntuples_per_energy; ++j)
       {
-	write_submission_file(j, jobpaths[0][j + i*ntuples_per_energy], base, steps[0], datatype, energies[i]); //selection
-	write_submission_file(j, jobpaths[1][j + i*ntuples_per_energy], base, steps[1], datatype, energies[i]); //analysis
+	write_submission_file(j, jobpaths[0][j + i*ntuples_per_energy], base, steps[0], datatype, energies[i]);
+	if(!last_step_only)
+	  write_submission_file(j, jobpaths[1][j + i*ntuples_per_energy], base, steps[1], datatype, energies[i]);
       }
   }
 }
 
 int main(int argc, char **argv) {
-  std::vector<std::string> data_types = {"data", "sim_noproton", "sim_proton"};
+  std::vector<std::string> okargs = {"--datatype", "--last_step_only"};
+  std::vector<std::string> datatypes = {"data", "sim_noproton", "sim_proton"};
 
   //input arguments' checks
-  if(argc != 3) {
-    std::cout << "Please specify the data type: ";
-    print_vector_elements(data_types);
+  if(argc < 3 or argc > 4) {
+    std::cout << "Ypu must specify the following:" << std::endl;
+    std::cout << "1) data type: ";
+    print_vector_elements(datatypes);
+    std::cout << "2) last_step_only (optional)" << std::endl;
     return 1;
   }
-  if(std::string(argv[1]) != "--data_type") {
-    std::cout << "The only argument currently supported is '--data_type'." << std::endl;
-    return 1;
-  }
-  else if( std::find(data_types.begin(), data_types.end(), std::string(argv[2])) == data_types.end() ) {
-    std::cout << "The data type has to be one of the following: ";
-    print_vector_elements(data_types);
-    return 1;
-  }
-  const std::string data_type = std::string(argv[2]);
+  for(unsigned int iarg=0; iarg<static_cast<unsigned int>(argc); ++iarg)
+    {
+      bool tempbool = std::find(okargs.begin(), okargs.end(), std::string(argv[iarg])) != okargs.end();
+      bool tempbool2 = std::string(argv[iarg]).find("--") != std::string::npos;
+      std::cout <<std::string(argv[iarg]) << std::endl;
+      std::cout << tempbool << ", " << tempbool2 << std::endl;
+    }
+  for(unsigned int iarg=0; iarg<static_cast<unsigned int>(argc); ++iarg)
+    {
+      if(std::string(argv[iarg]).find("--") != std::string::npos and
+	 std::find(okargs.begin(), okargs.end(), std::string(argv[iarg])) == okargs.end())
+	{
+	  std::cout << "The arguments currently supported are '--datatype' and '--last_step_only'." << std::endl;
+	  return 1;
+	}
+    }
 
+  std::string datatype;
+  bool last_step_only = false;
+  for(unsigned int iarg=0; iarg<static_cast<unsigned int>(argc); ++iarg)
+    {
+      if(std::string(argv[iarg]) == "--datatype") {
+	if( std::find(datatypes.begin(), datatypes.end(), std::string(argv[iarg+1])) == datatypes.end() )
+	  {
+	    std::cout << "The data type has to be one of the following: ";
+	    print_vector_elements(datatypes);
+	    return 1;
+	  }
+	else
+	  datatype = std::string(argv[iarg+1]);
+      }
+      else if(std::string(argv[iarg]) == "--last_step_only")
+	last_step_only = true;
+  }
+  
   //define common variables
   std::string cmssw_base = std::getenv("CMSSW_BASE");
   std::string condorjobs = "/src/UserCode/CondorJobs/";
@@ -214,8 +253,8 @@ int main(int argc, char **argv) {
   std::string condorjobs_base = cmssw_base + condorjobs;
 
   //write DAG files
-  if(data_type == "data")
+  if(datatype == "data")
     write_data(submission_folder, condorjobs_base);
   else
-    write_simulation(submission_folder, condorjobs_base, data_type);
+    write_simulation(submission_folder, condorjobs_base, datatype, last_step_only);
 }
