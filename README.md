@@ -80,7 +80,7 @@ Scripts' description
 Standard workflow
 -----------------
 
-The macros were written having a particular user in mind, but straightforward adaptations can make it work for other users as well, since the code is reasonably abstract.
+The macros were written having a particular user in mind, but extremely simple and straightforward adaptations can make it work for other users as well, since the code is reasonably abstract. In particular, running everything over a new dataset should be easy.
 
 If the user wants to process the ```sim_proton``` dataset, he/she would do the following:
 
@@ -105,9 +105,9 @@ condor_submit_dag clue_sim_noproton.dag
 - Run the python analysis and plotting macros
 
 ```bash
-python python/resp_res.py --datatype sim_proton --all    #hit level
-python python/layer_dep.py --datatype sim_proton --all   #layer level
-python python/cluster_dep.py --datatype sim_proton --all #cluster level
+python DataProcessing/python/resp_res.py --datatype sim_proton --all    #hit level
+python DataProcessing/python/layer_dep.py --datatype sim_proton --all   #layer level
+python DataProcessing/python/cluster_dep.py --datatype sim_proton --all #cluster level
 ```
 
 Please run the scripts with the ```--help``` option for choosing only specific variables.
@@ -115,3 +115,7 @@ Please run the scripts with the ```--help``` option for choosing only specific v
 Plots
 -----------------
 Plots should be [publicly accessible](https://bfontana.web.cern.ch/bfontana/TestBeamReconstruction/).
+
+Contacts
+----------------
+Please use CERN Phonebook's details.
