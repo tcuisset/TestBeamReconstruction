@@ -8,36 +8,39 @@ Pipeline description
 
 - **1)** *selection stage*: the original NTuples are pruned, in order to keep the relevant information only
 
-- **2)** *analysis stage*: 
+- **2)** *analysis stage*:
+
         - CLUE is run over the pruned NTuples
+	
         - most of the quantities of interest are calculated and stored in ```csv``` and ```ROOT``` files
 
 - **3)** *residual analysis and plotting stage*:
+
         - fits, histogram manipulation and dataframe operations are performed
+	
         - quantities of interest are plotted using [BokehPlot](https://bitbucket.org/bfontana/bokehplot), a custom bokeh wrapper (under development)
 
 
-Steps 1) and 2) were chained with a Directed Acyclic Graph (DAG) that runs n HTCondor.
+Steps 1) and 2) were chained with a Directed Acyclic Graph (DAG) that runs within HTCondor.
 
 Input NTuples
 ------------------
 
-- **data**: 
+- **data**: ```/eos/cms/store/group/dpg\_hgcal/tb\_hgcal/2018/cern\_h2\_october/offline\_analysis/ntuples/v16/``` 
 
-- **sim_proton**:
+- **sim_proton**: ```/eos/cms/store/group/dpg\_hgcal/tb\_hgcal/2018/cern\_h2\_october/offline\_analysis/sim\_ntuples/CMSSW11\_0\_withAHCAL\_newBeamline/FTFP\_BERT\_EMN/v5/electrons/```
 
-- **sim_noproton**:
-
-
+- **sim_noproton**: ```/eos/cms/store/group/dpg\_hgcal/tb\_hgcal/2018/cern\_h2\_october/offline\_analysis/sim\_ntuples/CMSSW11\_0\_withAHCAL\_newBeamline/FTFP\_BERT\_EMN/v3/electrons/```
+	
 Analysis type
 ------------------
 Step #3 was divided into independent micro-analysis:
 
-- hit level
+- **hit level**: energy distributions, calibrations, responses, resolutions
 
-- layer level
+- **layer level**: CLUE densities and distances (1D and 2D), fractions of clusterized hits and energies 
 
-- cluster level
+- **cluster level**: number of hits, energies, number of clusters, 'x' and 'y' position of the clusters in the detector
 
 Scripts list
 ------------------
