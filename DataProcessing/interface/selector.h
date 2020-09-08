@@ -27,10 +27,12 @@ class Selector {
   std::string newcol_clean_energy_    = "rechit_clean_energy_MeV";
   //const ROOT::Detail::RDF::ColumnNames_t cols_ = {"event", "run", "NRechits", "rechit_detid", "rechit_x", "rechit_y", "rechit_z", "rechit_layer", "rechit_iu", "rechit_iv", "rechit_iU", "rechit_iV", "rechit_type", "rechit_energy", newcol1_, "beamEnergy", "pdgID"};
   const ROOT::Detail::RDF::ColumnNames_t cols_ = {"event", "run", "NRechits", newcol_clean_detid_, newcol_clean_x_, newcol_clean_y_, newcol_clean_z_, newcol_clean_layer_, newcol_clean_energy_, "beamEnergy"};
+
   struct indata {
     std::string file_path = "/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/ntuple_1000.root";
     std::string tree_name = "rechitntupler/hits";
   }indata_;
+
   struct outdata {
     std::string file_path = "/eos/user/b/bfontana/TestBeamReconstruction/default_output.txt";
     std::string tree_name = "relevant_branches";

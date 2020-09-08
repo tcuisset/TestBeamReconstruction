@@ -1,6 +1,6 @@
 #include <cstdlib>
 #include "UserCode/DataProcessing/interface/analyzer.h"
-#include "UserCode/CondorJobs/interface/run_map.h"
+#include "UserCode/CondorJobs/interface/run_energy_map.h"
 
 //convenience function which prints all the elements in a vector of strings to std::cout
 void print_vector_elements(const std::vector<std::string>& v)
@@ -132,7 +132,7 @@ void write_data(const std::string& submission_folder, const std::string& base, c
       for(auto i: util::lang::indices(file_id))
 	{
 	  const std::string n = std::to_string(file_id[i]);
-	  const std::string thisJobname = steps[thisStep] + "_data_beamen_" + std::to_string(run_map.at(file_id[i])) + "_" + n;
+	  const std::string thisJobname = steps[thisStep] + "_data_beamen_" + std::to_string(run_energy_map.at(file_id[i])) + "_" + n;
 	  jobnames[thisStep].push_back(thisJobname);
 	  jobpaths[thisStep].push_back(base + submission_folder + steps[thisStep] + "/" + thisJobname + ".sub");
 	}
@@ -153,7 +153,7 @@ void write_data(const std::string& submission_folder, const std::string& base, c
   for(auto i: util::lang::indices(file_id))
     {
       const unsigned int thisID = file_id[i];
-      const unsigned int thisEnergy = run_map.at(thisID);
+      const unsigned int thisEnergy = run_energy_map.at(thisID);
       write_submission_file(thisID, jobpaths[0][i], base, steps[0], "data", thisEnergy);
       if(!last_step_only)
 	write_submission_file(thisID, jobpaths[1][i], base, steps[1], "data", thisEnergy); 

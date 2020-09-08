@@ -63,6 +63,8 @@ Scripts' description
 
     - ```clean.sh```: very simple utility that cleans the output files of the jobs once they are not needed
 
+    - ```setup.sh```: writes a file named ```ntuple_ids.txt``` which contains the identifiers of the [data ntuples](#input-ntuples) to be considered for the electromagnetic or hadronic analysis 
+
 - ```DataProcessing```: everything related to running CLUE and extract its relevant quantities
 
     - ```src/CLUEAlgo.cc```, ```interface/CLUEAlgo.h``` and some other files in ```interface/```: the CLUE standalone algorithm
