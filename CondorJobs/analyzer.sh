@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 declare -a ENERGIES=("20" "30" "50" "80" "100" "120" "150" "200" "250" "300")
 declare -a DATATYPES=("data" "sim_proton" "sim_noproton")
+declare -a SHOWERTYPES=("em" "had")
 
 varExists() { 
     # Checks whether a certain environment variable already exists
@@ -16,7 +17,7 @@ varExists() {
 ##########################
 ########PARSING###########
 ##########################
-ARGS=`getopt -o "" -l ",datatype:,ntupleid:,energy:" -n "getopts_${0}" -- "$@"`
+ARGS=`getopt -o "" -l ",datatype:,showertype:,ntupleid:,energy:" -n "getopts_${0}" -- "$@"`
 
 #Bad arguments
 if [ $? -ne 0 ];
@@ -41,7 +42,20 @@ while true; do
 		    echo "Data type: ${DATATYPE}";
 		else
 		    echo "'--datatype' can be one of the following:"
-		    echo "sim_proton / sim_noproton / data"
+		    printf "%s " "${DATATYPES[@]}"
+		    exit 1;
+		fi
+	    fi
+	    shift 2;;
+
+	--showertype)
+	    if [ -n "$2" ]; then
+		if [[ " ${SHOWERTYPES[@]} " =~ " ${2} " ]]; then
+		    DATATYPE="${2}";
+		    echo "Data type: ${SHOWERTYPE}";
+		else
+		    echo "'--showertype' can be one of the following:"
+		    printf "%s " "${SHOWERTYPES[@]}"
 		    exit 1;
 		fi
 	    fi
@@ -83,6 +97,10 @@ if [[ ( "${DATATYPE}" == *"sim"* ) && ( "${NTUPLEID}" -gt 4 ) ]]; then
     echo "Simulation data has Ntuples numbered from 0 to 4."
     exit 1;
 fi
+if [[ ( "${DATATYPE}" == "sim_noproton" ) && ( "${SHOWERTYPE}" == "had" ) ]]; then
+    echo "There is no proton-free sample for hadronic showers."
+    exit 1;
+fi
 if [[ -z "${ENERGY}" ]]; then
     echo "Please specify the beam energy."
     printf "Accepted values are: "
@@ -118,17 +136,17 @@ eval `scramv1 runtime -sh` #cmsenv substitute
 cd "${INIT_FOLDER}";
 
 EOS_PATH="/eos/user/b/bfontana/TestBeamReconstruction/job_output/"
-OUTNAME="outEcut" #extract ntuple number
+OUTNAME="outEcut"
 if [[ "${DATATYPE}" == "data" ]]; then
-    INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${NTUPLEID}.root";
+    INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_${NTUPLEID}.root";
 elif [[ "${DATATYPE}" == "sim_noproton" ]]; then
-    INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.root"
+    INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root"
 elif [[ "${DATATYPE}" == "sim_proton" ]]; then
-    INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.root"
+    INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root"
 fi
-OUTFILE1="${EOS_PATH}hit_dependent/${OUTNAME}_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.csv"; 
-OUTFILE2="${EOS_PATH}layer_dependent/${OUTNAME}_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.root";
-OUTFILE3="${EOS_PATH}cluster_dependent/${OUTNAME}_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.root";
+OUTFILE1="${EOS_PATH}hit_dependent/${OUTNAME}_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.csv"; 
+OUTFILE2="${EOS_PATH}layer_dependent/${OUTNAME}_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
+OUTFILE3="${EOS_PATH}cluster_dependent/${OUTNAME}_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
 
 echo "Input file: ${INFILE}"
 echo -e "Output files:\n${OUTFILE1}\n${OUTFILE2}\n${OUTFILE3}"

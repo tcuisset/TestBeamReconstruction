@@ -1,13 +1,14 @@
 #include "UserCode/DataProcessing/interface/selector.h"
 
-void selection_phase(const std::string& in_fname, const std::string& out_fname) {
-  Selector selector(in_fname, out_fname);
-  selector.select_relevant_branches();
-}
-
 int main(int argc, char **argv) {
   std::string input_file = std::string(argv[1]);
   std::string output_file = std::string(argv[2]);
-  selection_phase(input_file, output_file);
+  std::string datatype = std::string(argv[3]);
+  std::string showertype = std::string(argv[4]);
+  int beam_energy = std::stoi( std::string(argv[5]) );
+
+  Selector selector(input_file, output_file, datatype, showertype, beam_energy);
+  selector.select_relevant_branches();
+  
   return 0;
 }

@@ -39,6 +39,10 @@ Input NTuples
 - **sim_proton** (with proton contamination): ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v5/electrons/```
 
 - **sim_noproton**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v3/electrons/```
+
+*Hadronic showers*
+
+- *sim_noproton**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v44_VtxBeam_v3/CorrectFHLay10```
 	
 Analysis type
 ------------------
@@ -92,24 +96,24 @@ Standard workflow
 
 The macros were written having a particular user in mind, but extremely simple and straightforward adaptations can make it work for other users as well, since the code is reasonably abstract. In particular, running everything over a new dataset should be easy.
 
-If the user wants to process the ```sim_proton``` dataset, he/she would do the following:
+If the user wants to process the ```sim_proton``` dataset with electromagnetic showers, he/she should do the following:
 
 - Produce DAG files
 
 ```bash
-write_dag --datatype sim_proton
+write_dag --datatype sim_proton --showertype em
 ```
 
-Alternatively, if only the analysis step is required, once can do
+For hadronic showers, ```had``` is the option to use. Alternatively, if only the analysis step is required, once can do
 
 ```bash
-write_dag --datatype sim_proton --last_step_only
+write_dag --datatype sim_proton --showertype em --last_step_only
 ```
 
 - Run the jobs (the submission files will be stored under ```CondorJobs/submission/selection/``` and ```CondorJobs/submission/analysis/```
 
 ```bash
-condor_submit_dag clue_sim_noproton.dag
+condor_submit_dag clue_sim_proton.dag
 ```
 
 - Join the output files according to their beam energy (I used the ```/eos/``` file system)
@@ -130,7 +134,7 @@ python DataProcessing/python/layer_dep.py --datatype sim_proton --all   #layer l
 python DataProcessing/python/cluster_dep.py --datatype sim_proton --all #cluster level
 ```
 
-Please run the scripts with the ```--help``` option for choosing only specific variables.
+Please run the scripts with the ```--help``` option for choosing only specific variable.
     
 Plots
 -----------------

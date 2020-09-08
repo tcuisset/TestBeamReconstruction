@@ -1,6 +1,6 @@
 #include <cstdlib>
 #include "UserCode/DataProcessing/interface/analyzer.h"
-#include "UserCode/CondorJobs/interface/run_energy_map.h"
+#include "UserCode/CondorJobs/interface/run_en_map.h"
 
 //convenience function which prints all the elements in a vector of strings to std::cout
 void print_vector_elements(const std::vector<std::string>& v)
@@ -14,7 +14,7 @@ void print_vector_elements(const std::vector<std::string>& v)
 
 //write all individual submission jobs: selection stage
 void write_submission_file(const int& id, const std::string& jobpath, const std::string& base, std::string mode,
-			   const std::string& datatype, const unsigned int& energy)
+			   const std::string& datatype, const std::string& showertype, const unsigned int& energy)
 {
   assert(mode == "selection" or mode == "analysis");
   std::string n = std::to_string(id);
@@ -34,15 +34,15 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
     fw << "executable = " + base + "analyzer.sh" << std::endl;
   }
   
-  fw << "arguments = --ntupleid " + n + " --datatype " + datatype;
+  fw << "arguments = --ntupleid " + n + " --datatype " + datatype + " --showertype " + showertype;
   fw << " --energy " + std::to_string(energy);
   fw << std::endl;
 
   fw << "universe = vanilla" << std::endl;
   fw << "requirements = (OpSysAndVer =?= \"CentOS7\")" << std::endl;
-  fw << "output = " + base + "out/" + mode2 + "_" + datatype + "." + n + ".out" << std::endl;
-  fw << "error = " + base + "out/" + mode2 + "_" + datatype + "." + n + ".err" << std::endl;
-  fw << "log = " + base + "log/" + mode2 + "_" + datatype + "." + n + ".log" << std::endl;
+  fw << "output = " + base + "out/" + mode2 + "_" + datatype + "_" + showertype + "." + n + ".out" << std::endl;
+  fw << "error = " + base + "out/" + mode2 + "_" + datatype + "_" + showertype + "." + n + ".err" << std::endl;
+  fw << "log = " + base + "log/" + mode2 + "_" + datatype + "_" + showertype + "." + n + ".log" << std::endl;
 
   fw << "RequestMemory = " + memory << std::endl;
   fw << "+JobFlavour = " + flavour << std::endl;
@@ -91,7 +91,7 @@ void write_dag_repetitions(const std::string& filepath, const std::vector<std::s
   f_write << std::endl;
 }
 
-void write_data(const std::string& submission_folder, const std::string& base, const bool& last_step_only)
+void write_data(const std::string& submission_folder, const std::string& base, const std::string& showertype, const bool& last_step_only)
 {
   std::ifstream infile(base + "ntuple_ids.txt");
   std::vector<int> a;
@@ -101,27 +101,28 @@ void write_data(const std::string& submission_folder, const std::string& base, c
   //std::vector<int> avoid = {453,508,601,607,639};   //some jobs failed, therefore some input files are lacking
 
   std::vector<int> file_id;
-  for(unsigned int i=435; i<=509; ++i)
+  unsigned keymin=run_en_map.cbegin()->first, keymax=run_en_map.crbegin()->first;
+  std::cout << "KeyMin:" << keymin << ", " << "KeyMax:" << keymax << std::endl;
+  for(unsigned i=keymin; i<=keymax; ++i) //min and max run numbers for data configuration #22
     {
-      if( std::find(a.begin(), a.end(), i) != a.end() /*and std::find(avoid.begin(), avoid.end(), i) == avoid.end()*/ )
-	file_id.push_back(i);
-    }
-  for(unsigned int i=594; i<=676; ++i)
-    {
-      if( std::find(a.begin(), a.end(), i) != a.end() /*and std::find(avoid.begin(), avoid.end(), i) == avoid.end()*/ )
-	file_id.push_back(i);
+      if( ( showertype == "em" and ( (i>=435 and i<=509) or (i>=594 and i<=676) ) )
+	  or
+	  ( showertype == "had" and ( i==321 or (i>=512 and i<=523) or (i>=525 and i<= 593) or (i>=679 and i<=697) ) ) )
+	{
+	  if( std::find(a.begin(), a.end(), i) != a.end() /*and std::find(avoid.begin(), avoid.end(), i) == avoid.end()*/ )
+	    file_id.push_back(i);
+	}
     }
 
   std::string filepath;
   std::vector<std::string> steps;
-
   if(last_step_only) {
     steps = {"analysis"};
-    filepath = base + "clue_data_" + steps[0] + "_only.dag";
+    filepath = base + "clue_data_" + showertype + steps[0] + "_only.dag";
   }
   else {
     steps = {"selection", "analysis"};
-    filepath = base + "clue_data.dag";
+    filepath = base + "clue_data_" + showertype + ".dag";
   }
   const unsigned int nsteps = steps.size();
   
@@ -132,7 +133,7 @@ void write_data(const std::string& submission_folder, const std::string& base, c
       for(auto i: util::lang::indices(file_id))
 	{
 	  const std::string n = std::to_string(file_id[i]);
-	  const std::string thisJobname = steps[thisStep] + "_data_beamen_" + std::to_string(run_energy_map.at(file_id[i])) + "_" + n;
+	  const std::string thisJobname = steps[thisStep] + "_data_" + showertype + "_beamen_" + std::to_string(run_en_map.at(file_id[i])) + "_" + n;
 	  jobnames[thisStep].push_back(thisJobname);
 	  jobpaths[thisStep].push_back(base + submission_folder + steps[thisStep] + "/" + thisJobname + ".sub");
 	}
@@ -153,14 +154,14 @@ void write_data(const std::string& submission_folder, const std::string& base, c
   for(auto i: util::lang::indices(file_id))
     {
       const unsigned int thisID = file_id[i];
-      const unsigned int thisEnergy = run_energy_map.at(thisID);
-      write_submission_file(thisID, jobpaths[0][i], base, steps[0], "data", thisEnergy);
+      const unsigned int thisEnergy = run_en_map.at(thisID);
+      write_submission_file(thisID, jobpaths[0][i], base, steps[0], "data", showertype, thisEnergy);
       if(!last_step_only)
-	write_submission_file(thisID, jobpaths[1][i], base, steps[1], "data", thisEnergy); 
+	write_submission_file(thisID, jobpaths[1][i], base, steps[1], "data", showertype, thisEnergy); 
     }
 }
 
-void write_simulation(const std::string& submission_folder, const std::string& base, const std::string& datatype, const bool& last_step_only)
+void write_simulation(const std::string& submission_folder, const std::string& base, const std::string& datatype, const std::string& showertype, const bool& last_step_only)
 {
   constexpr unsigned int ntuples_per_energy = 5; //ntuples indexes with simulation data range from 0 to 4
   std::vector<unsigned int> energies = {{20, 30, 50, 80, 100, 120, 150, 200, 250, 300}};
@@ -171,11 +172,11 @@ void write_simulation(const std::string& submission_folder, const std::string& b
   std::vector<std::string> steps;
   if(last_step_only) {
     steps = {"analysis"};
-    filepath = base + "clue_" + datatype + "_" + steps[0] + "_only.dag";
+    filepath = base + "clue_" + datatype + "_" + showertype + "_" + steps[0] + "_only.dag";
   }
   else {
     steps = {"selection", "analysis"};
-    filepath = base + "clue_" + datatype + ".dag";
+    filepath = base + "clue_" + datatype + "_" + showertype + ".dag";
   }
   const unsigned int nsteps = steps.size();
   
@@ -187,7 +188,7 @@ void write_simulation(const std::string& submission_folder, const std::string& b
 	  {
 	    const std::string en_str = std::to_string(energies[i]);
 	    const std::string idx_str = std::to_string(j);
-	    const std::string this_jobname = steps[thisStep] + "_" + datatype + "_beamen" + en_str + "_" + idx_str;
+	    const std::string this_jobname = steps[thisStep] + "_" + datatype + "_" + showertype + "_beamen" + en_str + "_" + idx_str;
 	    jobnames[thisStep].at(j + i*ntuples_per_energy) = this_jobname;
 	    jobpaths[thisStep].at(j + i*ntuples_per_energy) = base + submission_folder + steps[thisStep] + "/" + this_jobname + ".sub";
 	  }
@@ -209,23 +210,26 @@ void write_simulation(const std::string& submission_folder, const std::string& b
   for(auto i: util::lang::indices(energies)) {
     for(unsigned int j=0; j<ntuples_per_energy; ++j)
       {
-	write_submission_file(j, jobpaths[0][j + i*ntuples_per_energy], base, steps[0], datatype, energies[i]);
+	write_submission_file(j, jobpaths[0][j + i*ntuples_per_energy], base, steps[0], datatype, showertype, energies[i]);
 	if(!last_step_only)
-	  write_submission_file(j, jobpaths[1][j + i*ntuples_per_energy], base, steps[1], datatype, energies[i]);
+	  write_submission_file(j, jobpaths[1][j + i*ntuples_per_energy], base, steps[1], datatype, showertype, energies[i]);
       }
   }
 }
 
 int main(int argc, char **argv) {
-  std::vector<std::string> okargs = {"--datatype", "--last_step_only"};
+  std::vector<std::string> okargs = {"--datatype", "--showertype", "--last_step_only"};
   std::vector<std::string> datatypes = {"data", "sim_noproton", "sim_proton"};
+  std::vector<std::string> showertypes = {"em", "had"};
 
   //input arguments' checks
-  if(argc < 3 or argc > 4) {
+  if(argc < 5 or argc > 6) {
     std::cout << "You must specify the following:" << std::endl;
     std::cout << "1) datatype: ";
     print_vector_elements(datatypes);
-    std::cout << "2) last_step_only (optional)" << std::endl;
+    std::cout << "2) showertype: ";
+    print_vector_elements(showertypes);
+    std::cout << "3) last_step_only (optional)" << std::endl;
     return 1;
   }
   for(unsigned int iarg=0; iarg<static_cast<unsigned int>(argc); ++iarg)
@@ -233,25 +237,35 @@ int main(int argc, char **argv) {
       if(std::string(argv[iarg]).find("--") != std::string::npos and
 	 std::find(okargs.begin(), okargs.end(), std::string(argv[iarg])) == okargs.end())
 	{
-	  std::cout << "The arguments currently supported are '--datatype' and '--last_step_only'." << std::endl;
+	  std::cout << "The arguments currently supported are '--datatype', '--showertype' and '--last_step_only'." << std::endl;
 	  return 1;
 	}
     }
 
-  std::string datatype;
+  std::string datatype, showertype;
   bool last_step_only = false;
   for(unsigned int iarg=0; iarg<static_cast<unsigned int>(argc); ++iarg)
     {
-      if(std::string(argv[iarg]) == "--datatype") {
-	if( std::find(datatypes.begin(), datatypes.end(), std::string(argv[iarg+1])) == datatypes.end() )
-	  {
+      if(std::string(argv[iarg]) == "--datatype")
+	{
+	  if( std::find(datatypes.begin(), datatypes.end(), std::string(argv[iarg+1])) == datatypes.end() ) {
 	    std::cout << "The data type has to be one of the following: ";
 	    print_vector_elements(datatypes);
 	    return 1;
 	  }
-	else
-	  datatype = std::string(argv[iarg+1]);
-      }
+	  else
+	    datatype = std::string(argv[iarg+1]);
+	}
+      else if(std::string(argv[iarg]) == "--showertype")
+	{
+	  if( std::find(showertypes.begin(), showertypes.end(), std::string(argv[iarg+1])) == showertypes.end() ) {
+	    std::cout << "The data type has to be one of the following: ";
+	    print_vector_elements(showertypes);
+	    return 1;
+	  }
+	  else
+	    showertype = std::string(argv[iarg+1]);
+	}
       else if(std::string(argv[iarg]) == "--last_step_only")
 	last_step_only = true;
   }
@@ -264,7 +278,7 @@ int main(int argc, char **argv) {
 
   //write DAG files
   if(datatype == "data")
-    write_data(submission_folder, condorjobs_base, last_step_only);
+    write_data(submission_folder, condorjobs_base, showertype, last_step_only);
   else
-    write_simulation(submission_folder, condorjobs_base, datatype, last_step_only);
+    write_simulation(submission_folder, condorjobs_base, datatype, showertype, last_step_only);
 }
