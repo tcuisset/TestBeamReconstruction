@@ -1,6 +1,5 @@
 import sys
 import os
-import errno
 import pickle
 import subprocess
 import bokehplot as bkp
@@ -11,391 +10,342 @@ import concurrent.futures
 import argparse
 from argparser import add_args
 from scipy.interpolate import UnivariateSpline
+import utils
+from utils import CacheManager
 
-def get_mean_and_sigma(x, y=None):
-    """calculate mean and std for 1D and 2D distributions"""
-    if y is None:
-        mean = np.mean(x)
-        sigma = np.sqrt( np.mean(x - mean)**2 )
-    else:
-        mean_squared = np.sum(y*x**2)
-        mean = np.sum(y*x)
-        sumy = np.sum(y)
-        if sumy == 0:
-            mean = 0
-            sigma = np.inf
-        else:
-            mean_squared /= sumy
-            mean /= sumy
-            sigma = np.sqrt( mean_squared - mean**2 )
-    return mean, sigma
-    
-def get_sigma_band(x, y=None):
-    mean, sigma = get_mean_and_sigma(x, y)
-    if mean==0 and sigma==np.inf:
-        left = mean
-        right = mean
-    else:
-        sigma /= np.sqrt(len(x))
-        left, right = mean - sigma/2, mean + sigma/2
-    return left, right
-
-def create_dir(directory):
-    try:
-        os.makedirs(directory)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise
-        
-def height_for_plot_bins(bins, scale='linear'):
-    nbins = len(bins)-1
-    if scale == 'linear':
-        factor = abs(bins[-1]-bins[0]) / nbins
-        return factor * np.ones(nbins*nlayers)
-    elif scale == 'log':
-        centers = (bins[1:]+bins[:-1])/2
-        distances = [(centers[1]-centers[0])/2]
-        distances.extend( (centers[1:]-centers[:-1])/2 )
-        return np.array(distances*nlayers)
-    else:
-        raise ValueError('height_for_plot_bins: Option not supported.')
-
-def single_true(iterable):
-    """Checks if one and only one element of iterable is True"""
-    i = iter(iterable)
-    return any(i) and not any(i)
-
-def get_layer_col(df, starts_with, ilayer=None):
-    """Obtains list of columns that match a specific column name ending."""
-    if ilayer is None:
-        regex = '^'+starts_with
-    else:
-        regex = '^'+starts_with+'.*_layer'+str(ilayer)+'$'
-    layer_col = df.columns.str.contains(regex, regex=True)
-    if ilayer is not None:
-        assert( single_true(layer_col) )
-    return layer_col
-
-def flatten_dataframe(df):
-    flat_df = df.values.flatten()
-    flat_list = [item for items in flat_df for item in items]
-    return np.array(flat_list)
-
-def graphs2d(dfs, axis_kwargs, columns_field, iframe, variable, weight_by_energy=False):
+def graphs_per_energy(df, axis_kwargs, columns_field, iframe, variable, energy_index, weight_by_energy=False):
     """Plots cluster-related quantities per layer"""
     if variable not in ('hits', 'energy', 'number', 'pos'):
-        raise ValueError('graphs2d: Variable {} is not supported.'.format(variable))
-    for i,df in enumerate(dfs):
-        print('Processing the {} GeV dataset...'.format(beam_energies[i]))
-        data_per_layer = []
-        data_per_layer_cut = []
+        raise ValueError('graphs_per_energy: Variable {} is not supported.'.format(variable))
 
-        datamax, datamin = -np.inf, np.inf
-        for ilayer in range(1,nlayers+1):
-            #determine adequate binning
-            layer_col = get_layer_col(df, starts_with=columns_field, ilayer=ilayer)
-            arr = df.loc[:, layer_col]
-            if arr.size == 0:
-                raise ValueError('The dataframe {} in layer {} is empty!'.format(i, ilayer))
+    dl = [ [] for _ in range(ncuts) ] #data per layer
+    
+    datamax, datamin = [ -np.inf for _ in range(ncuts) ], [ np.inf for _ in range(ncuts) ] #the second list is for the results with cuts
+    for ilayer in range(1,nlayers+1):
+        #determine adequate binning
+        col_arr = df.loc[ :, utils.get_layer_col(df, starts_with=columns_field, ilayer=ilayer) ]
+        if col_arr.size == 0:
+            raise ValueError('The dataframe {} in layer {} is empty!'.format(i, ilayer))
 
-            energy_lower_cut = 0#1500
+        for thisCut in range(ncuts):
             if variable == 'number':
-                data_per_layer.append( arr.apply( lambda x: len(x[columns_field+'_layer'+str(ilayer)]), axis=1, result_type='reduce') )
-                data_per_layer[-1] = data_per_layer[-1][ data_per_layer[-1] != 0 ] #filter out all events without clusters
-                data_per_layer_cut.append( arr.apply( lambda x: len(x[columns_field+'_layer'+str(ilayer)][ x[columns_field+'_layer'+str(ilayer)] > energy_lower_cut ]), axis=1, result_type='reduce') )
-                data_per_layer_cut[-1] = data_per_layer[-1][ data_per_layer[-1] != 0 ] #filter out all events without clusters
+                dl[thisCut].append( col_arr.apply( lambda x: len( x[columns_field+'_layer'+str(ilayer)][ x[columns_field+'_layer'+str(ilayer)] > energy_cuts[thisCut] ] ), axis=1, result_type='reduce') )
+                dl[thisCut][-1] = dl[thisCut][-1][ dl[thisCut][-1] != 0 ] #filter out all events without clusters
             elif variable == 'energy':
-                arr = flatten_dataframe(arr)
-                data_per_layer.append( arr )
-                arr = arr[ arr > energy_lower_cut ]
-                data_per_layer_cut.append( arr )
+                arr = utils.flatten_dataframe(col_arr)
+                arr = arr[ arr > energy_cuts[thisCut] ]
+                dl[thisCut].append( arr )
             elif variable == 'hits' or variable == 'pos':
-                extra_layer_col = get_layer_col(df, starts_with='Energy', ilayer=ilayer)
+                extra_layer_col = utils.get_layer_col(df, starts_with='Energy', ilayer=ilayer)
                 extra_arr = df.loc[:, extra_layer_col]
-                arr = flatten_dataframe(arr)
-                data_per_layer.append( arr )
-                arr = arr[ extra_arr > energy_lower_cut ]
-                data_per_layer_cut.append( arr )
-            del arr
+                extra_arr = utils.flatten_dataframe(extra_arr)
+                arr = utils.flatten_dataframe(col_arr)[ extra_arr > energy_cuts[thisCut] ]
+                dl[thisCut].append( arr )
 
-            if len(data_per_layer[-1]) != 0:
-                m1, m2 = data_per_layer[-1].min(), data_per_layer[-1].max()
-                if m1 < datamin:
-                    datamin = m1
-                if m2 > datamax:
-                    datamax = m2
-        if variable == 'pos':
-            nbins = 50 
-        else:
-            nbins = 20 if datamax>20 else int(datamax-1)
-        bins = np.linspace(datamin, datamax, nbins+1)
-        height_hits = height_for_plot_bins(bins, scale='linear')
-        all_counts, all_layers, all_centers = ([] for _ in range(3))
-        means, sigmas_l, sigmas_r = ([] for _ in range(3))
+            if len(dl[thisCut][-1]) != 0:
+                m1, m2 = dl[thisCut][-1].min(), dl[thisCut][-1].max()
+            if m1 < datamin[thisCut]:
+                datamin[thisCut] = m1
+            if m2 > datamax[thisCut]:
+                datamax[thisCut] = m2 if variable != 'energy' else 30000 #fixed y axis facilitates the comparison between energies
+                
+    if variable == 'pos':
+        nbins = tuple( 50 for x in range(ncuts) )
+    else:
+        nbins = tuple( 20 if datamax[x]>20 else int(datamax[x]-1) for x in range(ncuts) )
+    bins = tuple( np.linspace(datamin[x], datamax[x], nbins[x]+1) for x in range(ncuts) )
+    height_hits = tuple( utils.height_for_plot_bins(bins[x], scale='linear', nlayers=nlayers) for x in range(ncuts) )
+    all_counts, all_layers, all_centers = ([[] for _ in range(ncuts)] for _ in range(3))
+    means, sigmas_l, sigmas_r = ( [[] for _ in range(ncuts)] for _ in range(3) ) #the second list is for the results with cuts
 
-        #plot data as 2d graphs
-        for ilayer in range(1,nlayers+1):                
+    #plot data as 2d graphs
+    for ilayer in range(1,nlayers+1):
+        for thisCut in range(ncuts):
             if weight_by_energy:
-                layer_col_weights = get_layer_col(df, starts_with='Energy', ilayer=ilayer)
-                data_weights = flatten_dataframe( df.loc[:, layer_col_weights] )
-                if data_weights.size == 0:
-                    raise ValueError('The weights dataframe {} in layer {} is empty!'.format(i, ilayer))
-                counts, edges = np.histogram(data_per_layer[ilayer-1], bins=bins, weights=data_weights)
-                counts_cut, _ = np.histogram(data_per_layer_cut[ilayer-1], bins=bins, weights=data_weights)
+                layer_col_weights = utils.get_layer_col(df, starts_with='Energy', ilayer=ilayer)
+                weights_array = df.loc[:, layer_col_weights]
+                data_weights = utils.flatten_dataframe( weights_array )
+                data_weights = data_weights[ data_weights > energy_cuts[thisCut] ]
+                if data_weights.size == 0 and thisCut==0:
+                    raise ValueError('The weights dataframe with energy cut {} in layer {} is empty!'.format(energy_cuts[thisCut], ilayer))
+                elif data_weights.size == 0 and thisCut!=0: #if the one without cuts exists, the histos with cuts ust exist too, even if empty
+                    counts, edges = np.zeros(nbins[thisCut]), np.linspace(datamin[thisCut],datamax[thisCut],nbins[thisCut]+1)
+                else:
+                    counts, edges = np.histogram(dl[thisCut][ilayer-1], bins=bins[thisCut], weights=data_weights)
             else:
-                counts, edges = np.histogram(data_per_layer[ilayer-1], bins=bins)
-                counts_cut, _ = np.histogram(data_per_layer_cut[ilayer-1], bins=bins)
+                counts, edges = np.histogram(dl[thisCut][ilayer-1], bins=bins[thisCut])
 
             centers = (edges[:-1]+edges[1:])/2
             assert(len(counts) == len(centers))
             same_layer_array = ilayer*np.ones(len(centers))
-            all_counts.extend(counts.tolist())
-            all_counts_cut.extend(counts_cut.tolist())
-            all_layers.extend(same_layer_array.tolist())
-            all_centers.extend(centers.tolist())
-            
+            all_counts[thisCut].extend(counts.tolist())
+            all_layers[thisCut].extend(same_layer_array.tolist())
+            all_centers[thisCut].extend(centers.tolist())
+
             #use histogram and not original data to calculate mean and std/sqrt(n)
             #original data cannot be used for the case of weighted histograms
-            mean, _ = get_mean_and_sigma(centers, counts)
-            sigma_left, sigma_right = get_sigma_band(centers, counts)
-            means.append(mean)
-            sigmas_l.append(sigma_left)
-            sigmas_r.append(sigma_right)
+            mean, _ = utils.get_mean_and_sigma(centers, counts)
+            sigma_left, sigma_right = utils.get_sigma_band(centers, counts)
+            means[thisCut].append(mean)
+            sigmas_l[thisCut].append(sigma_left)
+            sigmas_r[thisCut].append(sigma_right)
 
-        del data_per_layer
+    dl.clear()
+    del dl
+
+    layers_x = np.arange(1,nlayers+1)
+    interp_thickness = 0.02
+    if variable == 'hits':
+        interp_degree = 1#2
+        interp_smooth = len(layers_x)#len(layers_x) if i<2 else 10*len(layers_x)
+    elif variable == 'energy':
+        interp_degree = 1
+        interp_smooth = len(layers_x)#10*len(layers_x)
+    elif variable == 'number' or variable == 'pos':
+        interp_degree = 1
+        interp_smooth = len(layers_x)/50
+    layers_x_fine = np.arange(1,28,interp_thickness)
+
+    means_sp_func   = tuple( UnivariateSpline(x=layers_x, y=np.array(means[x]), k=interp_degree, s=interp_smooth) for x in range(ncuts) )
+    means_sp        = tuple( means_sp_func[x](layers_x_fine) for x in range(ncuts) )
+    sigmasl_sp_func = tuple( UnivariateSpline(x=layers_x, y=np.array(sigmas_l[x]), k=interp_degree, s=interp_smooth) for x in range(ncuts) )
+    sigmasl_sp      = tuple( sigmasl_sp_func[x](layers_x_fine) for x in range(ncuts) )
+    sigmasr_sp_func = tuple( UnivariateSpline(x=layers_x, y=np.array(sigmas_r[x]), k=interp_degree, s=interp_smooth) for x in range(ncuts) )
+    sigmasr_sp      = tuple( sigmasr_sp_func[x](layers_x_fine) for x in range(ncuts) )
+
+    fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height}
+    fig_kwargs.update(axis_kwargs)
+
+    for thisCut in range(ncuts):
+        tmp_fig_kwargs = { 't.text': '{} GeV beam energy | E(cluster) > {} MeV'.format(true_beam_energies_GeV[energy_index], energy_cuts[thisCut]) }
+        tmp_fig_kwargs.update(fig_kwargs)
+        bokehplot.graph(data=[np.array(all_layers[thisCut]), np.array(all_centers[thisCut]), np.array(all_counts[thisCut])],
+                        width=np.ones((len(all_layers[thisCut]))), height=height_hits[thisCut],
+                        idx=energy_index + thisCut*size_shift, iframe=iframe, style='rect%Cividis', fig_kwargs=tmp_fig_kwargs, alpha=0.6)
+        bokehplot.graph(data=[layers_x, means[thisCut]],
+                        idx=energy_index + thisCut*size_shift, iframe=iframe, color='brown', style='circle', size=2, legend_label='mean')
+
+        bokehplot.graph(data=[layers_x_fine, means_sp[thisCut]],
+                        width=interp_thickness*np.ones(len(layers_x_fine)), height=abs(sigmasr_sp[thisCut]-sigmasl_sp[thisCut]),
+                        idx=energy_index + thisCut*size_shift, iframe=iframe+frame_shift, color='grey', style='rect', alpha=0.6, legend_label=u'std mean error (\u03c3/\u221an)', 
+                        fig_kwargs=tmp_fig_kwargs)  #pm = (u'\u00B1').encode('utf-8')
+        bokehplot.graph(data=[layers_x_fine, means_sp[thisCut]],
+                        idx=energy_index + thisCut*size_shift, iframe=iframe+frame_shift, color='red', style='circle', size=1.5, legend_label='mean')
+
+def graphs_per_layer(tree, cache, axis_kwargs, columns_field, iframe, variable, energy_index=2, weight_by_energy=False):
+    """Plots cluster-related quantities per layer"""
+    if variable not in ('pos'):
+        raise ValueError('graphs_per_layer: Variable {} is not supported.'.format(variable))
+
+    executor = concurrent.futures.ThreadPoolExecutor()
+    nbins = 50
+    limit_up, limit_down = 4, 2
+    fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height}
+    fig_kwargs.update(axis_kwargs)
+    
+    datamax, datamin = [ -np.inf for _ in range(ncuts) ], [ np.inf for _ in range(ncuts) ] #the second list is for the results with cuts
+    for ilayer in range(1,nlayers+1):
+        nx = 'X_layer'+str(ilayer)
+        ny = 'Y_layer'+str(ilayer)
+        ne = 'Energy_layer'+str(ilayer)
+        nn = 'Nhits_layer'+str(ilayer)
+
+        print('Loading data for layer {}...'.format(ilayer))
+        df_layer = tree.arrays([nx, ny, ne, nn], outputtype=pd.DataFrame, flatten=True, executor=executor, blocking=True, cache=cache)
         
-        layers_x = np.arange(1,29)
-        interp_thickness = 0.02
-        if variable == 'hits':
-            interp_degree = 1#2
-            interp_smooth = len(layers_x)#len(layers_x) if i<2 else 10*len(layers_x)
-        elif variable == 'energy':
-            interp_degree = 1
-            interp_smooth = len(layers_x)#10*len(layers_x)
-        elif variable == 'number' or variable == 'pos':
-            interp_degree = 1
-            interp_smooth = len(layers_x)/50
-        layers_x_fine = np.arange(1,28,interp_thickness)
-        means_sp_func = UnivariateSpline(x=layers_x, y=np.array(means), k=interp_degree, s=interp_smooth)
-        means_sp = means_sp_func(layers_x_fine)
-        sigmasl_sp_func = UnivariateSpline(x=layers_x, y=np.array(sigmas_l), k=interp_degree, s=interp_smooth)
-        sigmasl_sp = sigmasl_sp_func(layers_x_fine)
-        sigmasr_sp_func = UnivariateSpline(x=layers_x, y=np.array(sigmas_r), k=interp_degree, s=interp_smooth)
-        sigmasr_sp = sigmasr_sp_func(layers_x_fine)
+        print('Processing layer {}...'.format(ilayer))
+        #determine adequate binning
 
-        fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height,
-                      't.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[i])}
-        fig_kwargs.update(axis_kwargs)
-        bokehplot.graph(data=[np.array(all_layers), np.array(all_centers), np.array(all_counts)],
-                        width=np.ones((len(all_layers))), height=height_hits,
-                        idx=i, iframe=iframe, style='rect%Cividis', fig_kwargs=fig_kwargs, alpha=0.6)
-        bokehplot.graph(data=[layers_x, means],
-                        idx=i, iframe=iframe, color='brown', style='circle', size=2, legend_label='mean')
-        #with cut
-        bokehplot.graph(data=[np.array(all_layers), np.array(all_centers), np.array(all_counts_cuts)],
-                        width=np.ones((len(all_layers))), height=height_hits,
-                        idx=i+size, iframe=iframe, style='rect%Cividis', fig_kwargs=fig_kwargs, alpha=0.6)
+        df_layer = df_layer[ (df_layer[nn] >= nhits_min) & (df_layer[nn] < nhits_max) ]
+        df_layer = df_layer.drop([nn], axis=1)
 
-        bokehplot.graph(data=[layers_x_fine, means_sp],
-                        width=interp_thickness*np.ones(len(layers_x_fine)), height=abs(sigmasr_sp-sigmasl_sp),
-                        idx=i, iframe=iframe+3, color='grey', style='rect', alpha=0.6, legend_label=u'std mean error (\u03c3/\u221an)', 
-                        fig_kwargs=fig_kwargs)  #pm = (u'\u00B1').encode('utf-8')
-        bokehplot.graph(data=[layers_x_fine, means_sp],
-                        idx=i, iframe=iframe+3, color='red', style='circle', size=1.5, legend_label='mean')
+        for thisCut in range(ncuts):
+            tmp_fig_kwargs = { 't.text': '{} GeV beam energy | E(cluster) > {} MeV | Layer {}'.format(true_beam_energies_GeV[energy_index], energy_cuts[thisCut], ilayer) }
+            tmp_fig_kwargs.update(fig_kwargs)
 
-        del all_counts
-        del all_counts_cut
-        del all_layers
-        del all_centers
-        del means
-        del sigmas_l
-        del sigmas_r
+            df_layer_cut = df_layer[ df_layer[ne] > energy_cuts[thisCut] ]
+            if weight_by_energy:
+                bokehplot.histogram( np.histogram2d( x=df_layer_cut[nx].to_numpy(), y=df_layer_cut[ny].to_numpy(), bins=nbins,
+                                                     weights=df_layer_cut[ne].to_numpy(), range=[[-limit_up,limit_down],[-limit_down,limit_up]] ),
+                                     #colorbar_limits=(0,3e6),
+                                     idx=ilayer-1+thisCut*nlayers, iframe=iframe, style='quad%Cividis', fig_kwargs=tmp_fig_kwargs)
 
-class CacheManager:
-    def __init__(self, name):
-        self.name_ = name
-        self.cache = up.ArrayCache("1 GB")
+            else:
+                bokehplot.histogram( np.histogram2d(x=df_layer_cut[nx].to_numpy(), y=df_layer_cut[ny].to_numpy(), bins=nbins, range=[[-limit_up,limit_down],[-limit_down,limit_up]]),
+                                     idx=ilayer-1+thisCut*nlayers, iframe=iframe, style='quad%Cividis', fig_kwargs=tmp_fig_kwargs)
+        del df_layer
 
-    def dump(self):
-        obj = open(self.name_, 'wb')
-        pickle.dump(self.cache, obj)
-        obj.close()
-
-    def load(self):
-        try:
-            obj = open(self.name_, 'rb')
-            self.cache = pickle.load(obj, encoding='bytes')
-            obj.close()
-        except IOError:
-            pass
-        except EOFError:
-            print('Perhaps the cache was not properly saved in a previous session?')
-            raise
-        return self.cache
-
-def save_plots(frames_to_save):
+def save_plots(frame_key):
     mode = 'png'
-    second_folder = '../../DN/figs/'
-    #bokehplot.save_frame(iframe=0, plot_width=plot_width, plot_height=plot_height, show=False)
-    #bokehplot.save_frame(iframe=3, plot_width=plot_width, plot_height=plot_height, show=False)
-    bokehplot.save_figs(iframe=frames_to_save[0], path=cluster_dep_folder, mode=mode)
+    presentation_folder = os.path.join(home, release, 'DN/figs', 'cluster_dep', FLAGS.datatype)
+    utils.create_dir( presentation_folder )
+
+    #save frames
+    bokehplot.save_frame(iframe=output_html_files_map[frame_key][1], plot_width=plot_width, plot_height=plot_height, show=False)
+    if version2 in output_html_files_map.keys():
+        bokehplot.save_frame(iframe=output_html_files_map[frame_key+version2][1], plot_width=plot_width, plot_height=plot_height, show=False)
+
+    #save figs
+    bokehplot.save_figs(iframe=output_html_files_map[frame_key][1], path=cluster_dep_folder, mode=mode)
     for i in range(size):
-        src_file = os.path.join( cluster_dep_folder, os.path.splitext( os.path.basename(output_html_files[frames_to_save[0]]) )[0] + '_' + str(i) + '.' + mode )
-        dst_file = os.path.join( second_folder, os.path.splitext( os.path.basename(output_html_files[frames_to_save[0]]) )[0] + '_' + str(i) + '.' + mode )
-        subprocess.run('cp '+src_file+' '+dst_file, shell=True, stderr=subprocess.PIPE)
+        src_file = os.path.join( cluster_dep_folder, os.path.splitext( os.path.basename(output_html_files_map[frame_key][0]) )[0] + '_' + str(i) + '.' + mode )
+        dst_file = os.path.join( presentation_folder, os.path.splitext( os.path.basename(output_html_files_map[frame_key][0]) )[0] + '_' + str(i) + '.' + mode )
         print('copying from '+src_file+' to '+dst_file+'...')
-    bokehplot.save_figs(iframe=frames_to_save[1], path=cluster_dep_folder, mode=mode)
-    for i in range(size):
-        src_file = os.path.join( cluster_dep_folder, os.path.splitext( os.path.basename(output_html_files[frames_to_save[1]]) )[0] + '_' + str(i) + '.' + mode )
-        dst_file = os.path.join( second_folder, os.path.splitext( os.path.basename(output_html_files[frames_to_save[1]]) )[0] + '_' + str(i) + '.' + mode )
         subprocess.run('cp '+src_file+' '+dst_file, shell=True, stderr=subprocess.PIPE)
-        print('copying from '+src_file+' to '+dst_file+'...')
+
+    #save version2 figs
+    if version2 in output_html_files_map.keys():
+        bokehplot.save_figs(iframe=output_html_files_map[frame_key+version2][1], path=cluster_dep_folder, mode=mode)
+        for i in range(size):
+            src_file = os.path.join( cluster_dep_folder, os.path.splitext( os.path.basename(output_html_files_map[frame_key + version2][0]) )[0] + '_' + str(i) + '.' + mode )
+            dst_file = os.path.join( presentation_folder, os.path.splitext( os.path.basename(output_html_files_map[frame_key + version2][0]) )[0] + '_' + str(i) + '.' + mode )
+            print('copying from '+src_file+' to '+dst_file+'...')
+            subprocess.run('cp '+src_file+' '+dst_file, shell=True, stderr=subprocess.PIPE)
 
 def main():
-    #load ROOT TTree
-    file = up.open( data_path )
-    tree = file['tree0']
     executor = concurrent.futures.ThreadPoolExecutor() #executor for parallel data loading
-    up_cache = {}
-    frame_shift = int(nframes/2)
-    
-    ######Cluster dependent number of hits#########
-    if FLAGS.hits:
-        print('loading hits data...')
-        df_hits = tree.arrays([beamen_str, 'Nhits*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
-        print('done!')
 
-        df_hits_split = []
-        for en in beam_energies:
-            df_hits_split.append(df_hits[ df_hits[beamen_str] == en])
-        del df_hits
-
-        axis_kwargs_hits = {'x.axis_label': 'Layer', 'y.axis_label': '#hits / cluster'}
-        graphs2d(df_hits_split, axis_kwargs_hits, columns_field='Nhits', iframe=0, variable='hits', weight_by_energy=True)
-        del df_hits_split
-        print('saving the plots...')
-        save_plots(frames_to_save=(0,0+frame_shift))
-        print('done!')
-
-    ######Cluster dependent energy#################
-    if FLAGS.energies:
-        print('loading energy data...')
-        df_energy = tree.arrays([beamen_str, 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
-        print('done!')
-
-        df_energy_split = []
-        for en in beam_energies:
-            df_energy_split.append(df_energy[ df_energy[beamen_str] == en])    
-        del df_energy #clears RAM
-
-        axis_kwargs_en = {'x.axis_label': 'Layer', 'y.axis_label': 'Total energy per cluster [MeV]'}
-        graphs2d(df_energy_split, axis_kwargs_en, columns_field='Energy', iframe=1, variable='energy', weight_by_energy=False)
-        del df_energy_split
-        print('saving the plots...')
-        save_plots(frames_to_save=(1,1+frame_shift))
-        print('done!')
+    for iEn,thisEn in enumerate(beam_energies):
         
-    ######Number of clusters######################
-    if FLAGS.numbers:
-        print('loading number data...')
-        df_number = tree.arrays([beamen_str, 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True) #'Energy*' is used by len() function to get the number of clusters
-        print('done!')
+        #load ROOT TTree
+        file = up.open( data_paths[iEn] )
+        tree = file['tree0']
+        
+        #load cache for a specific energy
+        cacheobj = CacheManager( cache_file_names[iEn] )
+        up_cache = cacheobj.load()
 
-        df_number_split = []
-        for en in beam_energies:
-            df_number_split.append(df_number[ df_number[beamen_str] == en])
-        del df_number
+        ######Cluster dependent number of hits#########
+        if FLAGS.hits:
+            print('Loading hits data for {}GeV...'.format(beam_energies[iEn]))
+            df_hits = tree.arrays(['Nhits*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
+            axis_kwargs_hits = {'x.axis_label': 'Layer', 'y.axis_label': '#hits / cluster'}
+            graphs_per_energy(df_hits, axis_kwargs_hits, columns_field='Nhits', iframe=output_html_files_map['hits'][1], variable='hits', energy_index=iEn, weight_by_energy=True)
+            del df_hits
 
-        axis_kwargs_numbers = {'x.axis_label': 'Layer', 'y.axis_label': 'Number of clusters'}
-        graphs2d(df_number_split, axis_kwargs_numbers, columns_field='Energy', variable='number', iframe=2, weight_by_energy=False)
-        del df_number_split
-        print('saving the plots...')
-        save_plots(frames_to_save=(2,2+frame_shift))
-        print('done!')
+        ######Cluster dependent energy#################
+        if FLAGS.energies:
+            print('Loading energy data for {}GeV...'.format(beam_energies[iEn]))
+            df_energy = tree.arrays(['Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
 
-    ######Custer X positions######################
-    if FLAGS.posx:
-        print('loading x positions data...')
-        df_posx = tree.arrays([beamen_str, 'X*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
-        print('done!')
+            axis_kwargs_en = {'x.axis_label': 'Layer', 'y.axis_label': 'Total energy per cluster [MeV]'}
+            graphs_per_energy(df_energy, axis_kwargs_en, columns_field='Energy', iframe=output_html_files_map['energies'][1], variable='energy', energy_index=iEn, weight_by_energy=False)
+            del df_energy
 
-        df_posx_split = []
-        for en in beam_energies:
-            df_posx_split.append(df_posx[ df_posx[beamen_str] == en])
-        del df_posx
+        ######Number of clusters######################
+        if FLAGS.numbers:
+            print('Loading number data for {}GeV...'.format(beam_energies[iEn]))
+            df_number = tree.arrays(['Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True) #'Energy*' is used by len() function to get the number of clusters
 
-        axis_kwargs_posx = {'x.axis_label': 'Layer', 'y.axis_label': "Clusters' X position"}
-        graphs2d(df_posx_split, axis_kwargs_posx, columns_field='X', variable='pos', iframe=3, weight_by_energy=False)
-        del df_posx_split
-        print('saving the plots...')
-        save_plots(frames_to_save=(3,3+frame_shift))
-        print('done!')
+            axis_kwargs_numbers = {'x.axis_label': 'Layer', 'y.axis_label': 'Number of clusters'}
+            graphs_per_energy(df_number, axis_kwargs_numbers, columns_field='Energy', variable='number', iframe=output_html_files_map['numbers'][1], energy_index=iEn, weight_by_energy=False)
+            del df_number
 
-    ######Custer Y positions######################
-    if FLAGS.posy:
-        print('loading y positions data...')
-        df_posy = tree.arrays([beamen_str, 'Y*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
-        print('done!')
+        ######Custer X positions######################
+        if FLAGS.posx:
+            print('Loading X positions data for {}GeV...'.format(beam_energies[iEn]))
+            df_posx = tree.arrays(['X*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
 
-        df_posy_split = []
-        for en in beam_energies:
-            df_posy_split.append(df_posy[ df_posy[beamen_str] == en])
-        del df_posy
+            axis_kwargs_posx = {'x.axis_label': 'Layer', 'y.axis_label': "Clusters' X position"}
+            graphs_per_energy(df_posx, axis_kwargs_posx, columns_field='X', variable='pos', iframe=output_html_files_map['posx'][1], energy_index=iEn, weight_by_energy=False)
+            del df_posx
 
-        axis_kwargs_posy = {'x.axis_label': 'Layer', 'y.axis_label': "Clusters' Y position"}
-        graphs2d(df_posy_split, axis_kwargs_posy, columns_field='Y', variable='pos', iframe=4, weight_by_energy=False)
-        del df_posy_split
-        print('saving the plots...')
-        save_plots(frames_to_save=(4,4+frame_shift))
-        print('done!')
+        ######Custer Y positions######################
+        if FLAGS.posy:
+            print('Loading Y positions data for {}GeV...'.format(beam_energies[iEn]))
+            df_posy = tree.arrays(['Y*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
+
+            axis_kwargs_posy = {'x.axis_label': 'Layer', 'y.axis_label': "Clusters' Y position"}
+            graphs_per_energy(df_posy, axis_kwargs_posy, columns_field='Y', variable='pos', iframe=output_html_files_map['posy'][1], energy_index=iEn, weight_by_energy=False)
+            del df_posy
+
+        ######Custer X vs Cluster Y positions######################
+        if FLAGS.posx_posy and thisEn == chosen_energy:
+            print('Loading X and Y positions data for {}GeV...'.format(beam_energies[iEn]))
+
+            axis_kwargs_posxy = {'x.axis_label': "Clusters' X position", 'y.axis_label': "Clusters' Y position"}
+            graphs_per_layer(tree, up_cache, axis_kwargs_posxy, columns_field=('X','Y'), variable='pos', iframe=output_html_files_map['posx_posy'][1], energy_index=iEn, weight_by_energy=True)
+
+    print('Saving the plots...')
+    for k in output_html_files_map.keys():
+        if version2 not in k:
+            save_plots(frame_key=k)
 
 if __name__ == '__main__':
-    #define local data paths and variables
-    eos_base = '/eos/user/'
-    cms_user = subprocess.check_output("echo $USER", shell=True, encoding='utf-8').split('\n')[0]
-    data_directory = 'TestBeamReconstruction'
-    data_path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, "job_output/cluster_dependent/hadd_clusterdep.root")
-    beamen_str = 'BeamEnergy'
-
     #define parser for user input arguments
     parser = argparse.ArgumentParser()
     FLAGS, _ = add_args(parser, 'clusters')
-
-    #define cache names and paths
-    cache_name_hits = 'uproot_cache_hits.pickle'
-    cache_file_name_hits = os.path.join(eos_base, cms_user[0], cms_user, data_directory, cache_name_hits)
-    cache_name_energy = 'uproot_cache_energy.pickle'
-    cache_file_name_energy = os.path.join(eos_base, cms_user[0], cms_user, data_directory, cache_name_energy)
-    cache_name_number = 'uproot_cache_number.pickle'
-    cache_file_name_number = os.path.join(eos_base, cms_user[0], cms_user, data_directory, cache_name_number)
+    
+    for elem in sys.argv:
+        if '--' in elem and elem[2:] not in FLAGS.__dict__.keys():
+            raise IOError('ERROR: You passed an undefined input argument!')
 
     #define analysis constants
     nlayers = 28
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
     true_beam_energies_GeV = (20,30,49.99,79.93,99.83,119.65,149.14,197.32,243.61,287.18)
     true_beam_energies_MeV = tuple(x*1000 for x in true_beam_energies_GeV)
-    size = 2*len(true_beam_energies_GeV)
-    assert(len(beam_energies)==size/2)
+    energy_cuts = (0,1000)
+    ncuts = len(energy_cuts)
+    size = ncuts*len(true_beam_energies_GeV)
+    size_shift = len(true_beam_energies_GeV)
+    version2 = '_prof'
+    nhits_min, nhits_max = 5, 10
+    chosen_energy = 250 #posx vs poxy plots will only refer to this energy (one plot per layer)
+    assert(chosen_energy in beam_energies)
 
-    print("Input data read from: {}".format(data_path))
+    #define local data paths and variables
+    eos_base = '/eos/user/'
+    cms_user = subprocess.check_output("echo $USER", shell=True, encoding='utf-8').split('\n')[0]
+    release = 'CMSSW_11_1_0_pre2/src/'
+    home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
+    data_directory = 'TestBeamReconstruction'
+    data_path_start = os.path.join(eos_base, cms_user[0], cms_user, data_directory, "job_output/cluster_dependent/")
+    data_paths = [os.path.join(data_path_start, 'hadd_clusterdep_' + FLAGS.datatype + '_beamen' + str(x) + '.root') for x in beam_energies]
+        
+    #define cache names and paths
+    cache_file_name_start = os.path.join(eos_base, cms_user[0], cms_user, data_directory)
+    cache_file_names = [os.path.join(cache_file_name_start, 'uproot_cache_clusterdep_beamen' + str(x) + '.root') for x in beam_energies]
+
+    print("Input data read from:")
+    for x in data_paths:
+        print(x)
 
     #create output files with plots
-    create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory) )
-    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory)
-    output_html_files = ( os.path.join(output_html_dir, FLAGS.datatype + 'plot_clusters_hits.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + 'plot_clusters_energy_nocut.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + 'plot_clusters_number_nocut.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + 'plot_clusters_posx_nocut.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + 'plot_clusters_posy_nocut.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + 'profile_clusters_hits.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + 'profile_clusters_energy_nocut.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + 'profile_clusters_number_nocut.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + 'profile_clusters_posx_nocut.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + 'profile_clusters_posy_nocut.html') )
-    nframes = len(output_html_files)
-    bokehplot = bkp.BokehPlot(filenames=output_html_files, nfigs=nframes*(size,), nframes=nframes)
+    utils.create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype) )
+    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype)
+    output_html_files_potential_map = { 'hits':                ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_hits.html'),         size ),
+                                        'energies':            ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_energy.html'),       size ),
+                                        'numbers':             ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_number.html'),       size ),
+                                        'posx':                ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_posx.html'),         size ),
+                                        'posy':                ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_posy.html'),         size ),
+                                        'hits' + version2:     ( os.path.join(output_html_dir, FLAGS.datatype + version2 + '_clusters_hits.html'),   size ),
+                                        'energies' + version2: ( os.path.join(output_html_dir, FLAGS.datatype + version2 + '_clusters_energy.html'), size ),
+                                        'numbers' + version2:  ( os.path.join(output_html_dir, FLAGS.datatype + version2 + '_clusters_number.html'), size ),
+                                        'posx' + version2:     ( os.path.join(output_html_dir, FLAGS.datatype + version2 + '_clusters_posx.html'),   size ),
+                                        'posy' + version2:     ( os.path.join(output_html_dir, FLAGS.datatype + version2 + '_clusters_posy.html'),   size ),
+                                        'posx_posy':           ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_posx_vs_posy_{}_{}_hits_{}GeV.html'.format(nhits_min, nhits_max, chosen_energy)),
+                                                                 ncuts*nlayers ) }
+    counter = 0
+    output_html_files_map = dict()
+    for k,tup in output_html_files_potential_map.items():
+        if version2 not in k:
+            if getattr(FLAGS,k) == True:
+                output_html_files_map.update({k: (tup[0],counter,tup[1])})
+                counter += 1
+        else:
+            if getattr(FLAGS,k[:-5]) == True:
+                output_html_files_map.update({k: (tup[0],counter,tup[1])})
+                counter += 1
+                
+    output_html_files_list = [tup[0] for k,tup in output_html_files_map.items()]
+    nfigs = [tup[2] for k,tup in output_html_files_map.items()]
+    nframes = len(output_html_files_list)
+    frame_shift = int(nframes/2)
+    
+    bokehplot = bkp.BokehPlot(filenames=output_html_files_list, nfigs=nfigs, nframes=nframes)
     plot_width, plot_height = 600, 400
-    cluster_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep')
-    create_dir( cluster_dep_folder )
+    cluster_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype)
+    utils.create_dir( cluster_dep_folder )
 
     main()

@@ -84,15 +84,11 @@ if [[ ( "${DATATYPE}" == *"sim"* ) && ( "${NTUPLEID}" -gt 4 ) ]]; then
     echo "Simulation data has Ntuples numbered from 0 to 4."
     exit 1;
 fi
-if [[ ( "${DATATYPE}" == *"sim"* ) && ( -z "${ENERGY}" ) ]]; then
-    echo "Simulation data requires specifying the beam energy."
+if [[ -z "${ENERGY}" ]]; then
+    echo "Please specify the beam energy."
     printf "Accepted values are: "
     printf "%s " "${ENERGIES[@]}"
     printf "[GeV].\n"
-    exit 1;
-fi
-if [[ ( "${DATATYPE}" == "data" ) && ( ! -z "${ENERGY}" ) ]]; then
-    echo "Real data does not require specifying the beam energy. Please remove it."
     exit 1;
 fi
 ##########################

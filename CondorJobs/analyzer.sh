@@ -83,15 +83,11 @@ if [[ ( "${DATATYPE}" == *"sim"* ) && ( "${NTUPLEID}" -gt 4 ) ]]; then
     echo "Simulation data has Ntuples numbered from 0 to 4."
     exit 1;
 fi
-if [[ ( "${DATATYPE}" == *"sim"* ) && ( -z "${ENERGY}" ) ]]; then
-    echo "Simulation data requires specifying the beam energy."
+if [[ -z "${ENERGY}" ]]; then
+    echo "Please specify the beam energy."
     printf "Accepted values are: "
     printf "%s " "${ENERGIES[@]}"
     printf "[GeV].\n"
-    exit 1;
-fi
-if [[ ( "${DATATYPE}" == "data" ) && ( ! -z "${ENERGY}" ) ]]; then
-    echo "Real data does not require specifying the beam energy. Please remove it."
     exit 1;
 fi
 ##########################
@@ -125,20 +121,14 @@ EOS_PATH="/eos/user/b/bfontana/TestBeamReconstruction/job_output/"
 OUTNAME="outEcut" #extract ntuple number
 if [[ "${DATATYPE}" == "data" ]]; then
     INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${NTUPLEID}.root";
-    OUTFILE1="${EOS_PATH}hit_dependent/${OUTNAME}.csv"; 
-    OUTFILE2="${EOS_PATH}layer_dependent/${OUTNAME}.root";
-    OUTFILE3="${EOS_PATH}cluster_dependent/${OUTNAME}.root";
 elif [[ "${DATATYPE}" == "sim_noproton" ]]; then
     INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.root"
-    OUTFILE1="${EOS_PATH}hit_dependent/${OUTNAME}_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.csv"; 
-    OUTFILE2="${EOS_PATH}layer_dependent/${OUTNAME}_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.root";
-    OUTFILE3="${EOS_PATH}cluster_dependent/${OUTNAME}_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.root";
 elif [[ "${DATATYPE}" == "sim_proton" ]]; then
     INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.root"
-    OUTFILE1="${EOS_PATH}hit_dependent/${OUTNAME}_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.csv"; 
-    OUTFILE2="${EOS_PATH}layer_dependent/${OUTNAME}_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.root";
-    OUTFILE3="${EOS_PATH}cluster_dependent/${OUTNAME}_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.root";
 fi
+OUTFILE1="${EOS_PATH}hit_dependent/${OUTNAME}_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.csv"; 
+OUTFILE2="${EOS_PATH}layer_dependent/${OUTNAME}_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.root";
+OUTFILE3="${EOS_PATH}cluster_dependent/${OUTNAME}_${DATATYPE}_beamen${ENERGY}_${NTUPLEID}.root";
 
 echo "Input file: ${INFILE}"
 echo -e "Output files:\n${OUTFILE1}\n${OUTFILE2}\n${OUTFILE3}"

@@ -14,6 +14,8 @@ struct Points {
   std::vector<int> clusterIndex;
   std::vector<std::vector<int>> followers;
   std::vector<bool> isSeed;
+  std::vector<unsigned int> nHitsCluster;
+  
   // why use int instead of bool?
   // https://en.cppreference.com/w/cpp/container/vector_bool
   // std::vector<bool> behaves similarly to std::vector, but in order to be space efficient, it:
@@ -33,7 +35,8 @@ struct Points {
     clusterIndex.clear();
     followers.clear();
     isSeed.clear();
-
+    nHitsCluster.clear();
+    
     n = 0;
   }
 };

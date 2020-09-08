@@ -55,7 +55,7 @@ class Analyzer {
   std::vector< std::pair<std::string, std::string> > names_; //file and tree names
   std::vector<float> beam_energies_;
   std::vector< std::vector< std::tuple<float, float> > > en_total_; //total energy per event (vector of RecHits) per file (run) and corresponding beam energy
-  std::vector< std::vector< std::array< std::tuple<float, float, std::vector<float>, std::vector<float>, std::vector<bool>>, detectorConstants::nlayers_emshowers> > > fracs_; //fraction of clusterized nhits and clusterized energy per event
-  using cluster_dependent_type = std::array< std::tuple< std::vector<unsigned int>, std::vector<float>, std::vector<float>, std::vector<float> >, detectorConstants::nlayers_emshowers>;
-  std::vector< std::vector< cluster_dependent_type > > clusterdep_;
+  std::vector< std::vector< dataformats::layerfracs > > layer_fracs_; //fraction of clusterized nhits and clusterized energy per event
+  std::vector< std::vector< dataformats::layerhitvars > > layer_hitvars_; //hit-dependent variables that will be plotted in the layer-level analysis: energy, density, distance and isSeed boolena flag
+  std::vector< std::vector< dataformats::clustervars > > clusterdep_;
 };

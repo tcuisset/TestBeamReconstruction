@@ -36,15 +36,16 @@ class CLUEAlgo{
     
     Points points_;
 
-    std::vector<float> getHitsClusterX();
-    std::vector<float> getHitsClusterY();
+    std::vector<float> getHitsPosX();
+    std::vector<float> getHitsPosY();
     std::vector<float> getHitsWeight();
     std::vector<int> getHitsClusterId();
     std::vector<int> getHitsLayerId();
     std::vector<float> getHitsRho();
     std::vector<float> getHitsDistanceToHighest();
     std::vector<bool> getHitsSeeds();
-
+    std::vector<unsigned int> getNHitsInCluster();
+  
     // public methods
     //Note: The layer input and output (see getHitsLayerId()) start counting at 1, but the calculations inside use a 0-based index
     void setPoints(int n, float* x, float* y, unsigned int* layer, float* weight) {
@@ -71,6 +72,7 @@ class CLUEAlgo{
       points_.delta.resize(points_.n,std::numeric_limits<float>::max());
       points_.nearestHigher.resize(points_.n,-1);
       points_.isSeed.resize(points_.n,0);
+      points_.nHitsCluster.resize(points_.n,0);
       points_.followers.resize(points_.n);
       points_.clusterIndex.resize(points_.n,-1);
     }
@@ -79,6 +81,9 @@ class CLUEAlgo{
 
     void makeClusters();
 
+    void infoSeeds();
+    void infoHits();
+  
     void verboseResults( std::string outputFileName = "cout", int nVerbose = -1) { 
       
       if (verbose_) {

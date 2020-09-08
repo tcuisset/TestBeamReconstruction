@@ -12,6 +12,7 @@ import argparser
 from functools import reduce
 import bokehplot as bkp
 from bokeh.models import Range1d
+import utils
 
 class ProcessData:
     @staticmethod
@@ -27,8 +28,10 @@ class ProcessData:
         for b in beam_energies:
             #energy sum columns that correspond to a specific beam energy
             #columns with the same energy are put into the same histogram
-            print(df_reduced.columns)
-            cols = [x for x in df_reduced.columns if ( 'ensum' in x and df_reduced.at[1,'beamen'+x[-3:]]==b ) ]
+            if FLAGS.datatype == 'data':
+                cols = [x for x in df_reduced.columns if ( 'ensum' in x and df_reduced.at[1,'beamen'+x[-3:]]==b ) ]
+            else:
+                cols = [x for x in df_reduced.columns if ( 'ensum' in x and df_reduced.at[1,'beamen'+x[-5:]]==b ) ]
             df_beamen.append( df_reduced.loc[:, cols].stack() if cols != [] else None )
         return df_beamen
 
@@ -79,7 +82,8 @@ class HandleHistograms:
             hist_modified = [hist[i][0][indexes_selected][:-1], hist[i][1][selection]]
             bokehplot.histogram(data=hist_modified, idx=i, iframe=iframe, style='step',
                                 legend_label=[str(x)+' GeV' for x in true_beam_energies_GeV], fill_color='white', line_color=line_colors[i], 
-                                alpha=1., fig_kwargs={'x_range': ranges[i], 'y_range': Range1d(-30.,900)})
+                                #alpha=1., fig_kwargs={'x_range': ranges[i], 'y_range': Range1d(-30.,900)})
+                                alpha=1., fig_kwargs={'x_range': ranges[i]})
 
             #Second fit
             coeff, var = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=1, iframe=iframe, color=line_colors[i], **common_args)
@@ -88,9 +92,9 @@ class HandleHistograms:
             err2 = round(err[2],2)
             mean_label = 'mean='+str(round(coeff[1],2))+'+-'+str(err1)+' MeV'
             sigma_label = 'sigma='+str(round(coeff[2],2))+'+-'+str(err2)+' MeV'
-            font_size = {'text_font_size': '10pt', 'x_units': 'screen'}
-            bokehplot.label(mean_label,  idx=i, iframe=iframe, x=10, y=850, **font_size)
-            bokehplot.label(sigma_label, idx=i, iframe=iframe, x=10, y=800, **font_size)
+            font_size = {'text_font_size': '10pt', 'x_units': 'screen', 'y_units': 'screen'}
+            bokehplot.label(mean_label,  idx=i, iframe=iframe, x=10, y=310, **font_size)
+            bokehplot.label(sigma_label, idx=i, iframe=iframe, x=10, y=290, **font_size)
             means.append( coeff[1] )
             means_err.append( err1 )
             responses.append( (coeff[1]-true_beam_energies_MeV[i]) / (true_beam_energies_MeV[i]) ) 
@@ -109,7 +113,8 @@ def create_dir(directory):
 def response_and_resolution_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2, frameid):
     """Plots responses and resolutions with their errors"""
     #'t.text': 'Responses after original RecHits calibration',
-    axis_kwargs1 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Response (E/True - 1)'}
+    locations = {'data': 'bottom_right', 'sim_proton': 'top_right', 'sim_noproton': 'bottom_right'}
+    axis_kwargs1 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Response (E/True - 1)', 'l.location': locations[FLAGS.datatype]}
     bokehplot.graph(idx=1, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(resp1)], 
                     errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
                             [np.array(eresp1)/2,np.array(eresp1)/2]],
@@ -157,7 +162,7 @@ def linear_fit_graph(mean, emean, idx, iframe):
     pm = u'\u00B1'
     m_label = 'm = '+str(round(coeff[0],2))+pm+str(err1)
     b_label = 'b = '+str(round(coeff[1],2))+pm+str(err2)+' GeV'
-    font_size = {'text_font_size': '9pt', 'x_units': 'data'}
+    font_size = {'text_font_size': '9pt', 'x_units': 'data', 'y_units': 'data'}
     bokehplot.label(m_label, idx=idx, iframe=iframe, x=15, y=280, **font_size)
     bokehplot.label(b_label, idx=idx, iframe=iframe, x=15, y=260, **font_size)
     return coeff[0], coeff[1]
@@ -166,14 +171,22 @@ def linear_fit_graph(mean, emean, idx, iframe):
 def analyze_data():
     #files with sum of rechit energy
     usercode_path = 'src/UserCode/DataProcessing/job_output'
-    path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 'job_output/hit_dependent/outEcut_' + FLAGS.datatype)
+
+    #difference due to historic reasons; this will have to be removed if the analysis step is rerun
+    if FLAGS.datatype == 'data':
+        path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 'job_output/hit_dependent/outEcut_selection_')
+    else:
+        path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 'job_output/hit_dependent/outEcut_' + FLAGS.datatype)
     bins = (1000, 1800, 4200, 5000, 5000, 4200, 5700, 5500, 5500, 500)
-    histo_ranges1 = (Range1d(0,30000), Range1d(11000, 35000), Range1d(27000, 58000), Range1d(52000, 94000), 
-                    Range1d(64000, 120000), Range1d(88000,130000), Range1d(120000,165000), Range1d(160000, 210000), 
-                    Range1d(210000,250000), Range1d(240000,295000))
+    histo_ranges1 = (Range1d(0,30000), Range1d(0, 40000), Range1d(27000, 58000), Range1d(52000, 94000), 
+                    Range1d(64000, 120000), Range1d(88000,135000), Range1d(120000,165000), Range1d(170000, 220000), 
+                    Range1d(200000,280000), Range1d(240000,315000))
+    #histo_ranges1 = (Range1d(0,30000), Range1d(0, 40000), Range1d(0, 58000), Range1d(0, 94000), 
+    #                Range1d(0, 120000), Range1d(0,135000), Range1d(0,165000), Range1d(0, 220000), 
+    #                Range1d(0,280000), Range1d(0,315000))
     histo_ranges2 = (Range1d(0,30000), Range1d(11000, 35000), Range1d(27000, 58000), Range1d(52000, 94000), 
-                    Range1d(64000, 120000), Range1d(88000,130000), Range1d(120000,165000), Range1d(160000, 210000), 
-                    Range1d(210000,250000), Range1d(240000,295000))
+                    Range1d(64000, 120000), Range1d(88000,135000), Range1d(120000,165000), Range1d(160000, 220000), 
+                    Range1d(200000,280000), Range1d(240000,315000))
 
     pars1 = ([750, 20000.,  2000.], #20GeV
              [750, 30000.,  1200.], #30GeV
@@ -183,8 +196,8 @@ def analyze_data():
              [750, 110000., 2800.], #120GeV
              [750, 150000., 3000.], #150GeV
              [750, 190000., 3500.], #200GeV
-             [750, 215000., 4000.], #250GeV
-             [750, 280000., 4500.]) #300GeV 
+             [750, 245000., 4000.], #250GeV
+             [750, 290000., 4500.]) #300GeV
     data1 = ProcessData.join(path + '*_noclusters.csv')
     hist1 = HandleHistograms.create(data1, bins, iframe=0)
     mean1, emean1, _, _, _, _ = HandleHistograms.fit(hist1, pars1, histo_ranges1, iframe=0)
@@ -208,8 +221,8 @@ def analyze_data():
              [750, 109000., 2750.], #120GeV
              [750, 140000., 3500.], #150GeV
              [750, 185000., 3500.], #200GeV
-             [750, 220000., 4000.], #250GeV
-             [750, 270000., 4500.]) #300GeV 
+             [750, 240000., 4000.], #250GeV
+             [750, 290000., 4500.]) #300GeV 
     data2 = ProcessData.join(path + '*[0-9].csv')
     hist2 = HandleHistograms.create(data2, bins, iframe=2)
     mean2, emean2, _, _, _, _ = HandleHistograms.fit(hist2, pars2, histo_ranges2, iframe=2)
@@ -228,11 +241,15 @@ def analyze_data():
     histo_ranges2_corrected2 = tuple(Range1d(x.start/calibration_slope2, x.end/calibration_slope2) for x in histo_ranges2)
     _, _, _, _, res2, eres2 = HandleHistograms.fit(hist2_corrected2, pars2_corrected2, histo_ranges2_corrected2, iframe=4)
 
+    save_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype)
+    utils.create_dir( save_folder )
+    presentation_path = os.path.join(home, release, 'DN/figs', 'resp_res', FLAGS.datatype)
+    utils.create_dir( presentation_path )
     for i in range(len(nfigs)-1):
-        bokehplot.save_frame(iframe=i, plot_width=350, plot_height=350, show=False)
-        bokehplot.save_figs(iframe=i, path='../../DN/figs/', mode='png')
+        bokehplot.save_frame(iframe=i, plot_width=plot_width, plot_height=plot_width, show=False)
+        bokehplot.save_figs(iframe=i, path=save_folder, mode='png')
+        bokehplot.save_figs(iframe=i, path=presentation_path, mode='png')
 
-            
     #Write data in the HDF5 format
     variables_to_store = [resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2]
     with h5py.File(h5filename, 'w') as hf:
@@ -245,12 +262,15 @@ def final_plots():
     for name in variables_created:
         variables_stored.append( hf.get(name) )
 
-    save_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res')
+    save_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype)
+    utils.create_dir( save_folder )
+    presentation_path = os.path.join(home, release, 'DN/figs', 'resp_res', FLAGS.datatype)
+    utils.create_dir( presentation_path )
     frameid = bokehplot.get_nframes()-1
     response_and_resolution_graphs(*variables_stored, frameid=frameid)
-    bokehplot.save_frame(iframe=frameid, plot_width=400, plot_height=400, nrows=1, ncols=3, show=False)
+    bokehplot.save_frame(iframe=frameid, plot_width=plot_width, plot_height=plot_width, nrows=1, ncols=3, show=False)
     bokehplot.save_figs(iframe=frameid, path=save_folder, mode='png')
-    #bokehplot.save_figs(iframe=frameid, path='../../DN/figs/', mode='png')
+    bokehplot.save_figs(iframe=frameid, path=presentation_path, mode='png')
 
     hf.close()
 
@@ -263,14 +283,13 @@ def main():
     if FLAGS.plot:
         final_plots()
 
-#python python/resp_res.py --analyze 1 --plot 1
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     FLAGS, _ = argparser.add_args(parser, 'resp_res')
 
-    #HDF5 data file related variables
-    h5filename = os.path.join('hdf5', FLAGS.datatype + "_" + os.path.splitext( os.path.basename(__file__) )[0] + '.h5')
-    variables_created = ('resp1', 'eresp1', 'res1', 'eres1', 'resp2', 'eresp2', 'res2', 'eres2')
+    for elem in sys.argv:
+        if '--' in elem and elem[2:] not in FLAGS.__dict__.keys():
+            raise IOError('ERROR: You passed an undefined input argument!')
 
     #beam energies used
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
@@ -278,13 +297,16 @@ if __name__ == '__main__':
     true_beam_energies_MeV = tuple(x*1000 for x in true_beam_energies_GeV)
     size = len(beam_energies)
     assert(size==len(true_beam_energies_GeV))
+    plot_width, plot_height = 400, 400
 
     #local CMSSW variables and paths
     eos_base = '/eos/user'
     cms_user = subprocess.check_output(b'echo $USER', shell=True, encoding='utf-8').split('\n')[0]
+    release = 'CMSSW_11_1_0_pre2/src/'
+    home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
 
-    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory)
+    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype)
     output_html_files = ( os.path.join(output_html_dir, FLAGS.datatype + '_pure_rechit_energy_Ecut.html'),
                           os.path.join(output_html_dir, FLAGS.datatype + '_pure_rechit_energy_Ecut_scaled.html'),
                           os.path.join(output_html_dir, FLAGS.datatype + '_clusterized_rechit_energy_Ecut.html'),
@@ -296,5 +318,9 @@ if __name__ == '__main__':
     nfigs = (size, size, size, size, size, 2, 3)
     bokehplot = bkp.BokehPlot(filenames=output_html_files, nframes=len(nfigs), nfigs=nfigs)
     line_colors = ['black', 'blue', 'green', 'red', 'orange', 'purple', 'greenyellow', 'brown', 'pink', 'grey']
+
+    #HDF5 data file related variables
+    h5filename = os.path.join( eos_base, cms_user[0], cms_user, data_directory, 'hdf5', FLAGS.datatype + "_" + os.path.splitext( os.path.basename(__file__) )[0] + '.h5')
+    variables_created = ('resp1', 'eresp1', 'res1', 'eres1', 'resp2', 'eresp2', 'res2', 'eres2')
 
     main()

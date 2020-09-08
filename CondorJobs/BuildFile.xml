@@ -1,0 +1,10 @@
+<use name="root"/>
+<use name="rootgraphics"/>
+<use name="roofit"/>
+<use name="rootxml"/>
+<use name="rootxmlio"/>
+<export>
+  <lib name="1"></lib>
+</export>
+<Flags CXXFLAGS="-O0"/>
+<Flags CXXFLAGS="-g"/>

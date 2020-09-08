@@ -5,10 +5,8 @@
 //   2) Has W0=2.9 hardcoded
 //Returns x and y position of the cluster
 void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, const std::vector<float>& ypos, const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
-  std::cout << "check in 1 " << std::endl;
   assert(!xpos.empty() && !ypos.empty() && !weights.empty() && !clusterid.empty()&& !layerid.empty());
   auto start = std::chrono::high_resolution_clock::now();
-  std::cout << "check in 2 " << std::endl;
   const int nclusters = ( *( std::max_element(clusterid.begin(), clusterid.end()) ) 
 			  + 1 /*cluster index starts at zero*/  + 1 /*outliers*/ );
   std::vector<float> total_weight(nclusters, 0.);
@@ -16,13 +14,11 @@ void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, c
   std::vector<float> x(nclusters, 0.);
   std::vector<float> y(nclusters, 0.);
   std::vector<float> layers(nclusters, 0.);
-  std::cout << "check in 3 " << std::endl;
   for(auto i: util::lang::indices(weights))
     {
       unsigned int weight_index = clusterid.at(i) + 1; //outliers will correspond to total_weight[0]
       total_weight.at(weight_index) += weights.at(i);
     }
-  std::cout << "check in 4 " << std::endl;
   en_ = total_weight; //copy
 
   for (auto i: util::lang::indices(weights))
@@ -35,7 +31,6 @@ void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, c
       if(layers[weight_index] == 0 and weight_index != 0) 
 	layers[weight_index] = layerid.at(i); //all hits in a cluster will belong to the same layer
     }
-  std::cout << "check in 5 " << std::endl;
   for(auto i : util::lang::indices(total_weight_log))
     {
       if (total_weight_log.at(i) != 0.) {
@@ -45,10 +40,8 @@ void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, c
       else
 	pos_.push_back( std::make_tuple(0.f, 0.f, 0.f) );
     }
-  std::cout << "check in 6 " << std::endl;
   auto finish = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "check in 7 " << std::endl;
   //std::cout << "--- calculatePositions      " << elapsed.count() *1000 << " ms\n\n";
 }
 
@@ -119,25 +112,60 @@ void CLUEAnalysis::calculateEnergy( const std::vector<float>& weights, const std
 }
 
 //calculate the number of clusterized hits and clusterized energy per layer
-void CLUEAnalysis::calculateLayerDepVars(const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid, const std::vector<float>& rhos, const std::vector<float>& deltas, const std::vector<bool>& seeds) {
+void CLUEAnalysis::calculateLayerDepVars(const std::vector<float>& xpos, const std::vector<float>& ypos, const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid, const std::vector<float>& rhos, const std::vector<float>& deltas, const std::vector<bool>& seeds, const std::vector<unsigned int>& nhitsincluster) {
   assert(!weights.empty() && !clusterid.empty() && !layerid.empty() && !rhos.empty() && !deltas.empty());
 
   //calculate the number of rechits and clusterized energy per layer
-  std::array<float, detectorConstants::nlayers_emshowers> en_per_layer = {{0.f}};
   std::array<unsigned int, detectorConstants::nlayers_emshowers> hits_per_layer = {{0}};
+  std::array< std::vector<float>, detectorConstants::nlayers_emshowers> en_per_layer;
   std::array< std::vector<float>, detectorConstants::nlayers_emshowers> rhos_per_layer;
   std::array< std::vector<float>, detectorConstants::nlayers_emshowers> deltas_per_layer;
-  std::array< std::vector<bool>, detectorConstants::nlayers_emshowers> seeds_per_layer;
+  std::array< std::vector<bool>,  detectorConstants::nlayers_emshowers> seeds_per_layer;
+  std::array< std::vector<float>, detectorConstants::nlayers_emshowers> xpos_per_layer;
+  std::array< std::vector<float>, detectorConstants::nlayers_emshowers> ypos_per_layer;
+  std::array< std::vector<unsigned int>, detectorConstants::nlayers_emshowers> cluster_size_per_layer; //number of hits in the cluster for each hit and layer
+
+  //unsigned int this_cluster_size = 1;
+  //int old_i = -1;
   for(auto i: util::lang::indices(weights))
     {
       if(clusterid[i] != -1)  //outliers are not considered
 	{
 	  int layeridx = layerid[i]-1; //layers start at 1
-	  en_per_layer.at(layeridx) += weights[i];
+
+	  //////////////////////////////////////////////////////////////////////////////////////
+	  /*Algorithm for finding the number of hits in the cluster to which each hit is associated*/
+
+	  /*
+	  if( i >= old_i + this_cluster_size ) //'==' does not work when clusterid == -1
+	    {
+	      this_cluster_size = 1;
+	      unsigned int next_idx = i+1;
+	      if(next_idx < weights.size()) //if it overflows the cluster size is 1 (last hit in the vector)
+		{
+		  while( clusterid[i] == clusterid[next_idx])
+		    {
+		      this_cluster_size += 1;
+		      ++next_idx;
+		      if( next_idx >= weights.size()) //exit if it overflows
+			break;
+		    }
+		}
+	      for(unsigned j=0; j<this_cluster_size; ++j)
+		cluster_size_per_layer.at(layeridx).push_back( this_cluster_size );
+	      old_i = i;
+	    }
+	  */
+	  //////////////////////////////////////////////////////////////////////////////////////
+	  
 	  hits_per_layer.at(layeridx) += 1;
+	  en_per_layer.at(layeridx).push_back( weights[i] );
 	  rhos_per_layer.at(layeridx).push_back( rhos[i] );
 	  deltas_per_layer.at(layeridx).push_back( deltas[i] );
 	  seeds_per_layer.at(layeridx).push_back( seeds[i] );
+	  xpos_per_layer.at(layeridx).push_back( xpos[i] );
+	  ypos_per_layer.at(layeridx).push_back( ypos[i] );
+	  cluster_size_per_layer.at(layeridx).push_back( nhitsincluster[i] );
 	}
       //Note: We should get an out-of-bounds error for trying to access info at layers > 28. 
       //      It does not happen since all hits not in the CEE are marked as outliers by CLUE (clusterid == -1).
@@ -145,7 +173,9 @@ void CLUEAnalysis::calculateLayerDepVars(const std::vector<float>& weights, cons
   //fill std::array with fractions
   for(unsigned int ilayer=0; ilayer<detectorConstants::nlayers_emshowers; ++ilayer)
     layerdep_vars_.at(ilayer) = std::make_tuple(hits_per_layer.at(ilayer), en_per_layer.at(ilayer), 
-						rhos_per_layer.at(ilayer), deltas_per_layer.at(ilayer), seeds_per_layer.at(ilayer)); 
+						rhos_per_layer.at(ilayer), deltas_per_layer.at(ilayer), seeds_per_layer.at(ilayer),
+						xpos_per_layer.at(ilayer), ypos_per_layer.at(ilayer),
+						cluster_size_per_layer.at(ilayer)); 
 }
 
 //calculate the number of clusterized hits and clusterized energy per layer and per cluster
@@ -285,7 +315,7 @@ float CLUEAnalysis::getTotalEnergyOutput(const std::string& outputFileName, bool
 }
 
 //Returns the number of clusterized hits and clusterized energy per layer
-std::array< std::tuple<unsigned int, float, std::vector<float>, std::vector<float>, std::vector<bool>>, detectorConstants::nlayers_emshowers> CLUEAnalysis::getTotalLayerDepOutput() {
+dataformats::layervars CLUEAnalysis::getTotalLayerDepOutput() {
   return this->layerdep_vars_;
 }
 

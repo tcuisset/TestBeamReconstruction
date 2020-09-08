@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include "UserCode/DataProcessing/interface/analyzer.h"
+#include "UserCode/CondorJobs/interface/run_map.h"
 
 //convenience function which prints all the elements in a vector of strings to std::cout
 void print_vector_elements(const std::vector<std::string>& v)
@@ -13,7 +14,7 @@ void print_vector_elements(const std::vector<std::string>& v)
 
 //write all individual submission jobs: selection stage
 void write_submission_file(const int& id, const std::string& jobpath, const std::string& base, std::string mode,
-			   const std::string& datatype, const unsigned int& energy=0)
+			   const std::string& datatype, const unsigned int& energy)
 {
   assert(mode == "selection" or mode == "analysis");
   std::string n = std::to_string(id);
@@ -34,8 +35,7 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
   }
   
   fw << "arguments = --ntupleid " + n + " --datatype " + datatype;
-  if (datatype.find("sim") != std::string::npos)
-      fw << " --energy " + std::to_string(energy);
+  fw << " --energy " + std::to_string(energy);
   fw << std::endl;
 
   fw << "universe = vanilla" << std::endl;
@@ -91,7 +91,7 @@ void write_dag_repetitions(const std::string& filepath, const std::vector<std::s
   f_write << std::endl;
 }
 
-void write_data(const std::string& submission_folder, const std::string& base)
+void write_data(const std::string& submission_folder, const std::string& base, const bool& last_step_only)
 {
   std::ifstream infile(base + "ntuple_ids.txt");
   std::vector<int> a;
@@ -112,20 +112,29 @@ void write_data(const std::string& submission_folder, const std::string& base)
 	file_id.push_back(i);
     }
 
-  constexpr unsigned int nsteps = 2;
-  std::vector<std::string> steps = {"selection", "analysis"};
-  assert(steps.size() == nsteps);
+  std::string filepath;
+  std::vector<std::string> steps;
+
+  if(last_step_only) {
+    steps = {"analysis"};
+    filepath = base + "clue_data_" + steps[0] + "_only.dag";
+  }
+  else {
+    steps = {"selection", "analysis"};
+    filepath = base + "clue_data.dag";
+  }
+  const unsigned int nsteps = steps.size();
   
-  std::string filepath = base + "clue_data.dag";
   std::vector< std::vector<std::string> > jobnames(nsteps, std::vector<std::string>());
   std::vector< std::vector<std::string> > jobpaths(nsteps, std::vector<std::string>());
   for(auto thisStep: util::lang::indices(steps))
     {
       for(auto i: util::lang::indices(file_id))
 	{
-	  std::string n = std::to_string(file_id[i]);
-	  jobnames[thisStep].push_back(steps[thisStep] + "data_ " + n);
-	  jobpaths[thisStep].push_back(base + submission_folder + steps[thisStep] + "/" + steps[thisStep] + n + ".sub");
+	  const std::string n = std::to_string(file_id[i]);
+	  const std::string thisJobname = steps[thisStep] + "_data_beamen_" + std::to_string(run_map.at(file_id[i])) + "_" + n;
+	  jobnames[thisStep].push_back(thisJobname);
+	  jobpaths[thisStep].push_back(base + submission_folder + steps[thisStep] + "/" + thisJobname + ".sub");
 	}
       if(thisStep == 0)
 	write_dag_jobs(filepath, jobnames[thisStep], jobpaths[thisStep], std::ios_base::ate);
@@ -133,13 +142,21 @@ void write_data(const std::string& submission_folder, const std::string& base)
 	write_dag_jobs(filepath, jobnames[thisStep], jobpaths[thisStep], std::ios_base::app);
     }
 
-  write_dag_hierarchy(filepath, jobnames[0], jobnames[1]);
+  if(!last_step_only)
+    {
+      write_dag_hierarchy(filepath, jobnames[0], jobnames[1]);
+      write_dag_repetitions(filepath, jobnames[1], 2);
+    }
+  write_dag_repetitions(filepath, jobnames[0], 1);
 
   //write individual analysis jobs which will be submitted all at once by the DAG written above
   for(auto i: util::lang::indices(file_id))
     {
-      write_submission_file(i, jobpaths[0][i], base, steps[0], "data"); //selection
-      write_submission_file(i, jobpaths[1][i], base, steps[1], "data"); //analysis
+      const unsigned int thisID = file_id[i];
+      const unsigned int thisEnergy = run_map.at(thisID);
+      write_submission_file(thisID, jobpaths[0][i], base, steps[0], "data", thisEnergy);
+      if(!last_step_only)
+	write_submission_file(thisID, jobpaths[1][i], base, steps[1], "data", thisEnergy); 
     }
 }
 
@@ -205,19 +222,12 @@ int main(int argc, char **argv) {
 
   //input arguments' checks
   if(argc < 3 or argc > 4) {
-    std::cout << "Ypu must specify the following:" << std::endl;
-    std::cout << "1) data type: ";
+    std::cout << "You must specify the following:" << std::endl;
+    std::cout << "1) datatype: ";
     print_vector_elements(datatypes);
     std::cout << "2) last_step_only (optional)" << std::endl;
     return 1;
   }
-  for(unsigned int iarg=0; iarg<static_cast<unsigned int>(argc); ++iarg)
-    {
-      bool tempbool = std::find(okargs.begin(), okargs.end(), std::string(argv[iarg])) != okargs.end();
-      bool tempbool2 = std::string(argv[iarg]).find("--") != std::string::npos;
-      std::cout <<std::string(argv[iarg]) << std::endl;
-      std::cout << tempbool << ", " << tempbool2 << std::endl;
-    }
   for(unsigned int iarg=0; iarg<static_cast<unsigned int>(argc); ++iarg)
     {
       if(std::string(argv[iarg]).find("--") != std::string::npos and
@@ -254,7 +264,7 @@ int main(int argc, char **argv) {
 
   //write DAG files
   if(datatype == "data")
-    write_data(submission_folder, condorjobs_base);
+    write_data(submission_folder, condorjobs_base, last_step_only);
   else
     write_simulation(submission_folder, condorjobs_base, datatype, last_step_only);
 }

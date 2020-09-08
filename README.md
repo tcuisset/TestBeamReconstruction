@@ -1,7 +1,13 @@
 Goal
 -----------------
 
-Assess the performance of HGCAL's clustering algorithm (CLUE) with testbeam data and simulation. 
+Assess the performance of HGCAL's clustering algorithm (CLUE) with testbeam data and simulation. Working under CMSSW 11_1_0_pre2 release.
+
+Status
+-----------------
+
+- Electromagnetic showers' studies completed and first draft of the Detector's Note ready for submission
+- Now starting to replicate the same studies using hadronic showers
 
 Pipeline description
 -----------------
@@ -26,9 +32,11 @@ Steps 1) and 2) were chained with a Directed Acyclic Graph (DAG) that runs withi
 Input NTuples
 ------------------
 
-- **data**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/``` 
+- **data**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/```
 
-- **sim_proton**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v5/electrons/```
+*Electromagnetic showers*
+
+- **sim_proton** (with proton contamination): ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v5/electrons/```
 
 - **sim_noproton**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v3/electrons/```
 	
@@ -101,6 +109,16 @@ write_dag --datatype sim_proton --last_step_only
 ```bash
 condor_submit_dag clue_sim_noproton.dag
 ```
+
+- Join the output files according to their beam energy (I used the ```/eos/``` file system)
+
+```bash
+bash join_ntuples.sh --datatype sim_proton --analysistype layerdep
+bash join_ntuples.sh --datatype sim_proton --analysistype clusterdep
+```
+
+There is no need to join the data of the **hit-level** analysis type, since they are ```csv``` files joined by the ```pandas``` package. The two other types are instead in ```ROOT``` format and are read by ```uproot```.
+One could potentially change the way ```uproot``` reads the files so that it iterates through them (it is potentially faster). This joining step would then become unnecessary.
 
 - Run the python analysis and plotting macros
 
