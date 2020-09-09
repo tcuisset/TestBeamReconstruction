@@ -35,7 +35,7 @@ class Analyzer {
   Analyzer(const std::vector< std::string >&, const std::string&, const float&, const float&, const float&);
   Analyzer(const std::string&, const std::string&, const float&, const float&, const float&);
   ~Analyzer();
-  void runCLUE();
+  void runCLUE(const SHOWERTYPE&);
   void sum_energy(const bool&);
   void save_to_file(const std::string&);
   void save_to_file_layer_dependent(const std::string&);
@@ -50,6 +50,7 @@ class Analyzer {
   //data
   size_t nfiles_;
   static const int ncpus_ = 4;
+  unsigned lmax;
   float dc_, kappa_, ecut_;
   //weights and thickness corrections taken from the third column of Table 3 of CMS DN-19-019
   std::vector< std::pair<std::string, std::string> > names_; //file and tree names

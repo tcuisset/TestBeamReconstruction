@@ -1,7 +1,7 @@
 #include "UserCode/DataProcessing/interface/CLUEAlgo.h"
 
 void CLUEAlgo::makeClusters(){
-  std::array<LayerTiles, detectorConstants::nlayers_emshowers> allLayerTiles;
+  std::array<LayerTiles, detectorConstants::totalnlayers> allLayerTiles;
   // start clustering
   auto start = std::chrono::high_resolution_clock::now();
   prepareDataStructures(allLayerTiles);
@@ -26,7 +26,7 @@ void CLUEAlgo::makeClusters(){
 }
 
 
-void CLUEAlgo::prepareDataStructures( std::array<LayerTiles, detectorConstants::nlayers_emshowers> & allLayerTiles ){
+void CLUEAlgo::prepareDataStructures( std::array<LayerTiles, detectorConstants::totalnlayers> & allLayerTiles ){
   for (int i=0; i<points_.n; i++){
     // push index of points into tiles
     allLayerTiles[points_.layer[i]].fill( points_.x[i], points_.y[i], i);
@@ -34,7 +34,7 @@ void CLUEAlgo::prepareDataStructures( std::array<LayerTiles, detectorConstants::
 }
 
 
-void CLUEAlgo::calculateLocalDensity( std::array<LayerTiles, detectorConstants::nlayers_emshowers> & allLayerTiles ){
+void CLUEAlgo::calculateLocalDensity( std::array<LayerTiles, detectorConstants::totalnlayers> & allLayerTiles ){
   
   // loop over all points
   for(int i = 0; i < points_.n; i++) {
@@ -69,7 +69,7 @@ void CLUEAlgo::calculateLocalDensity( std::array<LayerTiles, detectorConstants::
 }
 
 
-void CLUEAlgo::calculateDistanceToHigher( std::array<LayerTiles, detectorConstants::nlayers_emshowers> & allLayerTiles ){
+void CLUEAlgo::calculateDistanceToHigher( std::array<LayerTiles, detectorConstants::totalnlayers> & allLayerTiles ){
   // loop over all points
   float dm = outlierDeltaFactor_ * dc_;
   for(int i = 0; i < points_.n; i++) {
@@ -130,7 +130,16 @@ void CLUEAlgo::findAndAssignClusters(){
     points_.clusterIndex[i] = -1;
     //note that the layer array starts at 0
     float endeposited_mip = points_.layer[i] < detectorConstants::layerBoundary ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
-    float rhoc = kappa_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * detectorConstants::dEdX[ points_.layer[i] ];
+
+    //remove this bit once the FH weights are established
+    float XXXXweight;
+    if(points_.layer[i] > detectorConstants::nlayers_emshowers)
+      XXXXweight = 1.f;
+    else
+      XXXXweight = detectorConstants::dEdX[ points_.layer[i] ];
+    ///////////////////////////////////////////////////
+
+    float rhoc = kappa_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * XXXXweight;
 
     // determin. seed or outlier 
     bool isSeed = (points_.delta[i] > dc_) and (points_.rho[i] >= rhoc);

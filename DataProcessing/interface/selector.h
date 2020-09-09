@@ -7,9 +7,6 @@
 #include "UserCode/DataProcessing/interface/range.h"
 #include "UserCode/DataProcessing/interface/CLUEAnalysis.h"
 
-enum SHOWERTYPE { EM, HAD };
-enum DATATYPE { DATA, MC };
-
 class Selector {
  public:
   Selector(const std::string&, const std::string&, const std::string&, const std::string&, const int&, std::optional<std::string> in_tree_name = std::nullopt, std::optional<std::string> out_tree_name = std::nullopt);

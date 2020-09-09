@@ -54,11 +54,20 @@ class CLUEAlgo{
       // input variables
       for(int i=0; i<n; ++i)
 	{
-	  if(layer[i] > detectorConstants::nlayers_emshowers)
+	  if(layer[i] > detectorConstants::totalnlayers) //em filters should be applied
 	    continue;
-	  float endeposited_mip = layer[i] < 27 ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
-	  if( weight[i] < ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * detectorConstants::dEdX.at(layer[i]-1) )
-	      continue;
+	  float endeposited_mip = layer[i] <= detectorConstants::layerBoundary ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
+
+	  //remove this bit once the FH weights are established
+	  float XXXXweight;
+	  if(layer[i]-1 > detectorConstants::nlayers_emshowers)
+	    XXXXweight = 1.f;
+	  else
+	    XXXXweight = detectorConstants::dEdX.at(layer[i]-1);
+	  ///////////////////////////////////////////////////
+
+	  if( weight[i] < ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * XXXXweight )
+	    continue;
 	  points_.x.push_back(x[i]);
 	  points_.y.push_back(y[i]);
 	  points_.layer.push_back(layer[i]-1);
@@ -176,9 +185,9 @@ class CLUEAlgo{
         
   private:
     // private member methods
-    void prepareDataStructures(std::array<LayerTiles, detectorConstants::nlayers_emshowers> & );
-    void calculateLocalDensity(std::array<LayerTiles, detectorConstants::nlayers_emshowers> & );
-    void calculateDistanceToHigher(std::array<LayerTiles, detectorConstants::nlayers_emshowers> & );
+    void prepareDataStructures(std::array<LayerTiles, detectorConstants::totalnlayers> & );
+    void calculateLocalDensity(std::array<LayerTiles, detectorConstants::totalnlayers> & );
+    void calculateDistanceToHigher(std::array<LayerTiles, detectorConstants::totalnlayers> & );
     void findAndAssignClusters();
     inline float distance(int , int) const ;
 };

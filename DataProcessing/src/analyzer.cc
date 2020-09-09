@@ -37,7 +37,7 @@ Analyzer::~Analyzer()
 {
 }
 
-void Analyzer::runCLUE() {
+void Analyzer::runCLUE(const SHOWERTYPE& st) {
   float tot_en;
   dataformats::layervars layerdep_vars;
   dataformats::clustervars clusterdep_vars;
@@ -52,7 +52,8 @@ void Analyzer::runCLUE() {
   unsigned int nevents = 0;
   float beam_energy = -1;
   CLUEAlgo clueAlgo(dc_, kappa_, ecut_); //non-verbose
-  CLUEAnalysis clueAna;
+  CLUEAnalysis clueAna(st);
+  this->lmax = clueAna.getLayerMax();
   for(unsigned int i=0; i<nfiles_; ++i) 
     {
       std::cout << "Processing file number " << i+1 << std::endl;
@@ -77,12 +78,12 @@ void Analyzer::runCLUE() {
 	    continue;
 	  
 	  //calculate quantities including outliers
-	  std::array<unsigned int, detectorConstants::nlayers_emshowers> tot_hits_per_layer = {{0}};
-	  std::array<float, detectorConstants::nlayers_emshowers> tot_en_per_layer = {{0.f}};
+	  std::vector<unsigned> tot_hits_per_layer(0);
+	  std::vector<float> tot_en_per_layer(0.f);
 	  for(unsigned int j=0; j<layer_[iEvent].size(); ++j)
 	    {
 	      unsigned int layeridx = layer_.at(iEvent).at(j) - 1;
-	      if(layeridx > detectorConstants::nlayers_emshowers - 1)
+	      if(layeridx > this->lmax - 1)
 		continue;
 	      if( ! ecut_selection(weight_.at(iEvent).at(j), layeridx) )
 		continue;
@@ -110,7 +111,7 @@ void Analyzer::runCLUE() {
 	  //fill fractions (the denominators include outliers!)
 	  dataformats::layerfracs fracs_tmp;
 	  dataformats::layerhitvars hitvars_tmp;
-	  for(unsigned int j=0; j<detectorConstants::nlayers_emshowers; ++j)
+	  for(unsigned int j=0; j<this->lmax; ++j)
 	    {
 	      if (tot_hits_per_layer[j] != 0 and tot_en_per_layer[j] != 0)
 		{
@@ -217,7 +218,16 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
 bool Analyzer::ecut_selection(const float& energy, const unsigned int& layer)
 {
   float endeposited_mip = layer < detectorConstants::layerBoundary ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
-  return energy > ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * detectorConstants::dEdX.at(layer);
+
+  //remove this bit once the FH weights are established
+  float XXXXweight;
+  if(layer > detectorConstants::nlayers_emshowers)
+    XXXXweight = 1.f;
+  else
+    XXXXweight = detectorConstants::dEdX.at(layer);
+  ///////////////////////////////////////////////////
+
+  return energy > ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * XXXXweight;
 }
 
 void Analyzer::sum_energy(const bool& with_ecut)
@@ -235,7 +245,7 @@ void Analyzer::sum_energy(const bool& with_ecut)
 	  float entot = 0.f;
 	  for(unsigned int ien=0; ien<en.size(); ++ien)
 	    {
-	      if(layer[ien] > detectorConstants::nlayers_emshowers)
+	      if(layer[ien] > this->lmax)
 		continue;
 
 	      if(with_ecut and ! ecut_selection(en[ien], layer[ien]-1))
@@ -318,16 +328,16 @@ void Analyzer::save_to_file_layer_dependent(const std::string& filename) {
 
       //define branches
       tmptree.Branch("BeamEnergy", &beam_energies_.at(i));
-      std::array< float, detectorConstants::nlayers_emshowers> fracs_hits;
-      std::array< float, detectorConstants::nlayers_emshowers> fracs_en;
-      std::array< std::vector<float>, detectorConstants::nlayers_emshowers> energies;
-      std::array< std::vector<float>, detectorConstants::nlayers_emshowers> posx;
-      std::array< std::vector<float>, detectorConstants::nlayers_emshowers> posy;
-      std::array< std::vector<float>, detectorConstants::nlayers_emshowers> rhos;
-      std::array< std::vector<float>, detectorConstants::nlayers_emshowers> deltas;
-      std::array< std::vector<bool>, detectorConstants::nlayers_emshowers> seeds;
-      std::array< std::vector<unsigned int>, detectorConstants::nlayers_emshowers> clustersizes;
-      for(unsigned int ilayer=0; ilayer<detectorConstants::nlayers_emshowers; ++ilayer) 
+      std::vector< float > fracs_hits;
+      std::vector< float > fracs_en;
+      std::vector< std::vector<float> > energies(this->lmax);
+      std::vector< std::vector<float> > posx(this->lmax);
+      std::vector< std::vector<float> > posy(this->lmax);
+      std::vector< std::vector<float> > rhos(this->lmax);
+      std::vector< std::vector<float> > deltas(this->lmax);
+      std::vector< std::vector<bool> > seeds(this->lmax);
+      std::vector< std::vector<unsigned> > clustersizes(this->lmax);
+      for(unsigned int ilayer=0; ilayer<this->lmax; ++ilayer) 
 	{
 	  std::string bname_hits     = "NhitsFrac_layer"  + std::to_string(ilayer + 1);
 	  std::string bname_energy   = "EnergyFrac_layer" + std::to_string(ilayer + 1);
@@ -354,7 +364,7 @@ void Analyzer::save_to_file_layer_dependent(const std::string& filename) {
       unsigned int nentries = this->layer_fracs_.at(i).size(); // read the number of entries in the t3
       for (unsigned int ientry = 0; ientry<nentries; ++ientry) 
 	{
-	  for(unsigned int ilayer=0; ilayer<detectorConstants::nlayers_emshowers; ++ilayer) 
+	  for(unsigned int ilayer=0; ilayer<this->lmax; ++ilayer) 
 	    {
 	      fracs_hits[ilayer]   = std::get<0>( this->layer_fracs_.at(i).at(ientry).at(ilayer) );
 	      fracs_en[ilayer]     = std::get<1>( this->layer_fracs_.at(i).at(ientry).at(ilayer) );
@@ -385,11 +395,11 @@ void Analyzer::save_to_file_cluster_dependent(const std::string& filename) {
 
       //define branches
       tmptree.Branch("BeamEnergy", &beam_energies_.at(i));
-      std::array< std::vector<unsigned int>, detectorConstants::nlayers_emshowers> arr_hits;
-      std::array< std::vector<float>, detectorConstants::nlayers_emshowers> arr_en;
-      std::array< std::vector<float>, detectorConstants::nlayers_emshowers> arr_x;
-      std::array< std::vector<float>, detectorConstants::nlayers_emshowers> arr_y;
-      for(unsigned int ilayer=0; ilayer<detectorConstants::nlayers_emshowers; ++ilayer) 
+      std::vector< std::vector<unsigned> > arr_hits;
+      std::vector< std::vector<float> > arr_en;
+      std::vector< std::vector<float> > arr_x;
+      std::vector< std::vector<float> > arr_y;
+      for(unsigned int ilayer=0; ilayer<this->lmax; ++ilayer) 
 	{
 	  std::string bname_hits   = "Nhits_layer"  + std::to_string(ilayer + 1);
 	  std::string bname_energy = "Energy_layer" + std::to_string(ilayer + 1);
@@ -405,7 +415,7 @@ void Analyzer::save_to_file_cluster_dependent(const std::string& filename) {
       unsigned int nentries = this->clusterdep_.at(i).size(); // read the number of entries in the t3
       for (unsigned int ientry = 0; ientry<nentries; ++ientry) 
 	{
-	  for(unsigned int ilayer=0; ilayer<detectorConstants::nlayers_emshowers; ++ilayer) 
+	  for(unsigned int ilayer=0; ilayer<this->lmax; ++ilayer) 
 	    {
 	      arr_hits[ilayer] = std::get<0>( this->clusterdep_.at(i).at(ientry).at(ilayer) );
 	      arr_en[ilayer]   = std::get<1>( this->clusterdep_.at(i).at(ientry).at(ilayer) );

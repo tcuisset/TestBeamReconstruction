@@ -119,7 +119,17 @@ void Selector::select_relevant_branches()
 		if(this->showertype==SHOWERTYPE::HAD and layer>detectorConstants::nlayers_emshowers) //remove as soon as the extra dEdX are known
 		  weight = 1.;
 		else
-		  weight = detectorConstants::dEdX.at(layer-1);
+		  {
+		    //remove this bit once the FH weights are established
+		    float XXXXweight;
+		    if(layer-1 > detectorConstants::nlayers_emshowers)
+		      XXXXweight = 1.f;
+		    else
+		      XXXXweight = detectorConstants::dEdX.at(layer-1);
+		    ///////////////////////////////////////////////////
+
+		    weight = XXXXweight;
+		  }
 	      }
 	    else
 	      continue;

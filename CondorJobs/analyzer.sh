@@ -150,4 +150,4 @@ OUTFILE3="${EOS_PATH}cluster_dependent/${OUTNAME}_${DATATYPE}_${SHOWERTYPE}_beam
 
 echo "Input file: ${INFILE}"
 echo -e "Output files:\n${OUTFILE1}\n${OUTFILE2}\n${OUTFILE3}"
-analyze_data_exe "${INFILE}" "${OUTFILE1}" "${OUTFILE2}" "${OUTFILE3}";
+analyze_data_exe "${INFILE}" "${OUTFILE1}" "${OUTFILE2}" "${OUTFILE3} "${SHOWERTYPE}";
