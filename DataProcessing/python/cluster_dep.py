@@ -177,7 +177,7 @@ def graphs_per_layer(tree, cache, axis_kwargs, columns_field, iframe, variable, 
 
 def save_plots(frame_key):
     mode = 'png'
-    presentation_folder = os.path.join(home, release, 'DN/figs', 'cluster_dep', FLAGS.datatype)
+    presentation_folder = os.path.join(home, release, 'DN/figs', 'cluster_dep', FLAGS.datatype, FLAGS.showertype)
     utils.create_dir( presentation_folder )
 
     #save frames
@@ -275,7 +275,7 @@ if __name__ == '__main__':
     #define parser for user input arguments
     parser = argparse.ArgumentParser()
     FLAGS, _ = add_args(parser, 'clusters')
-    input_sanity_checks(FLAGS, sys.argv)
+    utils.input_sanity_checks(FLAGS, sys.argv)
 
     #define analysis constants
     nlayers = 28 if FLAGS.showertype=='em' else 40
@@ -298,7 +298,7 @@ if __name__ == '__main__':
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
     data_path_start = os.path.join(eos_base, cms_user[0], cms_user, data_directory, "job_output/cluster_dependent/")
-    data_paths = [os.path.join(data_path_start, 'hadd_clusterdep_' + FLAGS.datatype + '_beamen' + str(x) + '.root') for x in beam_energies]
+    data_paths = [os.path.join(data_path_start, 'hadd_clusterdep_' + FLAGS.datatype + '_' + FLAGS.showertype + '_beamen' + str(x) + '.root') for x in beam_energies]
         
     #define cache names and paths
     cache_file_name_start = os.path.join(eos_base, cms_user[0], cms_user, data_directory)
@@ -309,20 +309,20 @@ if __name__ == '__main__':
         print(x)
 
     #create output files with plots
-    utils.create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype) )
+    utils.create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype) )
     output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype)
-    output_html_files_potential_map = { 'hits':                ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_hits.html'),         size ),
-                                        'energies':            ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_energy.html'),       size ),
-                                        'numbers':             ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_number.html'),       size ),
-                                        'posx':                ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_posx.html'),         size ),
-                                        'posy':                ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_posy.html'),         size ),
-                                        'hits' + version2:     ( os.path.join(output_html_dir, FLAGS.datatype + version2 + '_clusters_hits.html'),   size ),
-                                        'energies' + version2: ( os.path.join(output_html_dir, FLAGS.datatype + version2 + '_clusters_energy.html'), size ),
-                                        'numbers' + version2:  ( os.path.join(output_html_dir, FLAGS.datatype + version2 + '_clusters_number.html'), size ),
-                                        'posx' + version2:     ( os.path.join(output_html_dir, FLAGS.datatype + version2 + '_clusters_posx.html'),   size ),
-                                        'posy' + version2:     ( os.path.join(output_html_dir, FLAGS.datatype + version2 + '_clusters_posy.html'),   size ),
-                                        'posx_posy':           ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_posx_vs_posy_{}_{}_hits_{}GeV.html'.format(nhits_min, nhits_max, chosen_energy)),
-                                                                 ncuts*nlayers ) }
+    outlambda = lambda x: os.path.join(output_html_dir, FLAGS.datatype + '_' + FLAGS.showertype + x)
+    output_html_files_potential_map = { 'hits':                ( outlambda('_plot_clusters_hits.html'),         size ),
+                                        'energies':            ( outlambda('_plot_clusters_energy.html'),       size ),
+                                        'numbers':             ( outlambda('_plot_clusters_number.html'),       size ),
+                                        'posx':                ( outlambda('_plot_clusters_posx.html'),         size ),
+                                        'posy':                ( outlambda('_plot_clusters_posy.html'),         size ),
+                                        'hits' + version2:     ( outlambda(version2 + '_clusters_hits.html'),   size ),
+                                        'energies' + version2: ( outlambda(version2 + '_clusters_energy.html'), size ),
+                                        'numbers' + version2:  ( outlambda(version2 + '_clusters_number.html'), size ),
+                                        'posx' + version2:     ( outlambda(version2 + '_clusters_posx.html'),   size ),
+                                        'posy' + version2:     ( outlambda(version2 + '_clusters_posy.html'),   size ),
+                                        'posx_posy':           ( outlambda('_plot_clusters_posx_vs_posy_{}_{}_hits_{}GeV.html'.format(nhits_min, nhits_max, chosen_energy)), ncuts*nlayers ) }
     counter = 0
     output_html_files_map = dict()
     for k,tup in output_html_files_potential_map.items():
@@ -342,7 +342,7 @@ if __name__ == '__main__':
     
     bokehplot = bkp.BokehPlot(filenames=output_html_files_list, nfigs=nfigs, nframes=nframes)
     plot_width, plot_height = 600, 400
-    cluster_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype)
+    cluster_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype)
     utils.create_dir( cluster_dep_folder )
 
     main()

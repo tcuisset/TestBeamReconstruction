@@ -23,13 +23,6 @@ def add_args(parser, mode):
             action='store_true',
             help='Plot the data.'
         )
-        parser.add_argument(
-            '--showertype',
-            type=str,
-            choices=['em', 'had'],
-            required=True,
-            help='Choose the showertype to run the analysis on: "em" OR "had"'
-        )
         
         requiredNamedGroup = parser.add_argument_group('required named arguments')
         requiredNamedGroup.add_argument(
@@ -38,6 +31,13 @@ def add_args(parser, mode):
             choices=['data', 'sim_proton', 'sim_noproton'],
             required=True,
             help='Choose the datatype to run the analysis on: "data" OR "sim_proton" OR "sim_noproton"'
+        )
+        requiredNamedGroup.add_argument(
+            '--showertype',
+            type=str,
+            choices=['em', 'had'],
+            required=True,
+            help='Choose the showertype to run the analysis on: "em" OR "had"'
         )
         return parser.parse_known_args()
 
@@ -74,7 +74,7 @@ def add_args(parser, mode):
         )
 
 
-        variables_to_ignore = ['datatype']
+        variables_to_ignore = ['datatype', 'showertype']
         parser.add_argument(
             '--all',
             action=AllAction,
@@ -89,6 +89,13 @@ def add_args(parser, mode):
             choices=['data', 'sim_proton', 'sim_noproton'],
             required=True,
             help='Choose the datatype to run the analysis on: "data" OR "sim_proton" OR "sim_noproton"'
+        )
+        requiredNamedGroup.add_argument(
+            '--showertype',
+            type=str,
+            choices=['em', 'had'],
+            required=True,
+            help='Choose the showertype to run the analysis on: "em" OR "had"'
         )
 
         return parser.parse_known_args()
@@ -135,7 +142,7 @@ def add_args(parser, mode):
             help="Run the layer analysis on the hits' X and Y positions in the same plot"
         )
         
-        variables_to_ignore = ['datatype', 'distances_2D', 'densities_2D', 'posx_posy']
+        variables_to_ignore = ['datatype', 'showertype', 'distances_2D', 'densities_2D', 'posx_posy']
         parser.add_argument(
             '--all',
             action=AllAction,
@@ -150,6 +157,13 @@ def add_args(parser, mode):
             choices=['data', 'sim_proton', 'sim_noproton'],
             required=True,
             help='Choose the datatype to run the analysis on: "data" OR "sim_proton" OR "sim_noproton"'
+        )
+        requiredNamedGroup.add_argument(
+            '--'+variables_to_ignore[1],
+            type=str,
+            choices=['em', 'had'],
+            required=True,
+            help='Choose the showertype to run the analysis on: "em" OR "had"'
         )
         return parser.parse_known_args()
 

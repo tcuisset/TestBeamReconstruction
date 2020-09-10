@@ -116,6 +116,7 @@ def peak_abciss(counts, edges):
     return x
 
 def input_sanity_checks(flags, argv):
+    """Checks the input arguments for obvious mistakes"""
     for elem in argv:
         if '--' in elem and elem[2:] not in flags.__dict__.keys():
             raise IOError('ERROR: You passed an undefined input argument!')

@@ -134,12 +134,12 @@ There is no need to join the data of the **hit-level** analysis type, since they
 - Run the python analysis and plotting macros
 
 ```bash
-python DataProcessing/python/resp_res.py --datatype sim_proton --all    #hit level
-python DataProcessing/python/layer_dep.py --datatype sim_proton --all   #layer level
-python DataProcessing/python/cluster_dep.py --datatype sim_proton --all #cluster level
+python DataProcessing/python/resp_res.py --datatype sim_proton --showertype em    #hit level
+python DataProcessing/python/layer_dep.py --datatype sim_proton --showertype em --all   #layer level
+python DataProcessing/python/cluster_dep.py --datatype sim_proton --showertype em --all #cluster level
 ```
 
-Please run the scripts with the ```--help``` option for more information, including running the last step only for a subset of final variables.
+Please run the scripts with the ```--help``` option for more information, including running the last step only for a subset of final variables (this can be done at **layer-level** and **cluster-level**).
     
 Plots
 -----------------

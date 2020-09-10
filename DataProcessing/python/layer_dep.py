@@ -333,9 +333,9 @@ def main():
         cacheobj.dump() #dump cache for specific energy
     
     print('Saving BokehPlot frames...')
-    layer_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep', FLAGS.datatype)
+    layer_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep', FLAGS.datatype, FLAGS.showertype)
     utils.create_dir( layer_dep_folder )
-    presentation_path = os.path.join(home, release, 'DN/figs', 'layer_dep', FLAGS.datatype)
+    presentation_path = os.path.join(home, release, 'DN/figs', 'layer_dep', FLAGS.datatype, FLAGS.showertype)
     utils.create_dir( presentation_path )
     bokehplot.save_frames(plot_width=plot_width, plot_height=plot_height, show=False)
     for iframe in range(nframes):
@@ -345,7 +345,7 @@ def main():
 
 if __name__ == '__main__':
     #define analysis constants
-    nlayers = 28
+    nlayers = 28 if FLAGS.showertype=='em' else 40
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
     energy_cut = 1000
     sigmaNoiseTimesKappa = 9 * 10. / 6.
@@ -357,11 +357,7 @@ if __name__ == '__main__':
     #define parser for user input arguments
     parser = argparse.ArgumentParser()
     FLAGS, _ = add_args(parser, 'layers')
-    for elem in sys.argv:
-        if '--' in elem and elem[2:] not in FLAGS.__dict__.keys():
-            raise IOError('ERROR: You passed an undefined input argument!')
-    if FLAGS.showertype == 'had' and FLAGS.datatype == 'sim_noproton':
-        raise ValueError('There is no proton-free sample for hadronic showers.')
+    utils.input_sanity_checks(FLAGS, sys.argv)
     
     #define local data paths and variables
     eos_base = '/eos/user/'
@@ -371,7 +367,7 @@ if __name__ == '__main__':
     analysis_directory = 'TestBeamReconstruction/'
     data_directory = 'job_output/layer_dependent/'
     data_path_start = os.path.join(eos_base, cms_user[0], cms_user, analysis_directory, data_directory)
-    data_paths = [os.path.join(data_path_start, 'hadd_layerdep_' + FLAGS.datatype + '_beamen' + str(x) + '.root') for x in beam_energies]
+    data_paths = [os.path.join(data_path_start, 'hadd_layerdep_' + FLAGS.datatype + '_' + FLAGS.showertype + '_beamen' + str(x) + '.root') for x in beam_energies]
 
     #define cache names and paths
     cache_file_name_start = os.path.join(eos_base, cms_user[0], cms_user, analysis_directory)
@@ -382,20 +378,22 @@ if __name__ == '__main__':
         print(x)
 
     #create output files with plots
-    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep', FLAGS.datatype)
+    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep', FLAGS.datatype, FLAGS.showertype)
     utils.create_dir( output_html_dir )
     plot_width, plot_height = 600, 400
     
     #the keys are the attributes of FLAGS (except 'all')
     #the values are: 1) the name of all potential bokehplot frames, 2) number of bokehplot figures in each frame       
-    output_html_potential_files_map = { 'densities':           ( os.path.join(output_html_dir, FLAGS.datatype + '_densities_1D.html'),       nlayers + 1 ), #one additional plot to show the max vs. layer 
-                                        'distances':           ( os.path.join(output_html_dir, FLAGS.datatype + '_distances_1D.html'),       nlayers), 
-                                        'densities_distances': ( os.path.join(output_html_dir, FLAGS.datatype + '_dens_vs_dist.html'),       nlayers ),
-                                        'posx_posy':           ( os.path.join(output_html_dir, FLAGS.datatype + '_posx_vs_posy.html'),       nlayers ),
-                                        'densities_2D':        ( os.path.join(output_html_dir, FLAGS.datatype + '_densities_2D.html'),       size    ),
-                                        'distances_2D':        ( os.path.join(output_html_dir, FLAGS.datatype + '_distances_2D.html'),       size    ),
-                                        'hits_fraction':       ( os.path.join(output_html_dir, FLAGS.datatype + '_hits_fraction_2D.html'),   size    ),
-                                        'energy_fraction':     ( os.path.join(output_html_dir, FLAGS.datatype + '_energy_fraction_2D.html'), size    )  }
+    outlambda = lambda x: os.path.join(output_html_dir, FLAGS.datatype + '_' + FLAGS.showertype + x)
+    output_html_potential_files_map = { 'densities':           ( outlambda('_densities_1D.html'),       nlayers + 1 ), 
+                                        #one additional plot to show the max vs. layer 
+                                        'distances':           ( outlambda('_distances_1D.html'),       nlayers), 
+                                        'densities_distances': ( outlambda('_dens_vs_dist.html'),       nlayers ),
+                                        'posx_posy':           ( outlambda('_posx_vs_posy.html'),       nlayers ),
+                                        'densities_2D':        ( outlambda('_densities_2D.html'),       size    ),
+                                        'distances_2D':        ( outlambda('_distances_2D.html'),       size    ),
+                                        'hits_fraction':       ( outlambda('_hits_fraction_2D.html'),   size    ),
+                                        'energy_fraction':     ( outlambda('_energy_fraction_2D.html'), size    )  }
 
     #select only the frames requested by the user
     #the values will become: 1) the name of all potential bokehplot frames, 2) a frame identifier, 3) number of bokehplot figures in each frame       

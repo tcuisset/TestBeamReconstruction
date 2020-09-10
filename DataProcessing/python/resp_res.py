@@ -283,7 +283,7 @@ def main():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     FLAGS, _ = argparser.add_args(parser, 'resp_res')
-    input_sanity_checks(FLAGS, sys.argv)
+    utils.input_sanity_checks(FLAGS, sys.argv)
 
     #beam energies used
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
@@ -301,14 +301,14 @@ if __name__ == '__main__':
     data_directory = 'TestBeamReconstruction'
 
     output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype, FLAGS.showertype)
-    outlambda = lambda x: os.path.join(output_html_dir, FLAGS.datatype + '_' + FLAGS.showertype + x)
-    output_html_files = ( outlambda('_pure_rechit_energy_Ecut.html'),
-                          outlambda('_pure_rechit_energy_Ecut_scaled.html'),
-                          outlambda('_clusterized_rechit_energy_Ecut.html'),
-                          outlambda('_clusterized_rechit_energy_Ecut_scaled_with_original_calibration.html'),
-                          outlambda('_clusterized_rechit_energy_Ecut_scaled_with_clusterized_calibration.html'),
-                          outlambda('_linear_regressions.html'),
-                          outlambda('_responses_and_resolutions.html') 
+    outlambda = lambda x: os.path.join(output_html_dir, FLAGS.datatype + '_' + FLAGS.showertype + '_' + x)
+    output_html_files = ( outlambda('pure_rechit_energy_Ecut.html'),
+                          outlambda('pure_rechit_energy_Ecut_scaled.html'),
+                          outlambda('clusterized_rechit_energy_Ecut.html'),
+                          outlambda('clusterized_rechit_energy_Ecut_scaled_with_original_calibration.html'),
+                          outlambda('clusterized_rechit_energy_Ecut_scaled_with_clusterized_calibration.html'),
+                          outlambda('linear_regressions.html'),
+                          outlambda('responses_and_resolutions.html') 
     )
     nfigs = (size, size, size, size, size, 2, 3)
     bokehplot = bkp.BokehPlot(filenames=output_html_files, nframes=len(nfigs), nfigs=nfigs)
