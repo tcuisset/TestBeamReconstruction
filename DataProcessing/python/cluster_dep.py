@@ -275,13 +275,10 @@ if __name__ == '__main__':
     #define parser for user input arguments
     parser = argparse.ArgumentParser()
     FLAGS, _ = add_args(parser, 'clusters')
-    
-    for elem in sys.argv:
-        if '--' in elem and elem[2:] not in FLAGS.__dict__.keys():
-            raise IOError('ERROR: You passed an undefined input argument!')
+    input_sanity_checks(FLAGS, sys.argv)
 
     #define analysis constants
-    nlayers = 28
+    nlayers = 28 if FLAGS.showertype=='em' else 40
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
     true_beam_energies_GeV = (20,30,49.99,79.93,99.83,119.65,149.14,197.32,243.61,287.18)
     true_beam_energies_MeV = tuple(x*1000 for x in true_beam_energies_GeV)
@@ -297,7 +294,7 @@ if __name__ == '__main__':
     #define local data paths and variables
     eos_base = '/eos/user/'
     cms_user = subprocess.check_output("echo $USER", shell=True, encoding='utf-8').split('\n')[0]
-    release = 'CMSSW_11_1_0_pre2/src/'
+    release = subprocess.check_output(b'echo $CMSSW_VERSION', shell=True, encoding='utf-8').split('\n')[0] + '/src/'
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
     data_path_start = os.path.join(eos_base, cms_user[0], cms_user, data_directory, "job_output/cluster_dependent/")
@@ -313,7 +310,7 @@ if __name__ == '__main__':
 
     #create output files with plots
     utils.create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype) )
-    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype)
+    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype)
     output_html_files_potential_map = { 'hits':                ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_hits.html'),         size ),
                                         'energies':            ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_energy.html'),       size ),
                                         'numbers':             ( os.path.join(output_html_dir, FLAGS.datatype + '_plot_clusters_number.html'),       size ),

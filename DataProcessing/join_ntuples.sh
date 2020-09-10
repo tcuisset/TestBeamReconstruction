@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 declare -a ENERGIES=("20" "30" "50" "80" "100" "120" "150" "200" "250" "300")
 declare -a DATATYPES=("data" "sim_proton" "sim_noproton")
+declare -a SHOWERTYPES=("em" "had")
 declare -a ANALYSISTYPES=("layerdep" "clusterdep")
 
 ##########################
 ########PARSING###########
 ##########################
-ARGS=`getopt -o "" -l ",datatype:,analysistype:" -n "getopts_${0}" -- "$@"`
+ARGS=`getopt -o "" -l ",datatype:,showertype:,analysistype:" -n "getopts_${0}" -- "$@"`
 
 #Bad arguments
 if [ $? -ne 0 ];
@@ -24,7 +25,20 @@ while true; do
 		    echo "Data type: ${DATATYPE}";
 		else
 		    echo "'--datatype' can be one of the following:"
-		    echo "sim_proton / sim_noproton / data"
+		    printf "%s " "${DATATYPES[@]}"
+		    exit 1;
+		fi
+	    fi
+	    shift 2;;
+
+	--showertype)
+	    if [ -n "$2" ]; then
+		if [[ " ${SHOWERTYPES[@]} " =~ " ${2} " ]]; then
+		    SHOWERTYPE="${2}";
+		    echo "Data type: ${SHOWERTYPE}";
+		else
+		    echo "'--showertype' can be one of the following:"
+		    printf "%s " "${SHOWERTYPES[@]}"
 		    exit 1;
 		fi
 	    fi
@@ -37,7 +51,7 @@ while true; do
 		    echo "Analysis type: ${ANALYSISTYPE}";
 		else
 		    echo "'--analysistype' can be one of the following:"
-		    echo "layerdep / clusterdep"
+		    printf "%s " "${ANALYSISTYPES[@]}"
 		    exit 1;
 		fi
 	    fi
@@ -63,6 +77,17 @@ if [[ -z "${DATATYPE}" ]]; then
     printf "\n"
     exit 1;
 fi  
+if [[ -z "${SHOWERTYPE}" ]]; then
+    echo "Please specify the shower type."
+    printf "Accepted values are: "
+    printf "%s " "${SHOWERTYPES[@]}"
+    printf "\n"
+    exit 1;
+fi  
+if [[ ( "${DATATYPE}" == "sim_noproton" ) && ( "${SHOWERTYPE}" == "had" ) ]]; then
+    echo "There is no proton-free sample for hadronic showers."
+    exit 1;
+fi
 if [[ -z "${ANALYSISTYPE}" ]]; then
     echo "Please specify the analysis type."
     printf "Accepted values are: "
@@ -81,5 +106,5 @@ elif [[ "${ANALYSISTYPE}" == "clusterdep" ]]; then
 fi
 len="${#ENERGIES[@]}"
 for(( j=0; j<${len}; j++ )); do
-    hadd -f /eos/user/b/bfontana/TestBeamReconstruction/job_output/"${JOBSFOLDER}"/hadd_"${ANALYSISTYPE}"_"${DATATYPE}"_beamen${ENERGIES[j]}.root /eos/user/b/bfontana/TestBeamReconstruction/job_output/"${JOBSFOLDER}"/outEcut_"${DATATYPE}"*_beamen${ENERGIES[j]}_*.root;
+    hadd -f /eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/job_output/"${JOBSFOLDER}"/hadd_"${ANALYSISTYPE}"_"${DATATYPE}"_"${SHOWERTYPE}"_beamen${ENERGIES[j]}.root /eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/job_output/"${JOBSFOLDER}"/outEcut_"${DATATYPE}"_"${SHOWERTYPE}"_beamen${ENERGIES[j]}_*.root;
 done	

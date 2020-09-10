@@ -23,6 +23,13 @@ def add_args(parser, mode):
             action='store_true',
             help='Plot the data.'
         )
+        parser.add_argument(
+            '--showertype',
+            type=str,
+            choices=['em', 'had'],
+            required=True,
+            help='Choose the showertype to run the analysis on: "em" OR "had"'
+        )
         
         requiredNamedGroup = parser.add_argument_group('required named arguments')
         requiredNamedGroup.add_argument(

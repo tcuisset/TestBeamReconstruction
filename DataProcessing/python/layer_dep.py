@@ -357,6 +357,11 @@ if __name__ == '__main__':
     #define parser for user input arguments
     parser = argparse.ArgumentParser()
     FLAGS, _ = add_args(parser, 'layers')
+    for elem in sys.argv:
+        if '--' in elem and elem[2:] not in FLAGS.__dict__.keys():
+            raise IOError('ERROR: You passed an undefined input argument!')
+    if FLAGS.showertype == 'had' and FLAGS.datatype == 'sim_noproton':
+        raise ValueError('There is no proton-free sample for hadronic showers.')
     
     #define local data paths and variables
     eos_base = '/eos/user/'

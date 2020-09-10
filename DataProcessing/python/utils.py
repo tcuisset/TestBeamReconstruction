@@ -114,3 +114,10 @@ def peak_abciss(counts, edges):
     idx = np.where( counts == m )[0][0] #first element only in case there are multiple equal maxima
     x = (edges[idx] + edges[idx+1])/2
     return x
+
+def input_sanity_checks(flags, argv):
+    for elem in argv:
+        if '--' in elem and elem[2:] not in flags.__dict__.keys():
+            raise IOError('ERROR: You passed an undefined input argument!')
+    if flags.showertype == 'had' and flags.datatype == 'sim_noproton':
+        raise ValueError('There is no proton-free sample for hadronic showers.')

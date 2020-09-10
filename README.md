@@ -121,13 +121,13 @@ condor_submit_dag CondorJobs/clue_sim_proton_em.dag
 - Join the output files according to their beam energy
 
 ```bash
-bash DataProcessing/join_ntuples.sh --datatype sim_proton --analysistype layerdep
-bash DataProcessing/join_ntuples.sh --datatype sim_proton --analysistype clusterdep
+bash DataProcessing/join_ntuples.sh --datatype sim_proton --showertype em --analysistype layerdep
+bash DataProcessing/join_ntuples.sh --datatype sim_proton --showertype em --analysistype clusterdep
 ```
 
-The outputs are currently being stored under ```/eos/user/<first username letter>/<username>/TestBeamReconstruction/job_output/```. Please create the required folders if needed. Under ```/job_output/``` the files are stored in the ```hit_dependent/```, ```layer_dependent/``` and ```cluster_dependent``` folders.
+The outputs are currently being stored under ```/eos/user/<first username letter>/<username>/TestBeamReconstruction/job_output/```. Please create the required folders if needed. Under ```/job_output/``` the files are stored in the ```hit_dependent/```, ```layer_dependent/``` and ```cluster_dependent/``` folders.
 
-There is no need to join the data of the **hit-level** analysis type, since they are ```csv``` files joined by the ```pandas``` package. The two other types are instead in ```ROOT``` format and are read by ```uproot```.
+There is no need to join the data of the **hit-level** analysis type, since they are ```.csv``` files joined by the ```pandas``` package. The two other types are instead in ```ROOT``` format and are read by ```uproot```.
 
 *Possible improvement*: one could potentially change the way ```uproot``` reads the files so that it iterates through them (it is potentially faster). This joining step would then become unnecessary.
 

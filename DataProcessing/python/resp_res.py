@@ -167,16 +167,13 @@ def linear_fit_graph(mean, emean, idx, iframe):
     bokehplot.label(b_label, idx=idx, iframe=iframe, x=15, y=260, **font_size)
     return coeff[0], coeff[1]
 
-
 def analyze_data():
     #files with sum of rechit energy
     usercode_path = 'src/UserCode/DataProcessing/job_output'
 
     #difference due to historic reasons; this will have to be removed if the analysis step is rerun
-    if FLAGS.datatype == 'data':
-        path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 'job_output/hit_dependent/outEcut_selection_')
-    else:
-        path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 'job_output/hit_dependent/outEcut_' + FLAGS.datatype)
+    path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 
+                        'job_output/hit_dependent/outEcut_' + FLAGS.datatype + "_" + FLAGS.showertype)
     bins = (1000, 1800, 4200, 5000, 5000, 4200, 5700, 5500, 5500, 500)
     histo_ranges1 = (Range1d(0,30000), Range1d(0, 40000), Range1d(27000, 58000), Range1d(52000, 94000), 
                     Range1d(64000, 120000), Range1d(88000,135000), Range1d(120000,165000), Range1d(170000, 220000), 
@@ -241,7 +238,7 @@ def analyze_data():
     histo_ranges2_corrected2 = tuple(Range1d(x.start/calibration_slope2, x.end/calibration_slope2) for x in histo_ranges2)
     _, _, _, _, res2, eres2 = HandleHistograms.fit(hist2_corrected2, pars2_corrected2, histo_ranges2_corrected2, iframe=4)
 
-    save_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype)
+    save_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype, FLAGS.showertype)
     utils.create_dir( save_folder )
     presentation_path = os.path.join(home, release, 'DN/figs', 'resp_res', FLAGS.datatype)
     utils.create_dir( presentation_path )
@@ -286,10 +283,7 @@ def main():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     FLAGS, _ = argparser.add_args(parser, 'resp_res')
-
-    for elem in sys.argv:
-        if '--' in elem and elem[2:] not in FLAGS.__dict__.keys():
-            raise IOError('ERROR: You passed an undefined input argument!')
+    input_sanity_checks(FLAGS, sys.argv)
 
     #beam energies used
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
@@ -306,21 +300,22 @@ if __name__ == '__main__':
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
 
-    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype)
-    output_html_files = ( os.path.join(output_html_dir, FLAGS.datatype + '_pure_rechit_energy_Ecut.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + '_pure_rechit_energy_Ecut_scaled.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + '_clusterized_rechit_energy_Ecut.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + '_clusterized_rechit_energy_Ecut_scaled_with_original_calibration.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + '_clusterized_rechit_energy_Ecut_scaled_with_clusterized_calibration.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + '_linear_regressions.html'),
-                          os.path.join(output_html_dir, FLAGS.datatype + '_responses_and_resolutions.html') 
+    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype, FLAGS.showertype)
+    outlambda = lambda x: os.path.join(output_html_dir, FLAGS.datatype + '_' + FLAGS.showertype + x)
+    output_html_files = ( outlambda('_pure_rechit_energy_Ecut.html'),
+                          outlambda('_pure_rechit_energy_Ecut_scaled.html'),
+                          outlambda('_clusterized_rechit_energy_Ecut.html'),
+                          outlambda('_clusterized_rechit_energy_Ecut_scaled_with_original_calibration.html'),
+                          outlambda('_clusterized_rechit_energy_Ecut_scaled_with_clusterized_calibration.html'),
+                          outlambda('_linear_regressions.html'),
+                          outlambda('_responses_and_resolutions.html') 
     )
     nfigs = (size, size, size, size, size, 2, 3)
     bokehplot = bkp.BokehPlot(filenames=output_html_files, nframes=len(nfigs), nfigs=nfigs)
     line_colors = ['black', 'blue', 'green', 'red', 'orange', 'purple', 'greenyellow', 'brown', 'pink', 'grey']
 
     #HDF5 data file related variables
-    h5filename = os.path.join( eos_base, cms_user[0], cms_user, data_directory, 'hdf5', FLAGS.datatype + "_" + os.path.splitext( os.path.basename(__file__) )[0] + '.h5')
+    h5filename = os.path.join( eos_base, cms_user[0], cms_user, data_directory, 'hdf5', FLAGS.datatype + "_" + FLAGS.showertype + '_' + os.path.splitext( os.path.basename(__file__) )[0] + '.h5')
     variables_created = ('resp1', 'eresp1', 'res1', 'eres1', 'resp2', 'eresp2', 'res2', 'eres2')
 
     main()
