@@ -12,19 +12,19 @@ Status
 Pipeline description
 -----------------
 
-- **1)** *selection stage*: the original NTuples are pruned, in order to keep the relevant information only
+**1)** *selection stage*: the original NTuples are pruned, in order to keep the relevant information only
 
-- **2)** *analysis stage*:
+**2)** *analysis stage*:
 
-    - CLUE is run over the pruned NTuples
+- CLUE is run over the pruned NTuples
 	
-    - most of the quantities of interest are calculated and stored in ```csv``` and ```ROOT``` files
+- most of the quantities of interest are calculated and stored in ```csv``` and ```ROOT``` files
 
-- **3)** *residual analysis and plotting stage*:
+**3)** *residual analysis and plotting stage*:
 
-    - fits, histogram manipulation and dataframe operations are performed
+- fits, histogram manipulation and dataframe operations are performed
 	
-    - quantities of interest are plotted using [BokehPlot](https://bitbucket.org/bfontana/bokehplot), a custom bokeh wrapper (under development)
+- quantities of interest are plotted using [BokehPlot](https://bitbucket.org/bfontana/bokehplot), a custom bokeh wrapper (under development)
 
 
 Steps 1) and 2) were chained with a Directed Acyclic Graph (DAG) that runs within HTCondor.
@@ -32,9 +32,9 @@ Steps 1) and 2) were chained with a Directed Acyclic Graph (DAG) that runs withi
 Input NTuples
 ------------------
 
-- **data**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/```
-
 *Electromagnetic showers*
+
+- **data**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/``` (HGCAL only)
 
 - **sim_proton** (with proton contamination): ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v5/electrons/```
 
@@ -42,7 +42,9 @@ Input NTuples
 
 *Hadronic showers*
 
-- *sim_noproton**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v44_VtxBeam_v3/CorrectFHLay10```
+- **data**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/AHCAL_ntuples/v8/``` (HGCAL+AHCAL)
+
+- **sim_proton**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v44_VtxBeam_v3/CorrectFHLay10```
 	
 Analysis type
 ------------------
@@ -57,7 +59,7 @@ Step #3 was divided into independent micro-analysis:
 Scripts' description
 ------------------
 
-- ```CondorJobs```: everything related to submitting jobs to the grid
+- ```CondorJobs/```: everything related to submitting jobs to the grid
 
     - ```bin/write_dag.cc```: creates all the required DAG submission file
 
@@ -69,7 +71,7 @@ Scripts' description
 
     - ```setup.sh```: writes a file named ```ntuple_ids.txt``` which contains the identifiers of the [data ntuples](#input-ntuples) to be considered for the electromagnetic or hadronic analysis 
 
-- ```DataProcessing```: everything related to running CLUE and extract its relevant quantities
+- ```DataProcessing/```: everything related to running CLUE and extract its relevant quantities
 
     - ```src/CLUEAlgo.cc```, ```interface/CLUEAlgo.h``` and some other files in ```interface/```: the CLUE standalone algorithm
 
@@ -113,18 +115,21 @@ write_dag --datatype sim_proton --showertype em --last_step_only
 - Run the jobs (the submission files will be stored under ```CondorJobs/submission/selection/``` and ```CondorJobs/submission/analysis/```
 
 ```bash
-condor_submit_dag clue_sim_proton.dag
+condor_submit_dag CondorJobs/clue_sim_proton_em.dag
 ```
 
-- Join the output files according to their beam energy (I used the ```/eos/``` file system)
+- Join the output files according to their beam energy
 
 ```bash
-bash join_ntuples.sh --datatype sim_proton --analysistype layerdep
-bash join_ntuples.sh --datatype sim_proton --analysistype clusterdep
+bash DataProcessing/join_ntuples.sh --datatype sim_proton --analysistype layerdep
+bash DataProcessing/join_ntuples.sh --datatype sim_proton --analysistype clusterdep
 ```
 
+The outputs are currently being stored under ```/eos/user/<first username letter>/<username>/TestBeamReconstruction/job_output/```. Please create the required folders if needed. Under ```/job_output/``` the files are stored in the ```hit_dependent/```, ```layer_dependent/``` and ```cluster_dependent``` folders.
+
 There is no need to join the data of the **hit-level** analysis type, since they are ```csv``` files joined by the ```pandas``` package. The two other types are instead in ```ROOT``` format and are read by ```uproot```.
-One could potentially change the way ```uproot``` reads the files so that it iterates through them (it is potentially faster). This joining step would then become unnecessary.
+
+*Possible improvement*: one could potentially change the way ```uproot``` reads the files so that it iterates through them (it is potentially faster). This joining step would then become unnecessary.
 
 - Run the python analysis and plotting macros
 
@@ -134,7 +139,7 @@ python DataProcessing/python/layer_dep.py --datatype sim_proton --all   #layer l
 python DataProcessing/python/cluster_dep.py --datatype sim_proton --all #cluster level
 ```
 
-Please run the scripts with the ```--help``` option for choosing only specific variable.
+Please run the scripts with the ```--help``` option for more information, including running the last step only for a subset of final variables.
     
 Plots
 -----------------
