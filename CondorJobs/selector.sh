@@ -51,7 +51,7 @@ while true; do
 	--showertype)
 	    if [ -n "$2" ]; then
 		if [[ " ${SHOWERTYPES[@]} " =~ " ${2} " ]]; then
-		    DATATYPE="${2}";
+		    SHOWERTYPE="${2}";
 		    echo "Data type: ${SHOWERTYPE}";
 		else
 		    echo "'--showertype' can be one of the following:"

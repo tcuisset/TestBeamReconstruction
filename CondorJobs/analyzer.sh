@@ -51,7 +51,7 @@ while true; do
 	--showertype)
 	    if [ -n "$2" ]; then
 		if [[ " ${SHOWERTYPES[@]} " =~ " ${2} " ]]; then
-		    DATATYPE="${2}";
+		    SHOWERTYPE="${2}";
 		    echo "Data type: ${SHOWERTYPE}";
 		else
 		    echo "'--showertype' can be one of the following:"
@@ -150,4 +150,4 @@ OUTFILE3="${EOS_PATH}cluster_dependent/${OUTNAME}_${DATATYPE}_${SHOWERTYPE}_beam
 
 echo "Input file: ${INFILE}"
 echo -e "Output files:\n${OUTFILE1}\n${OUTFILE2}\n${OUTFILE3}"
-analyze_data_exe "${INFILE}" "${OUTFILE1}" "${OUTFILE2}" "${OUTFILE3} "${SHOWERTYPE}";
+analyze_data_exe "${INFILE}" "${OUTFILE1}" "${OUTFILE2}" "${OUTFILE3}" "${SHOWERTYPE}";

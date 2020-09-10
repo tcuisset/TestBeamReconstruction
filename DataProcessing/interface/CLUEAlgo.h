@@ -60,7 +60,7 @@ class CLUEAlgo{
 
 	  //remove this bit once the FH weights are established
 	  float XXXXweight;
-	  if(layer[i]-1 > detectorConstants::nlayers_emshowers)
+	  if(layer[i] > detectorConstants::nlayers_emshowers)
 	    XXXXweight = 1.f;
 	  else
 	    XXXXweight = detectorConstants::dEdX.at(layer[i]-1);

@@ -46,11 +46,12 @@ class Analyzer {
   std::pair<unsigned int, float> _readTree( const std::string&, std::vector< std::vector<float> >& x, std::vector< std::vector<float> >&, std::vector< std::vector<unsigned int> >&, std::vector< std::vector<float> >&, std::vector< std::vector<unsigned int> >&);
   int sanity_checks(const std::string&);
   bool ecut_selection(const float&, const unsigned int&);
+  void resize_vectors();
   
   //data
   size_t nfiles_;
   static const int ncpus_ = 4;
-  unsigned lmax;
+  unsigned lmax=0;
   float dc_, kappa_, ecut_;
   //weights and thickness corrections taken from the third column of Table 3 of CMS DN-19-019
   std::vector< std::pair<std::string, std::string> > names_; //file and tree names

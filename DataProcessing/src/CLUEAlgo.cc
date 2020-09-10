@@ -133,7 +133,7 @@ void CLUEAlgo::findAndAssignClusters(){
 
     //remove this bit once the FH weights are established
     float XXXXweight;
-    if(points_.layer[i] > detectorConstants::nlayers_emshowers)
+    if(points_.layer[i] >= detectorConstants::nlayers_emshowers)
       XXXXweight = 1.f;
     else
       XXXXweight = detectorConstants::dEdX[ points_.layer[i] ];

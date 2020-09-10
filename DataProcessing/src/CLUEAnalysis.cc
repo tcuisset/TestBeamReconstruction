@@ -12,6 +12,9 @@ CLUEAnalysis::CLUEAnalysis(const SHOWERTYPE& s): showertype(s)
     lmax = detectorConstants::totalnlayers;
   else
     throw std::invalid_argument("Wrong shower type.");
+
+  this->layerdep_vars_.resize(lmax);
+  this->clusterdep_vars_.resize(lmax);
 }
 
 void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, const std::vector<float>& ypos, const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
@@ -167,7 +170,6 @@ void CLUEAnalysis::calculateLayerDepVars(const std::vector<float>& xpos, const s
 	    }
 	  */
 	  //////////////////////////////////////////////////////////////////////////////////////
-	  
 	  hits_per_layer.at(layeridx) += 1;
 	  en_per_layer.at(layeridx).push_back( weights[i] );
 	  rhos_per_layer.at(layeridx).push_back( rhos[i] );
@@ -180,12 +182,13 @@ void CLUEAnalysis::calculateLayerDepVars(const std::vector<float>& xpos, const s
       //Note: We should get an out-of-bounds error for trying to access info at layers > 28. 
       //      It does not happen since all hits not in the CEE are marked as outliers by CLUE (clusterid == -1).
     }
-  //fill std::array with fractions
-  for(unsigned ilayer=0; ilayer<lmax; ++ilayer)
+  //fill std::arra1y with fractions
+  for(unsigned ilayer=0; ilayer<lmax; ++ilayer) {
     layerdep_vars_.at(ilayer) = std::make_tuple(hits_per_layer.at(ilayer), en_per_layer.at(ilayer), 
 						rhos_per_layer.at(ilayer), deltas_per_layer.at(ilayer), seeds_per_layer.at(ilayer),
 						xpos_per_layer.at(ilayer), ypos_per_layer.at(ilayer),
-						cluster_size_per_layer.at(ilayer)); 
+						cluster_size_per_layer.at(ilayer));
+  }
 }
 
 //calculate the number of clusterized hits and clusterized energy per layer and per cluster
@@ -193,7 +196,6 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
   assert(!weights.empty() && !clusterid.empty() && !layerid.empty());
 
   std::vector<unsigned> nclusters_per_layer(this->lmax, 0); //number of clusters per layer for resizing the vectors
-  std::vector<unsigned> clusterIds;
   std::unordered_map<unsigned, unsigned> clusterIndexMap;
 
   //calculate number of clusters per layer
@@ -206,11 +208,11 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
 	  nclusters_per_layer[layeridx] += 1;
 	}
     }
-  std::vector< std::vector<float> > en_per_cluster;
-  std::vector< std::vector<float> > en_per_cluster_log; //helper for calculating the positions
-  std::vector< std::vector<unsigned> > hits_per_cluster;
-  std::vector< std::vector<float> > x_per_cluster;
-  std::vector< std::vector<float> > y_per_cluster;
+  std::vector< std::vector<float> > en_per_cluster(this->lmax);
+  std::vector< std::vector<float> > en_per_cluster_log(this->lmax); //helper for calculating the positions
+  std::vector< std::vector<unsigned> > hits_per_cluster(this->lmax);
+  std::vector< std::vector<float> > x_per_cluster(this->lmax);
+  std::vector< std::vector<float> > y_per_cluster(this->lmax);
   for(unsigned i=0; i<lmax; ++i) 
     {
       en_per_cluster[i].resize( nclusters_per_layer[i], 0.f ); //resizes and default-initializes to zero

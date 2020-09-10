@@ -37,6 +37,14 @@ Analyzer::~Analyzer()
 {
 }
 
+void Analyzer::resize_vectors() 
+{
+  if(this->lmax == 0)
+    throw std::runtime_error("Please define the maximum layer before calling resize_vectors().");
+  this->layer_fracs_.resize(this->lmax);
+  this->layer_hitvars_.resize(this->lmax);
+  this->clusterdep_.resize(this->lmax);
+}
 void Analyzer::runCLUE(const SHOWERTYPE& st) {
   float tot_en;
   dataformats::layervars layerdep_vars;
@@ -54,6 +62,8 @@ void Analyzer::runCLUE(const SHOWERTYPE& st) {
   CLUEAlgo clueAlgo(dc_, kappa_, ecut_); //non-verbose
   CLUEAnalysis clueAna(st);
   this->lmax = clueAna.getLayerMax();
+  resize_vectors();
+
   for(unsigned int i=0; i<nfiles_; ++i) 
     {
       std::cout << "Processing file number " << i+1 << std::endl;
@@ -69,17 +79,17 @@ void Analyzer::runCLUE(const SHOWERTYPE& st) {
       beam_energy = out_pair.second;
       beam_energies_[i] = beam_energy;
 
-      for(unsigned int iEvent=0; iEvent<nevents; ++iEvent)
+      for(unsigned iEvent=0; iEvent<nevents; ++iEvent)
 	{	  
-	  std::cout << "Inside this tree there are " << nevents << " events: ";
-	  std::cout << iEvent/static_cast<float>(nevents)*100 << "% \r";
+	  //std::cout << "Inside this tree there are " << nevents << " events: ";
+	  //std::cout << iEvent/static_cast<float>(nevents)*100 << "% \r";
 
 	  if( x_[iEvent].size() == 0) //empty event
 	    continue;
-	  
+
 	  //calculate quantities including outliers
-	  std::vector<unsigned> tot_hits_per_layer(0);
-	  std::vector<float> tot_en_per_layer(0.f);
+	  std::vector<unsigned> tot_hits_per_layer(this->lmax, 0);
+	  std::vector<float> tot_en_per_layer(this->lmax, 0.f);
 	  for(unsigned int j=0; j<layer_[iEvent].size(); ++j)
 	    {
 	      unsigned int layeridx = layer_.at(iEvent).at(j) - 1;
@@ -96,21 +106,20 @@ void Analyzer::runCLUE(const SHOWERTYPE& st) {
 	  clueAlgo.makeClusters();
 	  clueAlgo.infoSeeds();
 	  clueAlgo.infoHits();
-	  
+
 	  //calculate the total energy that was clusterized (excluding outliers)
 	  clueAna.calculatePositionsAndEnergy( clueAlgo.getHitsPosX(), clueAlgo.getHitsPosY(), clueAlgo.getHitsWeight(), clueAlgo.getHitsClusterId(), clueAlgo.getHitsLayerId() );
 	  tot_en = clueAna.getTotalEnergyOutput("", false); //non-verbose
 	  this->en_total_[i].push_back( std::make_tuple( tot_en, beam_energy) ); 
-
 	  //calculate per layer fraction of clusterized number of hits and energy
 	  clueAna.calculateLayerDepVars( clueAlgo.getHitsPosX(), clueAlgo.getHitsPosY(),
 					 clueAlgo.getHitsWeight(), clueAlgo.getHitsClusterId(), clueAlgo.getHitsLayerId(),
 					 clueAlgo.getHitsRho(), clueAlgo.getHitsDistanceToHighest(), clueAlgo.getHitsSeeds(), clueAlgo.getNHitsInCluster());
 	  layerdep_vars = clueAna.getTotalLayerDepOutput();
-		  
+
 	  //fill fractions (the denominators include outliers!)
-	  dataformats::layerfracs fracs_tmp;
-	  dataformats::layerhitvars hitvars_tmp;
+	  dataformats::layerfracs fracs_tmp(lmax);
+	  dataformats::layerhitvars hitvars_tmp(lmax);
 	  for(unsigned int j=0; j<this->lmax; ++j)
 	    {
 	      if (tot_hits_per_layer[j] != 0 and tot_en_per_layer[j] != 0)
@@ -165,6 +174,7 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
   auto fill = [&x_split, &y_split, &layer_split, &weight_split, &rechits_id_split, &beam_energy](unsigned int slot, 
 			  std::vector<float>& x_, std::vector<float>& y_, std::vector<unsigned int>& layer_, std::vector<float>& weight_,
                           std::vector<unsigned int>& rechits_id_, float beamen) {
+
     x_split[slot].push_back(x_);
     y_split[slot].push_back(y_);
     layer_split[slot].push_back(layer_);
@@ -221,7 +231,7 @@ bool Analyzer::ecut_selection(const float& energy, const unsigned int& layer)
 
   //remove this bit once the FH weights are established
   float XXXXweight;
-  if(layer > detectorConstants::nlayers_emshowers)
+  if(layer >= detectorConstants::nlayers_emshowers)
     XXXXweight = 1.f;
   else
     XXXXweight = detectorConstants::dEdX.at(layer);
@@ -328,8 +338,8 @@ void Analyzer::save_to_file_layer_dependent(const std::string& filename) {
 
       //define branches
       tmptree.Branch("BeamEnergy", &beam_energies_.at(i));
-      std::vector< float > fracs_hits;
-      std::vector< float > fracs_en;
+      std::vector< float > fracs_hits(this->lmax);
+      std::vector< float > fracs_en(this->lmax);
       std::vector< std::vector<float> > energies(this->lmax);
       std::vector< std::vector<float> > posx(this->lmax);
       std::vector< std::vector<float> > posy(this->lmax);
@@ -395,10 +405,10 @@ void Analyzer::save_to_file_cluster_dependent(const std::string& filename) {
 
       //define branches
       tmptree.Branch("BeamEnergy", &beam_energies_.at(i));
-      std::vector< std::vector<unsigned> > arr_hits;
-      std::vector< std::vector<float> > arr_en;
-      std::vector< std::vector<float> > arr_x;
-      std::vector< std::vector<float> > arr_y;
+      std::vector< std::vector<unsigned> > arr_hits(this->lmax);
+      std::vector< std::vector<float> > arr_en(this->lmax);
+      std::vector< std::vector<float> > arr_x(this->lmax);
+      std::vector< std::vector<float> > arr_y(this->lmax);
       for(unsigned int ilayer=0; ilayer<this->lmax; ++ilayer) 
 	{
 	  std::string bname_hits   = "Nhits_layer"  + std::to_string(ilayer + 1);

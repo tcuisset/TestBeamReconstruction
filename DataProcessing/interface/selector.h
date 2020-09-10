@@ -9,14 +9,14 @@
 
 class Selector {
  public:
-  Selector(const std::string&, const std::string&, const std::string&, const std::string&, const int&, std::optional<std::string> in_tree_name = std::nullopt, std::optional<std::string> out_tree_name = std::nullopt);
+  Selector(const std::string&, const std::string&, const std::string&, const std::string&, const int&, std::optional<std::string> in_tree_name = std::nullopt, std::optional<std::string> in_tree_name_friend = std::nullopt, std::optional<std::string> out_tree_name = std::nullopt);
   ~Selector();
   void select_relevant_branches();
   void print_relevant_branches(const int&, std::optional<std::string> filename = std::nullopt);
 
  private:
   int sanity_checks(const std::string&);
-  bool common_selection(const unsigned&, const float&, const unsigned&, const unsigned&);
+  bool common_selection(const unsigned&, const float&, const unsigned&, const unsigned&, const unsigned&, const bool&);
   
   SHOWERTYPE showertype;
   DATATYPE datatype;
@@ -34,6 +34,7 @@ class Selector {
   struct indata {
     std::string file_path = "/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/ntuple_1000.root";
     std::string tree_name = "rechitntupler/hits";
+    std::string tree_name_friend = "trackimpactntupler/impactPoints";
   }indata_;
 
   struct outdata {
