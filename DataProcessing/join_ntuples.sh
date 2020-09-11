@@ -106,5 +106,8 @@ elif [[ "${ANALYSISTYPE}" == "clusterdep" ]]; then
 fi
 len="${#ENERGIES[@]}"
 for(( j=0; j<${len}; j++ )); do
-    hadd -f /eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/job_output/"${JOBSFOLDER}"/hadd_"${ANALYSISTYPE}"_"${DATATYPE}"_"${SHOWERTYPE}"_beamen${ENERGIES[j]}.root /eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/job_output/"${JOBSFOLDER}"/outEcut_"${DATATYPE}"_"${SHOWERTYPE}"_beamen${ENERGIES[j]}_*.root;
-done	
+    IN="/eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/job_output/${JOBSFOLDER}/outEcut_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGIES[j]}_";
+    if [[ $(ls "${IN}"*root -A) ]]; then #in case the input files do exist
+	hadd -f /eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/job_output/"${JOBSFOLDER}"/hadd_"${ANALYSISTYPE}"_"${DATATYPE}"_"${SHOWERTYPE}"_beamen${ENERGIES[j]}.root "${IN}"*root;
+    fi
+done

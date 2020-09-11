@@ -2,6 +2,7 @@ import sys
 import os
 import pickle
 import subprocess
+import warnings
 import bokehplot as bkp
 import uproot as up
 import numpy as np
@@ -66,9 +67,9 @@ def graphs_per_energy(df, axis_kwargs, columns_field, iframe, variable, energy_i
                 weights_array = df.loc[:, layer_col_weights]
                 data_weights = utils.flatten_dataframe( weights_array )
                 data_weights = data_weights[ data_weights > energy_cuts[thisCut] ]
-                if data_weights.size == 0 and thisCut==0:
-                    raise ValueError('The weights dataframe with energy cut {} in layer {} is empty!'.format(energy_cuts[thisCut], ilayer))
-                elif data_weights.size == 0 and thisCut!=0: #if the one without cuts exists, the histos with cuts ust exist too, even if empty
+                if data_weights.size == 0:
+                    if thisCut==0:
+                        warnings.warn('The weights dataframe with energy cut {} in layer {} is empty!'.format(energy_cuts[thisCut], ilayer))
                     counts, edges = np.zeros(nbins[thisCut]), np.linspace(datamin[thisCut],datamax[thisCut],nbins[thisCut]+1)
                 else:
                     counts, edges = np.histogram(dl[thisCut][ilayer-1], bins=bins[thisCut], weights=data_weights)
@@ -206,7 +207,12 @@ def main():
     executor = concurrent.futures.ThreadPoolExecutor() #executor for parallel data loading
 
     for iEn,thisEn in enumerate(beam_energies):
-        
+
+        #check the file exists
+        if not os.path.isfile(data_paths[iEn]):
+            warnings.warn('Missing dataset for {} GeV.'.format(thisEn))
+            continue
+
         #load ROOT TTree
         file = up.open( data_paths[iEn] )
         tree = file['tree0']
@@ -294,7 +300,7 @@ if __name__ == '__main__':
     #define local data paths and variables
     eos_base = '/eos/user/'
     cms_user = subprocess.check_output("echo $USER", shell=True, encoding='utf-8').split('\n')[0]
-    release = subprocess.check_output(b'echo $CMSSW_VERSION', shell=True, encoding='utf-8').split('\n')[0] + '/src/'
+    release = 'CMSSW_11_1_0_pre2/src/' #subprocess.check_output(b'echo $CMSSW_VERSION', shell=True, encoding='utf-8').split('\n')[0] + '/src/'
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
     data_path_start = os.path.join(eos_base, cms_user[0], cms_user, data_directory, "job_output/cluster_dependent/")
@@ -304,9 +310,7 @@ if __name__ == '__main__':
     cache_file_name_start = os.path.join(eos_base, cms_user[0], cms_user, data_directory)
     cache_file_names = [os.path.join(cache_file_name_start, 'uproot_cache_clusterdep_beamen' + str(x) + '.root') for x in beam_energies]
 
-    print("Input data read from:")
-    for x in data_paths:
-        print(x)
+    utils.print_input_data(data_paths)
 
     #create output files with plots
     utils.create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype) )

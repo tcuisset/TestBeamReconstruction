@@ -99,7 +99,7 @@ def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
         bokehplot.graph(data=[np.array(all_layers), np.array(all_centers), np.array(all_counts)],
                         width=np.ones((len(all_layers))), height=height,
                         idx=energy_index, iframe=iframe, style='rect%Cividis', fig_kwargs=fig_kwargs, alpha=0.6)
-        bokehplot.graph(data=[np.arange(1,29), np.array(means)],
+        bokehplot.graph(data=[np.arange(1,nlayers+1), np.array(means)],
                         idx=energy_index, iframe=iframe, color='red', style='circle', size=2, legend_label='mean')
 
     else:
@@ -151,11 +151,11 @@ def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
                                 iframe=iframe, style='step', color='red', fig_kwargs=fig_kwargs_1D)
             bokehplot.histogram(data=hist3, idx=indexes, legend_label=leg_labels3,
                                 iframe=iframe, style='step', color='purple', fig_kwargs=fig_kwargs_1D)
-            bokehplot.graph(data=[np.arange(1,29), np.array(peaks)], idx=nlayers, legend_label='All hits', iframe=iframe, style='circle', line=True,
+            bokehplot.graph(data=[np.arange(1,nlayers+1), np.array(peaks)], idx=nlayers, legend_label='All hits', iframe=iframe, style='circle', line=True,
                             fig_kwargs={'t.text': 'Beam energy: {} GeV'.format(true_beam_energies_GeV[energy_index]),
                                         'x.axis_label': 'Layer', 'y.axis_label': 'Maximum density [MeV]', 'l.location': 'bottom_left'})
-            bokehplot.graph(data=[np.arange(1,29), np.array(peaks2)], idx=nlayers, legend_label='Seeds only', iframe=iframe, style='square', color='red', line=True)
-            bokehplot.graph(data=[np.arange(1,29), np.array(peaks3)], idx=nlayers, legend_label='No seeds', iframe=iframe, style='triangle', color='purple', line=True)
+            bokehplot.graph(data=[np.arange(1,nlayers+1), np.array(peaks2)], idx=nlayers, legend_label='Seeds only', iframe=iframe, style='square', color='red', line=True)
+            bokehplot.graph(data=[np.arange(1,nlayers+1), np.array(peaks3)], idx=nlayers, legend_label='No seeds', iframe=iframe, style='triangle', color='purple', line=True)
 
         #plotting additional vertical lines
         if columns_field == 'Densities':
@@ -270,11 +270,16 @@ def main():
     assert(chosen_energy in beam_energies)
     
     for iEn,thisEn in enumerate(beam_energies):
+
+        #check the file exists
+        if not os.path.isfile(data_paths[iEn]):
+            print('WARNING: Missing dataset for {} GeV.'.format(thisEn))
+            continue
         
         #load ROOT TTree for a specific energy
         file = up.open( data_paths[iEn] )
         tree = file['tree0']
-
+        
         #load cache for a specific energy
         cacheobj = CacheManager( cache_file_names[iEn] )
         up_cache = cacheobj.load()
@@ -344,6 +349,11 @@ def main():
         #bokehplot.save_figs(iframe=iframe, path=presentation_path, mode='png')
 
 if __name__ == '__main__':
+    #define parser for user input arguments
+    parser = argparse.ArgumentParser()
+    FLAGS, _ = add_args(parser, 'layers')
+    utils.input_sanity_checks(FLAGS, sys.argv)
+
     #define analysis constants
     nlayers = 28 if FLAGS.showertype=='em' else 40
     beam_energies = (20,30,50,80,100,120,150,200,250,300)
@@ -353,16 +363,11 @@ if __name__ == '__main__':
     true_beam_energies_MeV = tuple(x*1000 for x in true_beam_energies_GeV)
     size = len(true_beam_energies_GeV)
     assert(len(beam_energies)==size)
-
-    #define parser for user input arguments
-    parser = argparse.ArgumentParser()
-    FLAGS, _ = add_args(parser, 'layers')
-    utils.input_sanity_checks(FLAGS, sys.argv)
     
     #define local data paths and variables
     eos_base = '/eos/user/'
     cms_user = subprocess.check_output("echo $USER", shell=True, encoding='utf-8').split('\n')[0]
-    release = 'CMSSW_11_1_0_pre2/src/'
+    release = 'CMSSW_11_1_0_pre2/src/' #'/' + subprocess.check_output(b'echo $CMSSW_VERSION', shell=True, encoding='utf-8').split('\n')[0] + '/src/'
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     analysis_directory = 'TestBeamReconstruction/'
     data_directory = 'job_output/layer_dependent/'
@@ -373,10 +378,8 @@ if __name__ == '__main__':
     cache_file_name_start = os.path.join(eos_base, cms_user[0], cms_user, analysis_directory)
     cache_file_names = [os.path.join(cache_file_name_start, 'uproot_cache_layerdep_beamen' + str(x) + '.root') for x in beam_energies]
 
-    print("Input data:")
-    for x in data_paths:
-        print(x)
-
+    utils.print_input_data(data_paths)
+    
     #create output files with plots
     output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep', FLAGS.datatype, FLAGS.showertype)
     utils.create_dir( output_html_dir )

@@ -45,27 +45,27 @@ def add_args(parser, mode):
         parser.add_argument(
             '--hits',
             action='store_true',
-            help='Run the cluster analysis on the number of hits per cluster..'
+            help='Run the cluster analysis on the number of hits per cluster'
         )
         parser.add_argument(
             '--energies',
             action='store_true',
-            help='Run the cluster analysis on the energy per cluster.'
+            help='Run the cluster analysis on the energy per cluster'
         )
         parser.add_argument(
             '--numbers',
             action='store_true',
-            help='Run the cluster analysis on the number of clusters.'
+            help='Run the cluster analysis on the number of clusters'
         )
         parser.add_argument(
             '--posx',
             action='store_true',
-            help='Run the cluster analysis on the X position of clusters.'
+            help='Run the cluster analysis on the X position of clusters'
         )
         parser.add_argument(
             '--posy',
             action='store_true',
-            help='Run the cluster analysis on the Y position of clusters.'
+            help='Run the cluster analysis on the Y position of clusters'
         )
         parser.add_argument(
             '--posx_posy',
@@ -79,7 +79,7 @@ def add_args(parser, mode):
             '--all',
             action=AllAction,
             vars_to_ignore=variables_to_ignore,
-            help='Run the full cluster nalysis'
+            help='Run the full cluster analysis'
         )
         
         requiredNamedGroup = parser.add_argument_group('required named arguments')
