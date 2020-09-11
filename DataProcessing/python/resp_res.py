@@ -39,23 +39,28 @@ class ProcessData:
     def scale_energy(dfs, scale_factor, shift_factor):
         dfs_scaled = []
         for i,df in enumerate(dfs): #each dataframe is a pandas Series
-            df_tmp = df.apply(lambda x: scale_factor[i]*x + shift_factor[i] if x!= -1 else x) #perform no scaling and shifting when the value is -1 (fillna used before)
-            dfs_scaled.append(df_tmp)
+            if df is not None:
+                df_tmp = df.apply(lambda x: scale_factor[i]*x + shift_factor[i] if x!= -1 else x) #perform no scaling and shifting when the value is -1 (fillna used before)
+                dfs_scaled.append(df_tmp)
+            else:
+                dfs_scaled.append(None)
         return dfs_scaled
 
 class HandleHistograms:
     @staticmethod
     def create(dfs, bins, iframe):
         hist = []
+        axis_kwargs = {'x.axis_label': 'Total RecHit energy per event [MeV]', 'y.axis_label': 'Counts'}
         for i,idf in enumerate(dfs):
             if idf is not None:
                 idf = idf[idf>-1]
-                hist.append( np.histogram(idf, density=False, bins=bins[i], range=(idf.min(),idf.max())) ) #flattens 'df' to one-dimension
-                
-        axis_kwargs = {'x.axis_label': 'Total RecHit energy per event [MeV]', 'y.axis_label': 'Counts'}
-        bokehplot.histogram(data=hist, idx=[x for x in range(len(true_beam_energies_GeV))], iframe=iframe, style='step',
-                            legend_label=[str(x)+' GeV' for x in true_beam_energies_GeV], fill_color='white', line_color=line_colors, alpha=0.5,
-                            fig_kwargs=axis_kwargs)
+                h = np.histogram(idf, density=False, bins=bins[i], range=(idf.min(),idf.max())) #flattens 'df' to one-dimension
+                bokehplot.histogram(data=h, idx=i, iframe=iframe, style='step',
+                                    legend_label=str(true_beam_energies_GeV[i])+' GeV', line_color=line_colors, alpha=0.5,
+                                    fig_kwargs=axis_kwargs)
+                hist.append(h)
+            else:
+                hist.append(None)
         return hist
 
     @staticmethod
@@ -71,30 +76,76 @@ class HandleHistograms:
         resolutions_err = []
         for i in range(len(true_beam_energies_GeV)):
             #First fit
-            coeff, _ = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=0, iframe=iframe, color=line_colors[i], **common_args)
-            fit_bounds = (coeff[1]-sigma_units_left*coeff[2], coeff[1]+sigma_units_right*coeff[2])
-            
+            nodata_flag = False
+
+            if hist[i] is None:
+                print('WARNING: Missing dataset for {} GeV.'.format(true_beam_energies_GeV[i]))
+                means.append( 0. )
+                means_err.append( 0. )
+                responses.append( 0. ) 
+                responses_err.append( 0. )
+                resolutions.append( 0. )
+                resolutions_err.append( 0. )
+                continue;
+            elif len(hist[i][0])==0 or len(hist[i][1])==0: #no data => no fit!
+                print('WARNING: There appears to be no data available for {} GeV in fit #1.'.format(true_beam_energies_GeV[i]))
+                nodata_flag = True
+
+            if not nodata_flag:
+                try:
+                    coeff, _ = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=0, iframe=iframe, color=line_colors[i], **common_args)
+                    fit_bounds = (coeff[1]-sigma_units_left*coeff[2], coeff[1]+sigma_units_right*coeff[2])
+                except RuntimeError:
+                    fit_bounds = (hist[i][1][0], hist[i][1][-1])
+            else:
+                fit_bounds = (hist[i][1][0], hist[i][1][-1])
+                
             #Create and draw amputed histogram 
             #Detail: the last item of the histogram with the counts is removed since it refers to the events between the last
             #edge selected and the next one. Nedges = Nbinswithcounts + 1
             selection = (hist[i][1]>fit_bounds[0]) & (hist[i][1]<fit_bounds[1])
-            indexes_selected = np.nonzero(selection) #return indexes of the non-zero (True) elements
-            hist_modified = [hist[i][0][indexes_selected][:-1], hist[i][1][selection]]
+            indexes_selected = np.nonzero(selection) #remove last edge to match with number of histogram entries (#bins)
+
+            """
+            print("fit bounds: ", fit_bounds[0], fit_bounds[1])
+            print("edges: ", hist[i][1][0], hist[i][1][-1])
+            print("nbins, nedges: ", len(hist[i][0]),len(hist[i][1]))
+            print("first and last indexes: ", indexes_selected[0][:5], indexes_selected[0][-5:])
+            print("len data: ", len(hist[i][0][indexes_selected[0][:-1]]), len(hist[i][1][selection]))
+            """
+
+            hist_modified = [hist[i][0][indexes_selected[0][:-1]], hist[i][1][selection]]
+            nodata_flag = False
+            if len(hist_modified[0])==0 or len(hist_modified[1])==0: #no data => no fit!
+                print('WARNING: There appears to be no data available for {} GeV in fit#2'.format(true_beam_energies_GeV[i]))
+                nodata_flag = True
+                hist_modified = [np.array([0.]), np.array([fit_bounds[0], fit_bounds[1]])] 
+
             bokehplot.histogram(data=hist_modified, idx=i, iframe=iframe, style='step',
-                                legend_label=[str(x)+' GeV' for x in true_beam_energies_GeV], fill_color='white', line_color=line_colors[i], 
+                                legend_label=[str(x)+' GeV' for x in true_beam_energies_GeV], line_color=line_colors[i], 
                                 #alpha=1., fig_kwargs={'x_range': ranges[i], 'y_range': Range1d(-30.,900)})
                                 alpha=1., fig_kwargs={'x_range': ranges[i]})
 
             #Second fit
-            coeff, var = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=1, iframe=iframe, color=line_colors[i], **common_args)
-            err = np.sqrt(np.diag(var))
-            err1 = round(err[1],2)
-            err2 = round(err[2],2)
-            mean_label = 'mean='+str(round(coeff[1],2))+'+-'+str(err1)+' MeV'
-            sigma_label = 'sigma='+str(round(coeff[2],2))+'+-'+str(err2)+' MeV'
-            font_size = {'text_font_size': '10pt', 'x_units': 'screen', 'y_units': 'screen'}
-            bokehplot.label(mean_label,  idx=i, iframe=iframe, x=10, y=310, **font_size)
-            bokehplot.label(sigma_label, idx=i, iframe=iframe, x=10, y=290, **font_size)
+            if not nodata_flag:
+                try:
+                    coeff, var = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=1, iframe=iframe, color=line_colors[i], **common_args)
+                except RuntimeError:
+                    coeff = [0., 0., 0.]
+                    err1 = 0
+                    err2 = 0
+                err = np.sqrt(np.diag(var))
+                err1 = round(err[1],2)
+                err2 = round(err[2],2)
+                mean_label = 'mean='+str(round(coeff[1],2))+'+-'+str(err1)+' MeV'
+                sigma_label = 'sigma='+str(round(coeff[2],2))+'+-'+str(err2)+' MeV'
+                font_size = {'text_font_size': '10pt', 'x_units': 'screen', 'y_units': 'screen'}
+                bokehplot.label(mean_label,  idx=i, iframe=iframe, x=10, y=310, **font_size)
+                bokehplot.label(sigma_label, idx=i, iframe=iframe, x=10, y=290, **font_size)
+            else: #no data => no fit!
+                coeff = [0., 0., 0.]
+                err1 = 0
+                err2 = 0
             means.append( coeff[1] )
             means_err.append( err1 )
             responses.append( (coeff[1]-true_beam_energies_MeV[i]) / (true_beam_energies_MeV[i]) ) 
@@ -196,6 +247,8 @@ def analyze_data():
              [750, 245000., 4000.], #250GeV
              [750, 290000., 4500.]) #300GeV
     data1 = ProcessData.join(path + '*_noclusters.csv')
+    print(path + '*_noclusters.csv')
+
     hist1 = HandleHistograms.create(data1, bins, iframe=0)
     mean1, emean1, _, _, _, _ = HandleHistograms.fit(hist1, pars1, histo_ranges1, iframe=0)
 
@@ -241,7 +294,10 @@ def analyze_data():
     save_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype, FLAGS.showertype)
     utils.create_dir( save_folder )
     presentation_path = os.path.join(home, release, 'DN/figs', 'resp_res', FLAGS.datatype)
+    print(presentation_path)
     utils.create_dir( presentation_path )
+    print(save_folder)
+    print(presentation_path)
     for i in range(len(nfigs)-1):
         bokehplot.save_frame(iframe=i, plot_width=plot_width, plot_height=plot_width, show=False)
         bokehplot.save_figs(iframe=i, path=save_folder, mode='png')
@@ -296,7 +352,7 @@ if __name__ == '__main__':
     #local CMSSW variables and paths
     eos_base = '/eos/user'
     cms_user = subprocess.check_output(b'echo $USER', shell=True, encoding='utf-8').split('\n')[0]
-    release = subprocess.check_output(b'echo $CMSSW_VERSION', shell=True, encoding='utf-8').split('\n')[0] + '/src/'
+    release = 'CMSSW_11_1_0_pre2/src/' #'/' + subprocess.check_output(b'echo $CMSSW_VERSION', shell=True, encoding='utf-8').split('\n')[0] + '/src/'
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
 
