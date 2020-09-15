@@ -118,6 +118,9 @@ write_dag --datatype sim_proton --showertype em --last_step_only
 condor_submit_dag CondorJobs/clue_sim_proton_em.dag
 ```
 
+> **_NOTE:_** When the file has already been run Condor automatically uses its *rescue* files, *i.e.*, tries to run only the jobs that did not suceed in previous attempts. To remove all previous files, including job outputs, use ```bash CondorJobs/clean.sh```.
+
+
 - Join the output files according to their beam energy
 
 ```bash

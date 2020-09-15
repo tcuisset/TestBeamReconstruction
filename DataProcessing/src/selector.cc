@@ -125,7 +125,7 @@ std::vector<T> Selector::clean_arrays(const std::vector<T>& var, const std::vect
   return var_clean;  
 }
 
-std::vector<float> Selector::weight_energy(const std::vector<float>& en, const std::vector<unsigned>& l, const bool& st) 
+std::vector<float> Selector::weight_energy(const std::vector<float>& en, const std::vector<unsigned>& l, const float& ahc_en, const bool& st) 
 {
   unsigned layer = 0;
   float energy = 0.f;
@@ -143,28 +143,35 @@ std::vector<float> Selector::weight_energy(const std::vector<float>& en, const s
 	  or (st and layer>0 and layer<=detectorConstants::totalnlayers) )
 	{
 	  if(st and layer>detectorConstants::nlayers_emshowers) //remove as soon as the extra dEdX are known
-	    weight = 1.;
+	    weight = detectorConstants::globalWeightCEH;
 	  else
-	    {
-	      //remove this bit once the FH weights are established
-	      float XXXXweight;
-	      if(layer > detectorConstants::nlayers_emshowers)
-		XXXXweight = 1.f;
-	      else
-		XXXXweight = detectorConstants::dEdX.at(layer-1);
-	      ///////////////////////////////////////////////////
-
-	      weight = XXXXweight;
-	    }
+	    weight = detectorConstants::dEdX.at(layer-1);
 	}
       else
 	continue;
 
-      en_weighted.push_back( energy * weight );
+      if(layer>detectorConstants::nlayers_emshowers)
+	en_weighted.push_back( weight * (energy + 0.4*ahc_en) );
+      else
+	en_weighted.push_back( energy * weight );
+ 
     }
   return en_weighted;  
 }
 
+/*
+unsigned calculate_shower_start(const bool& st)
+{
+  if(!st) //positron showers do not required this calculation
+    return 0;
+
+  for(unsigned il=0; il<detectorConstants::totalnlayers; ++il)
+    {
+      
+    }
+  return 0;
+}
+*/
 
 void Selector::select_relevant_branches()
 {
@@ -211,13 +218,14 @@ void Selector::select_relevant_branches()
   }
   auto partial_process = d->Filter(filter_str.c_str())
     .Define(clean_cols.back(), define_str) //showertype: em or had
+    //.Define("shower_start", calculate_shower_start, {})
     .Define(new_detid_,   wrapper_uint,  clean_cols_detid)
     .Define(new_x_,       wrapper_float, clean_cols_x)
     .Define(new_y_,       wrapper_float, clean_cols_y)
     .Define(new_z_,       wrapper_float, clean_cols_z)
     .Define(new_layer_,   wrapper_uint,  clean_cols_layer)
     .Define(new_en_,      wrapper_float, clean_cols_en)
-    .Define(new_en_MeV_,  weight_energy, {new_en_, new_layer_, clean_cols.back()})
+    .Define(new_en_MeV_,  weight_energy, {new_en_, new_layer_, "ahc_energySum", clean_cols.back()})
     .Define(new_ahc_hitK_, clean_hitK,   {"ahc_nHits", "ahc_hitK"});
     
   if(this->datatype == DATATYPE::MC) {

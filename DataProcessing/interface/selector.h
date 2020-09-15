@@ -20,7 +20,7 @@ class Selector {
   int sanity_checks(const std::string&);
   static bool common_selection(const unsigned& layer, const float& energy, const unsigned& chip, const unsigned& channel, const unsigned& module, const float& amplitude, const bool& noise_flag, const mapT& map, const bool& showertype);
   template<typename T> static std::vector<T> clean_arrays(const std::vector<T>&, const std::vector<float>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<float>&, const std::vector<bool>&, const mapT&, const bool&);
-  static std::vector<float> weight_energy(const std::vector<float>&, const std::vector<unsigned>&, const bool&);
+  static std::vector<float> weight_energy(const std::vector<float>&, const std::vector<unsigned>&, const float&, const bool&);
   void load_noise_values();
   static bool reject_noise(const mapT& map, const unsigned& mod, const unsigned& chip, const unsigned& l, const float& amp, const bool& st);
   static std::vector<int> clean_hitK(const int&, const std::vector<int>&);
