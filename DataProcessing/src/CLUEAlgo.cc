@@ -131,15 +131,13 @@ void CLUEAlgo::findAndAssignClusters(){
     //note that the layer array starts at 0
     float endeposited_mip = points_.layer[i] < detectorConstants::layerBoundary ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
 
-    //remove this bit once the FH weights are established
-    float XXXXweight;
+    float weight_tmp;
     if(points_.layer[i] >= detectorConstants::nlayers_emshowers)
-      XXXXweight = 1.f;
+      weight_tmp = detectorConstants::globalWeightCEH;
     else
-      XXXXweight = detectorConstants::dEdX[ points_.layer[i] ];
-    ///////////////////////////////////////////////////
+      weight_tmp = detectorConstants::dEdX[ points_.layer[i] ];
 
-    float rhoc = kappa_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * XXXXweight;
+    float rhoc = kappa_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * weight_tmp;
 
     // determin. seed or outlier 
     bool isSeed = (points_.delta[i] > dc_) and (points_.rho[i] >= rhoc);
@@ -291,8 +289,12 @@ std::vector<bool> CLUEAlgo::getHitsSeeds() {
     throw std::bad_function_call();
   }
   if( std::all_of(points_.isSeed.begin(), points_.isSeed.end(), [](int i) { return i==0; }) ) {
-    std::cout << "ERROR: CLUEAlgo::getHitsSeeds(): all the elements are zero" << std::endl;
-    throw std::bad_function_call();
+    //this can only happen if all the hits were outliers
+    if( ! std::all_of(points_.clusterIndex.begin(), points_.clusterIndex.end(), [](int i) { return i==-1; }) ) 
+      {
+	std::cout << "ERROR: CLUEAlgo::getHitsSeeds(): all the elements are zero" << std::endl;
+	throw std::bad_function_call();
+      }
   }
   return points_.isSeed;
 }
@@ -303,8 +305,12 @@ std::vector<unsigned int> CLUEAlgo::getNHitsInCluster() {
     throw std::bad_function_call();
   }
   if( std::all_of(points_.nHitsCluster.begin(), points_.nHitsCluster.end(), [](int i) { return i==0; }) ) {
-    std::cout << "ERROR: CLUEAlgo::getHitsSeeds(): all the elements are one. Do not forget to call CLUEAlgo::infoHits()" << std::endl;
-    throw std::bad_function_call();
+    //this can only happen if all the hits were outliers (see infoHits())
+    if( ! std::all_of(points_.clusterIndex.begin(), points_.clusterIndex.end(), [](int i) { return i==-1; }) )
+      {
+	std::cout << "ERROR: CLUEAlgo::getHitsSeeds(): all the elements are zero. Do not forget to call CLUEAlgo::infoHits()" << std::endl;
+	throw std::bad_function_call();
+      }
   }
   return points_.nHitsCluster;
 }

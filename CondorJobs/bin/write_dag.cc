@@ -102,7 +102,6 @@ void write_data(const std::string& submission_folder, const std::string& base, c
 
   std::vector<int> file_id;
   unsigned keymin=run_en_map.cbegin()->first, keymax=run_en_map.crbegin()->first;
-  std::cout << "KeyMin:" << keymin << ", " << "KeyMax:" << keymax << std::endl;
   for(unsigned i=keymin; i<=keymax; ++i) //min and max run numbers for data configuration #22
     {
       if( ( showertype == "em" and ( (i>=435 and i<=509) or (i>=594 and i<=676) ) )

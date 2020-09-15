@@ -46,9 +46,9 @@ class CLUEAlgo{
     std::vector<bool> getHitsSeeds();
     std::vector<unsigned int> getNHitsInCluster();
   
-    // public methods
+    //returns 1 if no hit passes the initial energy cut
     //Note: The layer input and output (see getHitsLayerId()) start counting at 1, but the calculations inside use a 0-based index
-    void setPoints(int n, float* x, float* y, unsigned int* layer, float* weight) {
+    bool setPoints(int n, float* x, float* y, unsigned int* layer, float* weight) {
       points_.clear();
 
       // input variables
@@ -58,15 +58,13 @@ class CLUEAlgo{
 	    continue;
 	  float endeposited_mip = layer[i] <= detectorConstants::layerBoundary ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
 
-	  //remove this bit once the FH weights are established
-	  float XXXXweight;
+	  float weight_tmp;
 	  if(layer[i] > detectorConstants::nlayers_emshowers)
-	    XXXXweight = 1.f;
+	    weight_tmp = detectorConstants::globalWeightCEH;
 	  else
-	    XXXXweight = detectorConstants::dEdX.at(layer[i]-1);
-	  ///////////////////////////////////////////////////
+	    weight_tmp = detectorConstants::dEdX.at(layer[i]-1);
 
-	  if( weight[i] < ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * XXXXweight )
+	  if( weight[i] < ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * weight_tmp )
 	    continue;
 	  points_.x.push_back(x[i]);
 	  points_.y.push_back(y[i]);
@@ -75,6 +73,8 @@ class CLUEAlgo{
 	}
 
       points_.n = points_.x.size();
+      if(points_.n == 0)
+	return 1;
 
       // result variables
       points_.rho.resize(points_.n,0);
@@ -84,6 +84,7 @@ class CLUEAlgo{
       points_.nHitsCluster.resize(points_.n,0);
       points_.followers.resize(points_.n);
       points_.clusterIndex.resize(points_.n,-1);
+      return 0;
     }
 
     void clearPoints(){ points_.clear(); }

@@ -246,8 +246,8 @@ def analyze_data():
              [750, 190000., 3500.], #200GeV
              [750, 245000., 4000.], #250GeV
              [750, 290000., 4500.]) #300GeV
+    
     data1 = ProcessData.join(path + '*_noclusters.csv')
-    print(path + '*_noclusters.csv')
 
     hist1 = HandleHistograms.create(data1, bins, iframe=0)
     mean1, emean1, _, _, _, _ = HandleHistograms.fit(hist1, pars1, histo_ranges1, iframe=0)
@@ -328,12 +328,12 @@ def final_plots():
     hf.close()
 
 def main():
-    #analysis and some plotting (store data into HDF5)
-    if FLAGS.analyze:
+    if FLAGS.analyze_only: #analysis and some plotting (store data into HDF5)
         analyze_data()
-
-    #final resolution and response plots (read data from HDF5)
-    if FLAGS.plot:
+    elif FLAGS.plot_only: #final resolution and response plots (read data from HDF5)
+        final_plots()
+    else:
+        analyze_data()
         final_plots()
 
 if __name__ == '__main__':

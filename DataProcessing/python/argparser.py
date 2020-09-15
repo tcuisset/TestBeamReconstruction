@@ -14,14 +14,14 @@ class AllAction(argparse.Action):
 def add_args(parser, mode):
     def resp_res():
         parser.add_argument(
-            '--analyze',
+            '--analyze_only',
             action='store_true',
-            help='Analyze the data.'
+            help='Run solely the analysis step.'
         )
         parser.add_argument(
-            '--plot',
+            '--plot_only',
             action='store_true',
-            help='Plot the data.'
+            help='Run solely the plotting step.'
         )
         
         requiredNamedGroup = parser.add_argument_group('required named arguments')

@@ -102,7 +102,8 @@ void Analyzer::runCLUE(const SHOWERTYPE& st) {
 	    }
 
 	  //run the algorithm per event
-	  clueAlgo.setPoints(x_[iEvent].size(), &x_[iEvent][0], &y_[iEvent][0], &layer_[iEvent][0], &weight_[iEvent][0]);
+	  if ( clueAlgo.setPoints(x_[iEvent].size(), &x_[iEvent][0], &y_[iEvent][0], &layer_[iEvent][0], &weight_[iEvent][0]) )
+	    continue; //no event passed the initial energy cut
 	  clueAlgo.makeClusters();
 	  clueAlgo.infoSeeds();
 	  clueAlgo.infoHits();
@@ -229,15 +230,13 @@ bool Analyzer::ecut_selection(const float& energy, const unsigned int& layer)
 {
   float endeposited_mip = layer < detectorConstants::layerBoundary ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
 
-  //remove this bit once the FH weights are established
-  float XXXXweight;
+  float weight_tmp;
   if(layer >= detectorConstants::nlayers_emshowers)
-    XXXXweight = 1.f;
+    weight_tmp = detectorConstants::globalWeightCEH;
   else
-    XXXXweight = detectorConstants::dEdX.at(layer);
-  ///////////////////////////////////////////////////
+    weight_tmp = detectorConstants::dEdX.at(layer);
 
-  return energy > ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * XXXXweight;
+  return energy > ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * weight_tmp;
 }
 
 void Analyzer::sum_energy(const bool& with_ecut)
