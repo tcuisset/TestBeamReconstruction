@@ -19,11 +19,12 @@ class Selector {
  private:
   int sanity_checks(const std::string&);
   static bool common_selection(const unsigned& layer, const float& energy, const unsigned& chip, const unsigned& channel, const unsigned& module, const float& amplitude, const bool& noise_flag, const mapT& map, const bool& showertype);
-  template<typename T> static std::vector<T> clean_arrays(const std::vector<T>&, const std::vector<float>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<float>&, const std::vector<bool>&, const mapT&, const bool&);
+  template<typename T> static std::vector<T> clean_rechits(const std::vector<T>&, const std::vector<float>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<float>&, const std::vector<bool>&, const mapT&, const bool&);
+  template<typename T> static std::vector<T> clean_ahc(const std::vector<T>&, const std::vector<float>&, const std::vector<int>&, const bool&);
   static std::vector<float> weight_energy(const std::vector<float>&, const std::vector<unsigned>&, const float&, const bool&);
   void load_noise_values();
   static bool reject_noise(const mapT& map, const unsigned& mod, const unsigned& chip, const unsigned& l, const float& amp, const bool& st);
-  static std::vector<int> clean_hitK(const int&, const std::vector<int>&);
+  static float ahc_energy_sum(const std::vector<float>&);
   
   SHOWERTYPE showertype;
   DATATYPE datatype;
@@ -40,7 +41,8 @@ class Selector {
   std::string new_en_       = "rechit_clean_energy";
   std::string new_en_MeV_   = "rechit_clean_energy_MeV";
   //had showers
-  std::string new_ahc_hitK_ = "ahc_clean_hitK";
+  std::string new_ahc_en_     = "ahc_clean_energy";
+  std::string new_ahc_en_sum_ = "ahc_clean_energy_sum";
   //columns to save
   const ROOT::Detail::RDF::ColumnNames_t savedcols_ = {"event", "run", "NRechits", new_detid_, new_x_, new_y_, new_z_, new_layer_, new_en_MeV_, "beamEnergy"};
 

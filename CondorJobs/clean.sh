@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-echo "Are you sure you want to delete the contents of the out/ and log/ folders? [y/n]"
-CLEANPATH="$HOME/${CMSSW_VERSION}/src/UserCode/CondorJobs/"
+echo "Are you sure you want to delete the contents of the out/, log/ and submission/ folders? [y/n]"
+CLEANPATH="$HOME/${CMSSW_VERSION}/src/UserCode/CondorJobs"
 while true; do
     read in
     if [[ "${in}" == "y" ]]; then 
@@ -13,6 +13,8 @@ while true; do
 	rm $CLEANPATH/clue*rescue*;
 	rm $CLEANPATH/clue_*dag;
 	rm $CLEANPATH/clue_*metrics;
+	rm $CLEANPATH/submission/selection/*sub
+	rm $CLEANPATH/submission/analysis/*sub
 	exit 0;
     elif [[ "${in}" == "n" ]]; then 
 	exit 1;

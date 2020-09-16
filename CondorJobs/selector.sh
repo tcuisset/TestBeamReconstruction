@@ -136,10 +136,10 @@ else
 fi
 
 cd "${FULL_PATH}";
-
+echo "Full path: ${FULL_PATH}"
 source /afs/cern.ch/cms/cmsset_default.sh
 eval `scramv1 runtime -sh` #cmsenv substitute
-
+echo "Version: ${CMSSW_VERSION}"
 #back to the job folder
 cd "${INIT_FOLDER}";
 

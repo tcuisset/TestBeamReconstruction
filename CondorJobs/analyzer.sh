@@ -93,6 +93,13 @@ if [[ -z "${DATATYPE}" ]]; then
     printf "\n"
     exit 1;
 fi  
+if [[ -z "${SHOWERTYPE}" ]]; then
+    echo "Please specify the shower type."
+    printf "Accepted values are: "
+    printf "%s " "${SHOWERTYPES[@]}"
+    printf "\n"
+    exit 1;
+fi  
 if [[ ( "${DATATYPE}" == *"sim"* ) && ( "${NTUPLEID}" -gt 4 ) ]]; then
     echo "Simulation data has Ntuples numbered from 0 to 4."
     exit 1;
