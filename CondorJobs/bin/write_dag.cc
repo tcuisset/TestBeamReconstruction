@@ -44,6 +44,8 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
   fw << "error = " + base + "out/" + mode2 + "_" + datatype + "_" + showertype + "." + n + ".err" << std::endl;
   fw << "log = " + base + "log/" + mode2 + "_" + datatype + "_" + showertype + "." + n + ".log" << std::endl;
 
+  fw << "getenv = True" << std::endl;
+  
   fw << "RequestMemory = " + memory << std::endl;
   fw << "+JobFlavour = " + flavour << std::endl;
   fw << "queue" << std::endl;

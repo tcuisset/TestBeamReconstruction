@@ -19,9 +19,10 @@ class Selector {
  private:
   int sanity_checks(const std::string&);
   static bool common_selection(const unsigned& layer, const float& energy, const unsigned& chip, const unsigned& channel, const unsigned& module, const float& amplitude, const bool& noise_flag, const mapT& map, const bool& showertype);
-  template<typename T> static std::vector<T> clean_rechits(const std::vector<T>&, const std::vector<float>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<float>&, const std::vector<bool>&, const mapT&, const bool&);
+  template<typename T> static std::vector<T> clean_ce(const std::vector<T>&, const std::vector<float>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<float>&, const std::vector<bool>&, const mapT&, const bool&);
   template<typename T> static std::vector<T> clean_ahc(const std::vector<T>&, const std::vector<float>&, const std::vector<int>&, const bool&);
-  static std::vector<float> weight_energy(const std::vector<float>&, const std::vector<unsigned>&, const float&, const bool&);
+  static std::vector<float> weight_energy_ce(const std::vector<float>&, const std::vector<unsigned>&, const bool&);
+  static std::vector<float> weight_energy_ahc(const std::vector<float>&, const bool&);
   void load_noise_values();
   static bool reject_noise(const mapT& map, const unsigned& mod, const unsigned& chip, const unsigned& l, const float& amp, const bool& st);
   static float ahc_energy_sum(const std::vector<float>&);
@@ -33,18 +34,18 @@ class Selector {
   mapT noise_map_;
 
   //em showers  
-  std::string new_detid_    = "rechit_clean_detid";
-  std::string new_x_        = "rechit_clean_x";
-  std::string new_y_        = "rechit_clean_y";
-  std::string new_z_        = "rechit_clean_z";
-  std::string new_layer_    = "rechit_clean_layer";
-  std::string new_en_       = "rechit_clean_energy";
-  std::string new_en_MeV_   = "rechit_clean_energy_MeV";
+  std::string new_detid_    = "ce_clean_detid";
+  std::string new_x_        = "ce_clean_x";
+  std::string new_y_        = "ce_clean_y";
+  std::string new_z_        = "ce_clean_z";
+  std::string new_layer_    = "ce_clean_layer";
+  std::string new_en_       = "ce_clean_energy";
+  std::string new_en_MeV_   = "ce_clean_energy_MeV";
   //had showers
   std::string new_ahc_en_     = "ahc_clean_energy";
-  std::string new_ahc_en_sum_ = "ahc_clean_energy_sum";
+  std::string new_ahc_en_MeV_ = "ahc_clean_energy_MeV";
   //columns to save
-  const ROOT::Detail::RDF::ColumnNames_t savedcols_ = {"event", "run", "NRechits", new_detid_, new_x_, new_y_, new_z_, new_layer_, new_en_MeV_, "beamEnergy"};
+  const ROOT::Detail::RDF::ColumnNames_t savedcols_ = {"event", "run", "NRechits", new_detid_, new_x_, new_y_, new_z_, new_layer_, new_en_MeV_, new_ahc_en_MeV_, "beamEnergy"};
 
   struct indata {
     std::string file_path = "/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/ntuple_1000.root";

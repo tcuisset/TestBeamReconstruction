@@ -131,7 +131,7 @@ def print_input_data(files):
         else:
             print(x + ' (not found)')
 
-import warnings
-def _warning(message, category = UserWarning, filename = '', lineno = -1):
-    print(message + ' (' + filename + ':' + str(lineno) + ')')
-warnings.showwarning = _warning
+#import warnings
+#def _warning(message, category = UserWarning, filename = '', lineno = -1):
+#    print(message + ' (' + filename + ':' + str(lineno) + ')')
+#warnings.showwarning = _warning

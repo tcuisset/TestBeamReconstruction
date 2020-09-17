@@ -31,8 +31,8 @@ namespace detectorConstants {
   constexpr std::array<float, nlayers_emshowers> dEdX = {{11.289,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,11.360,11.360,11.360,11.360,10.995,10.995,11.153,7.470}}; //values in DN-19-019 [MeV/MIP]
 
   //Shubham: https://indico.cern.ch/event/923102/contributions/3878372/attachments/2069945/3474694/PionAnalysis_EE_FH_AHCAL_energyScale_short_07072020.pdf (slide #5)
-  constexpr float globalWeightCEE = 0.0106; // [GeV/MIP]
-  constexpr float globalWeightCEH = 0.0789; // [GeV/MIP]
+  constexpr float globalWeightCEE = 10.6; // [MeV/MIP]
+  constexpr float globalWeightCEH = 78.9; // [MeV/MIP]
   constexpr float globalWeightRelative = 0.4; // [dimensionless]
 
   //Shubham: https://indico.cern.ch/event/923097/contributions/3878337/attachments/2048763/3433394/pion_analysis_shower_start_finder_algorithm_optimization_2June2020.pdf (slide #16)

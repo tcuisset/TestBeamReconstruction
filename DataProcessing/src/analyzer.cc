@@ -45,6 +45,7 @@ void Analyzer::resize_vectors()
   this->layer_hitvars_.resize(this->lmax);
   this->clusterdep_.resize(this->lmax);
 }
+
 void Analyzer::runCLUE(const SHOWERTYPE& st) {
   float tot_en;
   dataformats::layervars layerdep_vars;
@@ -79,7 +80,7 @@ void Analyzer::runCLUE(const SHOWERTYPE& st) {
       beam_energy = out_pair.second;
       beam_energies_[i] = beam_energy;
 
-      for(unsigned iEvent=0; iEvent<nevents; ++iEvent)
+      for(unsigned iEvent=0; iEvent<nevents-nevents+3; ++iEvent)
 	{	  
 	  //std::cout << "Inside this tree there are " << nevents << " events: ";
 	  //std::cout << iEvent/static_cast<float>(nevents)*100 << "% \r";
@@ -186,7 +187,7 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
   };
 
   //loop over the TTree pointed by the RDataFrame
-  d.ForeachSlot(fill, {"rechit_clean_x", "rechit_clean_y", "rechit_clean_layer", "rechit_clean_energy_MeV", "rechit_clean_detid", "beamEnergy"});
+  d.ForeachSlot(fill, {"ce_clean_x", "ce_clean_y", "ce_clean_layer", "ce_clean_energy_MeV", "ce_clean_detid", "beamEnergy"});
 
   //calculate number of events taking into account that ncpus is just a hint to EnableImplicitMT
   std::vector<unsigned int> nevents_v;
@@ -249,18 +250,21 @@ void Analyzer::sum_energy(const bool& with_ecut)
 
   for(unsigned int i=0; i<nfiles_; ++i)
     {
-      auto sum = [&](const std::vector<float>& en, const std::vector<unsigned int>& layer, float beamen)
+      auto sum = [&](const std::vector<float>& ce_en, const std::vector<unsigned int>& ce_layer, const std::vector<float>& ahc_en, float beamen)
 	{ 
 	  float entot = 0.f;
-	  for(unsigned int ien=0; ien<en.size(); ++ien)
+	  for(unsigned int ien=0; ien<ce_en.size(); ++ien)
 	    {
-	      if(layer[ien] > this->lmax)
+	      if(ce_layer[ien] > this->lmax)
+		continue;
+	      if(with_ecut and ! ecut_selection(ce_en[ien], ce_layer[ien]-1))
 		continue;
 
-	      if(with_ecut and ! ecut_selection(en[ien], layer[ien]-1))
-		continue;
-
-	      entot += en[ien];
+	      entot += ce_en[ien];
+	    }
+	  for(unsigned int ien=0; ien<ahc_en.size(); ++ien)
+	    {
+	      entot += ahc_en[ien];
 	    }
 	  { //mutex lock scope
 	    std::lock_guard lock(mut);
@@ -272,7 +276,7 @@ void Analyzer::sum_energy(const bool& with_ecut)
       ROOT::RDataFrame d(this->names_[i].second.c_str(), this->names_[i].first.c_str());
       //store the contents of the TTree according to the specified columns
       en_total_[i].clear();
-      d.Foreach(sum, {"rechit_clean_energy_MeV", "rechit_clean_layer", "beamEnergy"});
+      d.Foreach(sum, {"ce_clean_energy_MeV", "ce_clean_layer", "ahc_clean_energy_MeV", "beamEnergy"});
     }
 };
 
@@ -290,6 +294,7 @@ void Analyzer::save_to_file(const std::string& filename) {
     {
       std::string curr_name = std::get<0>(names_[i]);
       curr_name = curr_name.substr(curr_name.length()-10, 5);
+
       oFile << "ensum" << curr_name << ",";
       oFile << "beamen" << curr_name;
       if(i<nfiles_-1)

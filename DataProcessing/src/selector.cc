@@ -1,10 +1,10 @@
 #include "UserCode/DataProcessing/interface/selector.h"
+#include "TCanvas.h"
 
 Selector::Selector(const std::string& in_file_path, const std::string& out_file_path,
 		   const std::string& datatype_, const std::string& showertype_, const int& beam_energy_,
 		   std::optional<std::string> in_tree_name, std::optional<std::string> in_tree_name_friend, std::optional<std::string> out_tree_name)
 {
-  std::cout << "check1" << std::endl;
   sanity_checks(in_file_path);
   this->indata_.file_path = in_file_path;
   this->outdata_.file_path = out_file_path;
@@ -28,9 +28,7 @@ Selector::Selector(const std::string& in_file_path, const std::string& out_file_
     this->indata_.tree_name_friend = in_tree_name_friend.value();
   if(out_tree_name != std::nullopt)
     this->indata_.tree_name = out_tree_name.value();
-  std::cout << "check2" << std::endl;
   this->load_noise_values();
-  std::cout << "check3" << std::endl;
 }
 
 Selector::~Selector()
@@ -39,13 +37,9 @@ Selector::~Selector()
 
 void Selector::load_noise_values()
 {
-  std::cout <<  "load" << std::endl;
   std::string home( getenv("HOME") );
-  std::cout <<  "home" << std::endl;
   std::string rel( getenv("CMSSW_VERSION") );
-  std::cout <<  "version" << std::endl;
   std::string filename = home + "/" + rel + "/src/UserCode/DataProcessing/Noise_Map.txt";
-  std::cout << "Filename for noise map: " << filename  << std::endl;
   std::ifstream in(filename);
   if(!in.is_open())
     throw std::invalid_argument("File " + filename + " could not be opened.");
@@ -83,7 +77,7 @@ bool Selector::common_selection(const unsigned& layer, const float& energy, cons
 {
   if(layer<1 || layer>detectorConstants::totalnlayers)
     throw std::out_of_range("Unphysical layer number: " + std::to_string(layer));
-  else if(!showertype and layer>detectorConstants::nlayers_emshowers && layer<=detectorConstants::totalnlayers)
+  else if(!showertype and layer>detectorConstants::nlayers_emshowers)
     return false;
 
   if(noise_flag==1)
@@ -102,37 +96,33 @@ bool Selector::common_selection(const unsigned& layer, const float& energy, cons
   return true;
 }
 
+//cleans hits in CE-E and CE-H
 template<typename T>
-std::vector<T> Selector::clean_rechits(const std::vector<T>& var, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const mapT& map, const bool& st)
+std::vector<T> Selector::clean_ce(const std::vector<T>& var, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const mapT& map, const bool& st)
 {
-  unsigned layer = 0;
-  float energy = 0.f;
-  size_t ensize = en.size();
+  size_t nhits = en.size();
   std::vector<T> var_clean;
-  var_clean.reserve(ensize);
+  var_clean.reserve(nhits);
 
-  for(unsigned i=0; i<ensize; ++i) {
-    energy = en[i];
-    layer = l[i];
-    if( common_selection(layer, energy, chip[i], channel[i], module[i], amplitude[i], noise_flag[i], map, st) )
+  for(unsigned i=0; i<nhits; ++i) {
+    if( common_selection(l[i], en[i], chip[i], channel[i], module[i], amplitude[i], noise_flag[i], map, st) )
       var_clean.push_back( var[i] );
   }
   return var_clean;  
 }
 
+//cleans hits in AHCAL
 template<typename T>
 std::vector<T> Selector::clean_ahc(const std::vector<T>& var, const std::vector<float>& en, const std::vector<int>& l, const bool& st)
 {
-  unsigned layer = 0;
-  size_t size = var.size();
+  size_t nhits = var.size();
   std::vector<T> var_clean;
-  var_clean.reserve(size);
+  var_clean.reserve(nhits);
 
   if(st)
     {
-      for(unsigned i=0; i<size; ++i) {
-	layer = l[i];
-	if(layer != 38) //mask AHCAL layer #38
+      for(unsigned i=0; i<nhits; ++i) {
+	if(l[i] != 38) //mask AHCAL layer #38
 	  var_clean.push_back(var[i]);
       }
     }
@@ -146,16 +136,17 @@ float Selector::ahc_energy_sum(const std::vector<float>& ahc_en)
   return std::accumulate(ahc_en.begin(), ahc_en.end(), 0.f);
 }
 
-std::vector<float> Selector::weight_energy(const std::vector<float>& en, const std::vector<unsigned>& l, const float& ahc_en, const bool& st) 
+//weights the energy of the CE-E and CE-H hits
+std::vector<float> Selector::weight_energy_ce(const std::vector<float>& en, const std::vector<unsigned>& l, const bool& st) 
 {
   unsigned layer = 0;
   float energy = 0.f;
   float weight = 1.f;
-  size_t ensize = en.size();
+  size_t nhits = en.size();
   std::vector<float> en_weighted;
-  en_weighted.reserve(ensize); //maximum possible size
+  en_weighted.reserve(nhits); //maximum possible size
 
-  for(unsigned i=0; i<ensize; ++i)
+  for(unsigned i=0; i<nhits; ++i)
     {
       energy = en[i];
       layer = l[i];
@@ -163,7 +154,7 @@ std::vector<float> Selector::weight_energy(const std::vector<float>& en, const s
       if( (!st and layer>0 and layer<=detectorConstants::nlayers_emshowers)
 	  or (st and layer>0 and layer<=detectorConstants::totalnlayers) )
 	{
-	  if(st and layer>detectorConstants::nlayers_emshowers) //remove as soon as the extra dEdX are known
+	  if(st and layer>detectorConstants::nlayers_emshowers)
 	    weight = detectorConstants::globalWeightCEH;
 	  else
 	    weight = detectorConstants::dEdX.at(layer-1);
@@ -171,32 +162,30 @@ std::vector<float> Selector::weight_energy(const std::vector<float>& en, const s
       else
 	continue;
 
-      if(layer>detectorConstants::nlayers_emshowers)
-	en_weighted.push_back( weight * (energy + 0.4*ahc_en) );
-      else
-	en_weighted.push_back( energy * weight );
- 
+      en_weighted.push_back( weight * energy ); 
     }
   return en_weighted;  
 }
 
-/*
-unsigned calculate_shower_start(const bool& st)
+//weights the energy of the AHCAL hits
+std::vector<float> Selector::weight_energy_ahc(const std::vector<float>& en, const bool& st) 
 {
-  if(!st) //positron showers do not required this calculation
-    return 0;
+  float weight = detectorConstants::globalWeightCEH * detectorConstants::globalWeightRelative;
+  size_t nhits = en.size();
+  std::vector<float> en_weighted;
+  en_weighted.reserve(nhits); //maximum possible size
 
-  for(unsigned il=0; il<detectorConstants::totalnlayers; ++il)
-    {
+  if(!st)
+    weight = 0.f;
+
+  for(unsigned i=0; i<nhits; ++i)
+    en_weighted.push_back( weight * en[i] );
       
-    }
-  return 0;
+  return en_weighted;  
 }
-*/
 
 void Selector::select_relevant_branches()
 {
-  std::cout << "check4" << std::endl;
   ROOT::RDataFrame *d;
   TFile *f_had = nullptr;
   TTree *t_had1 = nullptr;
@@ -212,7 +201,6 @@ void Selector::select_relevant_branches()
   else if(showertype == SHOWERTYPE::EM)
     d = new ROOT::RDataFrame(this->indata_.tree_name.c_str(), this->indata_.file_path.c_str());
 
-  std::cout << "check5" << std::endl;
   ROOT::EnableImplicitMT( ncpus_ ); //enable parallelism
   ROOT::Detail::RDF::ColumnNames_t clean_cols = {"rechit_energy", "rechit_layer", "rechit_chip", "rechit_channel", "rechit_module", "rechit_amplitudeHigh", "rechit_noise_flag", "st"};
   ROOT::Detail::RDF::ColumnNames_t clean_cols_detid = clean_cols; clean_cols_detid.insert( clean_cols_detid.begin(), "rechit_detid");
@@ -223,23 +211,23 @@ void Selector::select_relevant_branches()
   ROOT::Detail::RDF::ColumnNames_t clean_cols_en = clean_cols; clean_cols_en.insert( clean_cols_en.begin(), "rechit_energy");
   
   //wrappers required to circumvent the static-ness of the wrapped methods (required by RDataFrame) while passing a class variable (this->noise_map_)
-  auto wrapper_float = [&](const std::vector<float>& var, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const bool& st)
+  auto wrapper_float = [this](const std::vector<float>& var, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const bool& st)
 			{
-			  std::vector<float> v = clean_rechits<float>(var, en, l, chip, channel, module, amplitude, noise_flag, this->noise_map_, st);
+			  std::vector<float> v = clean_ce<float>(var, en, l, chip, channel, module, amplitude, noise_flag, this->noise_map_, st);
 			  return v;
 			};
-  auto wrapper_uint = [&](const std::vector<unsigned>& var, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const bool& st)
+  auto wrapper_uint = [this](const std::vector<unsigned>& var, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const bool& st)
 			{
-			  std::vector<unsigned> v = clean_rechits<unsigned>(var, en, l, chip, channel, module, amplitude, noise_flag, this->noise_map_, st);
+			  std::vector<unsigned> v = clean_ce<unsigned>(var, en, l, chip, channel, module, amplitude, noise_flag, this->noise_map_, st);
 			  return v;
 			};
 
   std::string filter_str = "true", define_str = "return false;";
   if(this->showertype == SHOWERTYPE::HAD) {
-    filter_str = "myFriend.dwcReferenceType && myFriend.trackChi2_X<10 && myFriend.trackChi2_Y<10";
-    define_str == "return true;";
+    filter_str = "myFriend.dwcReferenceType>=13 && myFriend.trackChi2_X<10 && myFriend.trackChi2_Y<10";
+    define_str = "return true;";
   }
-  std::cout << "check6" << std::endl;
+
   auto partial_process = d->Filter(filter_str.c_str())
     .Define(clean_cols.back(), define_str) //showertype: em or had
     //.Define("shower_start", calculate_shower_start, {})
@@ -250,16 +238,15 @@ void Selector::select_relevant_branches()
     .Define(new_layer_,   wrapper_uint,  clean_cols_layer)
     .Define(new_en_,      wrapper_float, clean_cols_en)
     .Define(new_ahc_en_,  clean_ahc<float>, {"ahc_hitEnergy", "ahc_hitEnergy", "ahc_hitK", clean_cols.back()})
-    .Define(new_ahc_en_sum_, ahc_energy_sum, {new_ahc_en_})
-    .Define(new_en_MeV_, weight_energy, {new_en_, new_layer_, new_ahc_en_sum_, clean_cols.back()});
+    .Define(new_en_MeV_, weight_energy_ce, {new_en_, new_layer_, clean_cols.back()})
+    .Define(new_ahc_en_MeV_, weight_energy_ahc, {new_ahc_en_, clean_cols.back()});
     
-  if(this->datatype == DATATYPE::MC) {
+  if(this->datatype == DATATYPE::MC and this->showertype == SHOWERTYPE::HAD) {
     partial_process.Filter("ahc_energySum == 0").Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), savedcols_);
   }
-  else if(this->datatype == DATATYPE::DATA) {
+  else if(this->datatype == DATATYPE::DATA or this->showertype == SHOWERTYPE::EM) {
     partial_process.Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), savedcols_);
   }
-  std::cout << "check7" << std::endl;
 }
 
 void Selector::print_relevant_branches(const int& nrows=5, std::optional<std::string> filename)
@@ -285,6 +272,6 @@ int Selector::sanity_checks(const std::string& fname)
   return 1;
 }
 
-template std::vector<float> Selector::clean_rechits(const std::vector<float>&, const std::vector<float>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<float>&, const std::vector<bool>&, const mapT&, const bool&);
-template std::vector<unsigned> Selector::clean_rechits(const std::vector<unsigned>&, const std::vector<float>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<float>&, const std::vector<bool>&, const mapT&, const bool&);
+template std::vector<float> Selector::clean_ce(const std::vector<float>&, const std::vector<float>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<float>&, const std::vector<bool>&, const mapT&, const bool&);
+template std::vector<unsigned> Selector::clean_ce(const std::vector<unsigned>&, const std::vector<float>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<float>&, const std::vector<bool>&, const mapT&, const bool&);
 template std::vector<float> Selector::clean_ahc(const std::vector<float>&, const std::vector<float>&, const std::vector<int>&, const bool&);
