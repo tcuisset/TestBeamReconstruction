@@ -80,7 +80,7 @@ void Analyzer::runCLUE(const SHOWERTYPE& st) {
       beam_energy = out_pair.second;
       beam_energies_[i] = beam_energy;
 
-      for(unsigned iEvent=0; iEvent<nevents-nevents+3; ++iEvent)
+      for(unsigned iEvent=0; iEvent<nevents; ++iEvent)
 	{	  
 	  //std::cout << "Inside this tree there are " << nevents << " events: ";
 	  //std::cout << iEvent/static_cast<float>(nevents)*100 << "% \r";

@@ -150,37 +150,39 @@ def create_dir(directory):
 
 def response_and_resolution_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2, frameid):
     """Plots responses and resolutions with their errors"""
-    #'t.text': 'Responses after original RecHits calibration',
-    locations = {'data': 'bottom_right', 'sim_proton': 'top_right', 'sim_noproton': 'bottom_right'}
+    c_resp1, c_eresp1, c_en = clean_zeros(resp1, eresp1)
+    c_resp2, c_eresp2, _ = clean_zeros(resp2, eresp2)
+    c_res1, c_eres1, _ = clean_zeros(res1, eres1)
+    c_res2, c_eres2, _ = clean_zeros(res2, eres2)
+
+    if FLAGS.showertype == 'em':
+        locations = {'data': 'bottom_right', 'sim_proton': 'top_right', 'sim_noproton': 'bottom_right'}
+    elif FLAGS.showertype == 'had':
+        locations = {'data': 'bottom_right', 'sim_proton': 'bottom_right'}
     axis_kwargs1 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Response (E/True - 1)', 'l.location': locations[FLAGS.datatype]}
-    bokehplot.graph(idx=1, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(resp1)], 
-                    errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
-                            [np.array(eresp1)/2,np.array(eresp1)/2]],
+    bokehplot.graph(idx=1, iframe=frameid, data=[c_en,c_resp1], 
+                    errors=[[np.zeros(len(c_en)),np.zeros(len(c_en))],[c_eresp1/2,c_eresp1/2]],
                     style='square', line=True, color='green', legend_label='Reconstructable', fig_kwargs=axis_kwargs1)
-    bokehplot.graph(idx=1, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(resp2)], 
-                    errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
-                            [np.array(eresp2)/2,np.array(eresp2)/2]],
+    bokehplot.graph(idx=1, iframe=frameid, data=[c_en,c_resp2], 
+                    errors=[[np.zeros(len(c_en)),np.zeros(len(c_en))],
+                            [c_eresp2/2,c_eresp2/2]],
                     style='triangle', line=True, color='orange', legend_label='Clusterized hits')
 
     #'t.text': 'Differences after original RecHits calibration',
     axis_kwargs2 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Response difference', 'l.location': 'bottom_right'}
-    bokehplot.graph(idx=2, iframe=frameid, data=[np.array(true_beam_energies_GeV), np.array(resp2)-np.array(resp1)], 
-                    errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
-                            [np.sqrt( ( np.power(np.array(eresp1),2)+np.power(np.array(eresp2),2) ) / 2 ), 
-                             np.sqrt( ( np.power(np.array(eresp1),2)+np.power(np.array(eresp2),2) ) / 2 )]],
+    bokehplot.graph(idx=2, iframe=frameid, data=[c_en, c_resp2-c_resp1], 
+                    errors=[[np.zeros(len(c_en)),np.zeros(len(c_en))],
+                            [np.sqrt(np.power(c_eresp1,2)+np.power(c_eresp2,2)/2), np.sqrt(np.power(c_eresp1,2)+np.power(c_eresp2,2)/2)]],
                     style='square', line=True, color='blue', legend_label="Reconstructable - Clusterized", fig_kwargs=axis_kwargs2)
     #fig = bokehplot.get_figure(idx=3, iframe=frameid)
     #fig.legend.location = 'bottom_right'
 
-    #'t.text': u"\u03c3 / E after original and clust. RecHits calibrations",
     axis_kwargs3 = {'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': u" Fractional energy Resolution (\u03c3 / E)"}
-    bokehplot.graph(idx=0, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(res1)], 
-                    errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
-                            [np.array(eres1)/2,np.array(eres1)/2]],
+    bokehplot.graph(idx=0, iframe=frameid, data=[c_en,c_res1], 
+                    errors=[[np.zeros(len(c_en)),np.zeros(len(c_en))],[c_eres1/2,c_eres1/2]],
                     style='square', line=True, color='green', legend_label='Reconstructable', fig_kwargs=axis_kwargs3)
-    bokehplot.graph(idx=0, iframe=frameid, data=[np.array(true_beam_energies_GeV),np.array(res2)], 
-                    errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
-                            [np.array(eres2)/2,np.array(eres2)/2]],
+    bokehplot.graph(idx=0, iframe=frameid, data=[c_en,c_res2], 
+                    errors=[[np.zeros(len(c_en)),np.zeros(len(c_en))], [c_eres2/2,c_eres2/2]],
                     style='triangle', line=True, color='orange', legend_label='Clusterized hits')
 
 
@@ -224,9 +226,6 @@ def analyze_data():
     path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 
                         'job_output/hit_dependent/outEcut_' + FLAGS.datatype + "_" + FLAGS.showertype)
 
-    #histo_ranges1 = (Range1d(0,30000), Range1d(0, 40000), Range1d(0, 58000), Range1d(0, 94000), 
-    #                Range1d(0, 120000), Range1d(0,135000), Range1d(0,165000), Range1d(0, 220000), 
-    #                Range1d(0,280000), Range1d(0,315000))
     if FLAGS.showertype == 'em':
         bins = (1000, 1800, 4200, 5000, 5000, 4200, 5700, 5500, 5500, 500)
         histo_ranges1 = (Range1d(0,30000), Range1d(0, 40000), Range1d(27000, 58000), Range1d(52000, 94000), 
@@ -256,10 +255,7 @@ def analyze_data():
             histo_ranges1 = (Range1d(0,30000), Range1d(2000, 40000), Range1d(20000, 58000), Range1d(40000, 94000), 
                              Range1d(58000, 117000), Range1d(70000,135000), Range1d(120000,165000), Range1d(170000, 220000), 
                              Range1d(200000,280000), Range1d(260000,350000))
-        #histo_ranges2 = histo_ranges1
-        histo_ranges2 = (Range1d(0,315000), Range1d(0,315000), Range1d(0,315000), Range1d(0,315000), 
-                         Range1d(0, 315000), Range1d(0,315000), Range1d(0,315000), Range1d(0,315000), 
-                         Range1d(0,315000), Range1d(0,315000))
+        histo_ranges2 = histo_ranges1
         pars1 = ([750, 15000.,  2000.], #20GeV
                  [750, 24000.,  1200.], #30GeV
                  [750, 40000.,  2100.], #50GeV
