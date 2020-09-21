@@ -186,12 +186,15 @@ void CLUEAlgo::findAndAssignClusters(){
 //get an array that tells which hits are seeds, based on their density and assigned cluster
 //only works if the function makeClusters() was run first
 void CLUEAlgo::infoSeeds()
-{  
+{
+  int noutliers = 0;
   std::vector<int> clusterIdxUsed;
   for(int i = 0; i < points_.n; i++)
     {
-      if(points_.clusterIndex[i] == -1) //no outliers
+      if(points_.clusterIndex[i] == -1) { //no outliers
+	noutliers += 1;
 	continue;
+      }
       if( std::find(clusterIdxUsed.begin(), clusterIdxUsed.end(), points_.clusterIndex[i]) == clusterIdxUsed.end() ) //not found
 	{
 	  clusterIdxUsed.push_back( points_.clusterIndex[i] );
@@ -208,6 +211,7 @@ void CLUEAlgo::infoSeeds()
 	  points_.isSeed[seedIdx] = true;
 	} 
     }
+  std::cout << "NOutliers: " << noutliers << ", Ntotal: " << points_.n << ", Fraction: " << static_cast<float>(noutliers)/points_.n << std::endl;
 }
 
 void CLUEAlgo::infoHits()

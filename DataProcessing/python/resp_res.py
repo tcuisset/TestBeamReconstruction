@@ -63,7 +63,7 @@ class HandleHistograms:
     @staticmethod
     def fit(hist, parameters, ranges, iframe):
         sigma_units_left, sigma_units_right = 1, 2.5
-        common_args = {'pdf':'gaus', 'line_width':2.5, 'alpha':0.8}
+        common_args = {'pdf': 'gaus', 'line_width': 2.5, 'alpha': 0.8}
 
         means = []
         means_err = []
@@ -88,7 +88,8 @@ class HandleHistograms:
 
             if hist[i] is not None:
                 try:
-                    coeff, _ = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=0, iframe=iframe, color=line_colors[i], **common_args)
+                    coeff, _ = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=0, iframe=iframe, 
+                                             color=line_colors[i], line_dash='dashed', **common_args)
                     fit_bounds = (coeff[1]-sigma_units_left*coeff[2], coeff[1]+sigma_units_right*coeff[2])
                 except (RuntimeError, ValueError) as e:
                     fit_bounds = (hist[i][1][0], hist[i][1][-1])
@@ -114,7 +115,8 @@ class HandleHistograms:
             #Second fit
             if hist[i] is not None:
                 try:
-                    coeff, var = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=1, iframe=iframe, color=line_colors[i], **common_args)
+                    coeff, var = bokehplot.fit(p0=parameters[i], idx=i, obj_idx=1, iframe=iframe, 
+                                               color=line_colors[i], **common_args)
                     err = np.sqrt(np.diag(var))
                     err1 = round(err[1],2)
                     err2 = round(err[2],2)
@@ -122,7 +124,6 @@ class HandleHistograms:
                     coeff = [0., 0., 0.]
                     err1 = 0
                     err2 = 0
-
                 mean_label = 'mean='+str(round(coeff[1],2))+'+-'+str(err1)+' MeV'
                 sigma_label = 'sigma='+str(round(coeff[2],2))+'+-'+str(err2)+' MeV'
                 font_size = {'text_font_size': '10pt', 'x_units': 'screen', 'y_units': 'screen'}
@@ -183,25 +184,36 @@ def response_and_resolution_graphs(resp1, eresp1, res1, eres1, resp2, eresp2, re
                     style='triangle', line=True, color='orange', legend_label='Clusterized hits')
 
 
+def clean_zeros(mean, emean):
+    mean, emean = np.array(mean), np.array(emean)
+    idx1, idx2 = mean!=0, emean!=0
+    assert(np.array_equal(idx1,idx2))
+    mean, emean = mean[idx1], emean[idx1]
+    en = np.array(true_beam_energies_GeV)[idx1]
+    return mean, emean, en
+
 def linear_fit_graph(mean, emean, idx, iframe):
     axis_kwargs = {'t.text': 'Original RecHits calibration' if idx==0 else 'Clusterized RecHits calibration', 
                    'x.axis_label': 'Beam energy [GeV]', 'y.axis_label': 'Reconstructed energy [GeV]'}
+    c_mean, c_emean, c_en = clean_zeros(mean, emean)
     bokehplot.graph(idx=idx, iframe=iframe, 
-                    data=[np.array(true_beam_energies_GeV),np.array(mean)/1000], 
-                    errors=[[np.zeros(len(true_beam_energies_GeV)),np.zeros(len(true_beam_energies_GeV))],
-                            [np.array(emean)/2,np.array(emean)/2]],
+                    data=[c_en, c_mean/1000], #convert to GeV
+                    errors=[[np.zeros(len(c_en)),np.zeros(len(c_en))], [c_emean/2,c_emean]],
                     style='circle', line=False, color='black', fig_kwargs=axis_kwargs)
-    coeff, var = bokehplot.fit(pdf='linear', idx=idx, iframe=iframe, p0=([1.,0.]), color='red', 
-                               legend_label='y(x) = m*x + b', fig_kwargs={'l.location': 'bottom_right'})
-    err = np.sqrt(np.diag(var))
-    err1 = round(err[0],2)
-    err2 = round(err[1],2)
-    pm = u'\u00B1'
-    m_label = 'm = '+str(round(coeff[0],2))+pm+str(err1)
-    b_label = 'b = '+str(round(coeff[1],2))+pm+str(err2)+' GeV'
-    font_size = {'text_font_size': '9pt', 'x_units': 'data', 'y_units': 'data'}
-    bokehplot.label(m_label, idx=idx, iframe=iframe, x=15, y=280, **font_size)
-    bokehplot.label(b_label, idx=idx, iframe=iframe, x=15, y=260, **font_size)
+    if len(c_mean) > 1: #at least two points are required for the fit
+        coeff, var = bokehplot.fit(pdf='linear', idx=idx, iframe=iframe, p0=([1.,0.]), color='red', 
+                                   legend_label='y(x) = m*x + b', fig_kwargs={'l.location': 'bottom_right'})
+        err = np.sqrt(np.diag(var))
+        err1 = round(err[0],2)
+        err2 = round(err[1],2)
+        pm = u'\u00B1'
+        m_label = 'm = '+str(round(coeff[0],2))+pm+str(err1)
+        b_label = 'b = '+str(round(coeff[1],2))+pm+str(err2)+' GeV'
+        font_size = {'text_font_size': '9pt', 'x_units': 'data', 'y_units': 'data'}
+        bokehplot.label(m_label, idx=idx, iframe=iframe, x=15, y=280, **font_size)
+        bokehplot.label(b_label, idx=idx, iframe=iframe, x=15, y=260, **font_size)
+    else:
+        coeff = [1, 1]
     return coeff[0], coeff[1]
 
 def analyze_data():
@@ -211,29 +223,54 @@ def analyze_data():
     #difference due to historic reasons; this will have to be removed if the analysis step is rerun
     path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 
                         'job_output/hit_dependent/outEcut_' + FLAGS.datatype + "_" + FLAGS.showertype)
-    bins = (1000, 1800, 4200, 5000, 5000, 4200, 5700, 5500, 5500, 500)
-    #histo_ranges1 = (Range1d(0,30000), Range1d(0, 40000), Range1d(27000, 58000), Range1d(52000, 94000), 
-    #                Range1d(64000, 120000), Range1d(88000,135000), Range1d(120000,165000), Range1d(170000, 220000), 
-    #                Range1d(200000,280000), Range1d(240000,315000))
-    histo_ranges1 = (Range1d(0,30000), Range1d(0, 40000), Range1d(0, 58000), Range1d(0, 94000), 
-                    Range1d(0, 120000), Range1d(0,135000), Range1d(0,165000), Range1d(0, 220000), 
-                    Range1d(0,280000), Range1d(0,315000))
-    #histo_ranges2 = (Range1d(0,30000), Range1d(11000, 35000), Range1d(27000, 58000), Range1d(52000, 94000), 
-    #                Range1d(64000, 120000), Range1d(88000,135000), Range1d(120000,165000), Range1d(160000, 220000), 
-    #                Range1d(200000,280000), Range1d(240000,315000))
-    histo_ranges2 = histo_ranges1
-    
-    pars1 = ([750, 20000.,  2000.], #20GeV
-             [750, 30000.,  1200.], #30GeV
-             [750, 50000.,  2100.], #50GeV
-             [750, 80000.,  2500.], #80GeV
-             [750, 100000., 3000.], #100GeV
-             [750, 110000., 2800.], #120GeV
-             [750, 150000., 3000.], #150GeV
-             [750, 190000., 3500.], #200GeV
-             [750, 245000., 4000.], #250GeV
-             [750, 290000., 4500.]) #300GeV
-    
+
+    #histo_ranges1 = (Range1d(0,30000), Range1d(0, 40000), Range1d(0, 58000), Range1d(0, 94000), 
+    #                Range1d(0, 120000), Range1d(0,135000), Range1d(0,165000), Range1d(0, 220000), 
+    #                Range1d(0,280000), Range1d(0,315000))
+    if FLAGS.showertype == 'em':
+        bins = (1000, 1800, 4200, 5000, 5000, 4200, 5700, 5500, 5500, 500)
+        histo_ranges1 = (Range1d(0,30000), Range1d(0, 40000), Range1d(27000, 58000), Range1d(52000, 94000), 
+                         Range1d(64000, 120000), Range1d(88000,135000), Range1d(120000,165000), Range1d(170000, 220000), 
+                         Range1d(200000,280000), Range1d(240000,320000))
+        histo_ranges2 = (Range1d(0,30000), Range1d(11000, 35000), Range1d(27000, 58000), Range1d(52000, 94000), 
+                         Range1d(64000, 120000), Range1d(88000,135000), Range1d(120000,165000), Range1d(160000, 220000), 
+                         Range1d(200000,280000), Range1d(240000,315000))
+        pars1 = ([750, 20000.,  2000.], #20GeV
+                 [750, 30000.,  1200.], #30GeV
+                 [750, 50000.,  2100.], #50GeV
+                 [750, 80000.,  2500.], #80GeV
+                 [750, 100000., 3000.], #100GeV
+                 [750, 110000., 2800.], #120GeV
+                 [750, 150000., 3000.], #150GeV
+                 [750, 190000., 3500.], #200GeV
+                 [750, 245000., 4000.], #250GeV
+                 [750, 290000., 4500.]) #300GeV
+        
+    elif FLAGS.showertype == 'had':
+        bins = (1000, 1000, 1000, 1000, 1000, 1000, 1000, 750, 600, 500)
+        if FLAGS.datatype == 'data':
+            histo_ranges1 = (Range1d(0,30000), Range1d(2000, 40000), Range1d(20000, 70000), Range1d(40000, 105000), 
+                             Range1d(50000, 130000), Range1d(60000,150000), Range1d(120000,165000), Range1d(100000, 250000), 
+                             Range1d(120000,330000), Range1d(180000,380000))
+        else:
+            histo_ranges1 = (Range1d(0,30000), Range1d(2000, 40000), Range1d(20000, 58000), Range1d(40000, 94000), 
+                             Range1d(58000, 117000), Range1d(70000,135000), Range1d(120000,165000), Range1d(170000, 220000), 
+                             Range1d(200000,280000), Range1d(260000,350000))
+        #histo_ranges2 = histo_ranges1
+        histo_ranges2 = (Range1d(0,315000), Range1d(0,315000), Range1d(0,315000), Range1d(0,315000), 
+                         Range1d(0, 315000), Range1d(0,315000), Range1d(0,315000), Range1d(0,315000), 
+                         Range1d(0,315000), Range1d(0,315000))
+        pars1 = ([750, 15000.,  2000.], #20GeV
+                 [750, 24000.,  1200.], #30GeV
+                 [750, 40000.,  2100.], #50GeV
+                 [750, 75000.,  2500.], #80GeV
+                 [750, 95000., 3000.], #100GeV
+                 [750, 115000., 2800.], #120GeV
+                 [750, 150000., 3000.], #150GeV
+                 [750, 195000., 3500.], #200GeV
+                 [750, 250000., 4000.], #250GeV
+                 [750, 310000., 4500.]) #300GeV
+
     data1 = ProcessData.join(path + '*_noclusters.csv')
 
     hist1 = HandleHistograms.create(data1, bins, iframe=0)
@@ -241,6 +278,9 @@ def analyze_data():
 
     last_frame_id = bokehplot.get_nframes() - 1
     calibration_slope1, calibration_shift1 = linear_fit_graph(mean1, emean1, idx=0, iframe=last_frame_id-1)
+    if calibration_slope1 == 0:
+        print('WARNING: slope #1 is zero!')
+        calibration_slope1 = 1;
     correction_value1 = 1 / calibration_slope1
 
     data1_corrected = ProcessData.scale_energy(data1, correction_value1*np.ones(size), -calibration_shift1*np.ones(size))
@@ -263,7 +303,7 @@ def analyze_data():
     data2 = ProcessData.join(path + '*[0-9].csv')
     hist2 = HandleHistograms.create(data2, bins, iframe=2)
     mean2, emean2, _, _, _, _ = HandleHistograms.fit(hist2, pars2, histo_ranges2, iframe=2)
-
+    
     data2_corrected = ProcessData.scale_energy(data2, correction_value1*np.ones(size), -calibration_shift1*np.ones(size))
     hist2_corrected = HandleHistograms.create(data2_corrected, bins, iframe=3)
     pars2_corrected = tuple([x[0], x[1]/calibration_slope1, x[2]] for x in pars2)
@@ -272,10 +312,13 @@ def analyze_data():
 
     calibration_slope2, calibration_shift2 = linear_fit_graph(mean2, emean2, idx=1, iframe=last_frame_id-1)
     if calibration_slope2 == 0:
-        print('WARNING: slope is zero!')
-        correction_value2 = 1;
-    else:
-        correction_value2 = 1 / calibration_slope2
+        print('WARNING: slope #2 is zero!')
+        calibration_slope2 = 1
+    correction_value2 = 1 / calibration_slope2
+
+    #if FLAGS.datatype == 'data': #REMOVE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    #    correction_value2 = 1
+    #    calibration_slope2 = 1
     
     data2_corrected2 = ProcessData.scale_energy(data2, correction_value2*np.ones(size), -calibration_shift2*np.ones(size))
     hist2_corrected2 = HandleHistograms.create(data2_corrected2, bins, iframe=4)
@@ -313,7 +356,8 @@ def final_plots():
     utils.create_dir( presentation_path )
     frameid = bokehplot.get_nframes()-1
     response_and_resolution_graphs(*variables_stored, frameid=frameid)
-    bokehplot.save_frame(iframe=frameid, plot_width=plot_width, plot_height=plot_width, nrows=1, ncols=3, show=False)
+
+    #bokehplot.save_frame(iframe=frameid, plot_width=plot_width, plot_height=plot_width, nrows=1, ncols=3, show=False)
     bokehplot.save_figs(iframe=frameid, path=save_folder, mode='png')
     bokehplot.save_figs(iframe=frameid, path=presentation_path, mode='png')
 

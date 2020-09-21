@@ -231,13 +231,17 @@ bool Analyzer::ecut_selection(const float& energy, const unsigned int& layer)
 {
   float endeposited_mip = layer < detectorConstants::layerBoundary ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
 
-  float weight_tmp;
-  if(layer >= detectorConstants::nlayers_emshowers)
+  float weight_tmp, ecut_tmp;
+  if(layer >= detectorConstants::nlayers_emshowers) {
+    ecut_tmp = 0.0f;
     weight_tmp = detectorConstants::globalWeightCEH;
-  else
+  }
+  else {
+    ecut_tmp = ecut_;
     weight_tmp = detectorConstants::dEdX.at(layer);
+  }
 
-  return energy > ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * weight_tmp;
+  return energy > ecut_tmp * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * weight_tmp;
 }
 
 void Analyzer::sum_energy(const bool& with_ecut)
