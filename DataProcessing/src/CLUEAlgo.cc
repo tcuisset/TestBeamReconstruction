@@ -211,7 +211,6 @@ void CLUEAlgo::infoSeeds()
 	  points_.isSeed[seedIdx] = true;
 	} 
     }
-  std::cout << "NOutliers: " << noutliers << ", Ntotal: " << points_.n << ", Fraction: " << static_cast<float>(noutliers)/points_.n << std::endl;
 }
 
 void CLUEAlgo::infoHits()

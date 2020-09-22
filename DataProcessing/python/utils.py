@@ -62,7 +62,7 @@ def get_mean_and_sigma(x, y=None):
         sumy = np.sum(y)
         if sumy == 0:
             mean = 0
-            sigma = np.inf
+            sigma = 0
         else:
             mean_squared /= sumy
             mean /= sumy

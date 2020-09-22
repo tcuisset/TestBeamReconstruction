@@ -31,6 +31,7 @@ def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
         if arr.size == 0:
             raise ValueError('The dataframe {} in layer {} is empty!'.format(i, ilayer))
         arr = utils.flatten_dataframe(arr)
+
         if columns_field == 'Densities':
             layer_col_en = utils.get_layer_col(df, starts_with='Energies', ilayer=ilayer)
             arr_en = utils.flatten_dataframe( df.loc[:, layer_col_en] )
@@ -48,13 +49,15 @@ def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
             arr_seeds = df.loc[:, layer_col_seeds]
             arr_seeds = utils.flatten_dataframe(arr_seeds)
             arr[ arr_seeds == True ] = 0.5 #select CLUE seeds
+            arr[ arr > 1e38 ] = 4. #issue with CLUE?
         data_per_layer.append( arr )
         
-        m1, m2 = data_per_layer[-1].min(), data_per_layer[-1].max()
-        if m1 < datamin:
-            datamin = m1
-        if m2 > datamax:
-            datamax = m2
+        if arr.size>0:
+            m1, m2 = data_per_layer[-1].min(), data_per_layer[-1].max()
+            if m1 < datamin:
+                datamin = m1
+            if m2 > datamax:
+                datamax = m2
 
     if columns_field == 'Nhits' or columns_field == 'Energy':
         nbins = 60
@@ -65,7 +68,7 @@ def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
 
     #plot data as 2d graphs
     all_counts, all_layers, all_centers = ([] for _ in range(3))
-    means, sigmas_l, sigmas_r = ([] for _ in range(3))
+    means, sigmas = ([] for _ in range(2))
     for ilayer in range(1,nlayers+1):
         counts, edges = np.histogram(data_per_layer[ilayer-1], bins=bins)        
         centers = (edges[:-1]+edges[1:])/2
@@ -76,11 +79,10 @@ def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
 
         #use histogram and not original data to calculate mean and std/sqrt(n)
         #original data cannot be used for the case of weighted histograms
-        mean, _ = utils.get_mean_and_sigma(centers, counts)
-        sigma_left, sigma_right = utils.get_sigma_band(centers, counts)
+        sel_idx = centers>=0 #do not use the non-clusterized values (set to -1) to calculate the mean and sigmas
+        mean, sigma = utils.get_mean_and_sigma(centers[sel_idx], counts[sel_idx])
         means.append(mean)
-        sigmas_l.append(sigma_left)
-        sigmas_r.append(sigma_right)
+        sigmas.append(sigma)
 
     if columns_field == 'Densities':
         xlabel = 'Density [MeV]'
@@ -99,7 +101,9 @@ def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
         bokehplot.graph(data=[np.array(all_layers), np.array(all_centers), np.array(all_counts)],
                         width=np.ones((len(all_layers))), height=height,
                         idx=energy_index, iframe=iframe, style='rect%Cividis', fig_kwargs=fig_kwargs, alpha=0.6)
+        print('SIGMAS: ', np.array(sigmas)/2)
         bokehplot.graph(data=[np.arange(1,nlayers+1), np.array(means)],
+                        errors=[[np.zeros(nlayers),np.zeros(nlayers)],[np.array(sigmas)/2, np.array(sigmas)/2]],
                         idx=energy_index, iframe=iframe, color='red', style='circle', size=2, legend_label='mean')
 
     else:
@@ -109,9 +113,10 @@ def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
                          'x.axis_label': xlabel, 'y.axis_label': 'Counts'}
         hist, hist2, hist3, peaks, peaks2, peaks3, indexes, leg_labels, leg_labels2, leg_labels3 = ([] for _ in range(10))
         hist_min, hist_max, norm, hist_bins = 1000, 5500, False, 100
+
         for ilayer in range(nlayers):
             if columns_field == 'Densities':
-                fig_kwargs_1D['t.text'] = 'Beam energy: {} GeV'.format(true_beam_energies_GeV[energy_index]) + " | E{(hit) > 1000MeV "
+                fig_kwargs_1D['t.text'] = 'Beam energy: {} GeV'.format(true_beam_energies_GeV[energy_index]) + ' | E{(hit) > ' + str(energy_cut) + 'MeV '
 
                 hist_tmp = np.histogram(data_per_layer[ilayer], bins=hist_bins, density=norm, range=(hist_min,hist_max))
                 hist_seeds_tmp = np.histogram(data_per_layer_seeds[ilayer], bins=hist_bins, density=norm, range=(hist_min,hist_max))
@@ -172,8 +177,7 @@ def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
     del all_layers
     del all_centers
     del means
-    del sigmas_l
-    del sigmas_r
+    del sigmas
 
 def graphs_double(df, mode, iframe, energy_index=2): #default to energy_index=2 (=50GeV)
     """Plots density vs distance or posx vs poxy (the latter weighted by the energy density). The variables are defined according to CLUE."""
@@ -200,29 +204,33 @@ def graphs_double(df, mode, iframe, energy_index=2): #default to energy_index=2 
         datamax, datamin = [-np.inf,-np.inf], [np.inf,np.inf]
         layer_col = tuple( utils.get_layer_col(df, starts_with=columns_fields[x], ilayer=ilayer) for x in range(len_col_fields) )
         arr = [ df.loc[:, layer_col[x]] for x in range(len_col_fields) ]
+
         for x in range(len(columns_fields)):
             if arr[x].size == 0:
                 raise ValueError('The dataframe in layer {} of variable {} is empty!'.format(ilayer, x))
         arr = [utils.flatten_dataframe(arr[x]) for x in range(len_col_fields) ]
+
         if mode == 'dens_dist':
             arr_selection_seeds = (arr[2] == True) #seeds
             arr[1][arr_selection_seeds] = 0.5
+            arr[1][ arr[1] > 1e38 ] = 4. #issue with CLUE?
             data_weights = arr[0] ** 6
         elif mode == 'pos':
             arr[0] = arr[0][ arr[2] > energy_cut ]
             arr[1] = arr[1][ arr[2] > energy_cut ]
             data_weights = arr[2][ arr[2] > energy_cut ]
 
-        m1 = (arr[0].min(), arr[1].min()) 
-        m2 = (arr[0].max(), arr[1].max()) 
-        if m1[0] < datamin[0]:
-            datamin[0] = m1[0]
-        if m2[0] > datamax[0]:
-            datamax[0] = m2[0]
-        if m1[1] < datamin[1]:
-            datamin[1] = m1[1]
-        if m2[1] > datamax[1]:
-            datamax[1] = m2[1]
+        if arr[0].size>0 and arr[1].size>0:
+            m1 = (arr[0].min(), arr[1].min()) 
+            m2 = (arr[0].max(), arr[1].max()) 
+            if m1[0] < datamin[0]:
+                datamin[0] = m1[0]
+            if m2[0] > datamax[0]:
+                datamax[0] = m2[0]
+            if m1[1] < datamin[1]:
+                datamin[1] = m1[1]
+            if m2[1] > datamax[1]:
+                datamax[1] = m2[1]
 
         if mode == 'dens_dist':
             bins = ( np.linspace(datamin[0], datamax[0], nbins[0]+1),
@@ -293,26 +301,34 @@ def main():
 
         if FLAGS.densities or FLAGS.densities_2D:
             if thisEn == chosen_energy:
-                if not FLAGS.densities_distances: #avoid loading the same data again
+                if not FLAGS.densities_distances:
                     print('Loading density data for {}GeV...'.format(beam_energies[iEn]))
                     df = tree.arrays(['Densities*', 'Energies*', 'isSeed*', 'ClustSize*'], outputtype=pd.DataFrame, cache=up_cache)
                 index = beam_energies.index(chosen_energy)
                 if FLAGS.densities:
                     graphs_single(df, columns_field='Densities', energy_index=index, iframe=output_html_files_map['densities'][1], do_2D=False)
             if FLAGS.densities_2D:
+                if not FLAGS.densities_distances and thisEn != chosen_energy:
+                    print('Loading density data for {}GeV...'.format(beam_energies[iEn]))
+                    df = tree.arrays(['Densities*', 'Energies*', 'isSeed*', 'ClustSize*'], outputtype=pd.DataFrame, cache=up_cache)
+                index = beam_energies.index(thisEn)
                 graphs_single(df, columns_field='Densities', energy_index=index, iframe=output_html_files_map['densities_2D'][1], do_2D=True)
                         
         if FLAGS.distances or FLAGS.distances_2D:
             if thisEn == chosen_energy:
-                if not FLAGS.densities_distances: #avoid loading the same data again
+                if not FLAGS.densities_distances:
                     print('Loading distance data for {}GeV...'.format(beam_energies[iEn]))
                     df = tree.arrays(['Distances*', 'isSeed*'], outputtype=pd.DataFrame, cache=up_cache)
                 index = beam_energies.index(chosen_energy)
                 if FLAGS.distances:
                     graphs_single(df, columns_field='Distances', energy_index=index, iframe=output_html_files_map['distances'][1], do_2D=False)
             if FLAGS.distances_2D:
+                if not FLAGS.densities_distances and thisEn != chosen_energy:
+                    print('Loading distance data for {}GeV...'.format(beam_energies[iEn]))
+                    df = tree.arrays(['Distances*', 'isSeed*'], outputtype=pd.DataFrame, cache=up_cache)
+                index = beam_energies.index(thisEn)
                 graphs_single(df, columns_field='Distances', energy_index=index, iframe=output_html_files_map['distances_2D'][1], do_2D=True)
-
+                
         if FLAGS.densities or FLAGS.distances or FLAGS.densities_2D or FLAGS.distances_2D or FLAGS.densities_distances:
             if thisEn == chosen_energy:
                 del df
@@ -342,7 +358,7 @@ def main():
     utils.create_dir( layer_dep_folder )
     presentation_path = os.path.join(home, release, 'DN/figs', 'layer_dep', FLAGS.datatype, FLAGS.showertype)
     utils.create_dir( presentation_path )
-    bokehplot.save_frames(plot_width=plot_width, plot_height=plot_height, show=False)
+    #bokehplot.save_frames(plot_width=plot_width, plot_height=plot_height, show=False)
     for iframe in range(nframes):
         utils.create_dir( layer_dep_folder )
         bokehplot.save_figs(iframe=iframe, path=layer_dep_folder, mode='png')

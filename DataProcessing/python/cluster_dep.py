@@ -215,6 +215,7 @@ def main():
 
         #load ROOT TTree
         file = up.open( data_paths[iEn] )
+        print(file.keys())
         tree = file['tree0']
         
         #load cache for a specific energy
