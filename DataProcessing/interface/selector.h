@@ -4,6 +4,7 @@
 #include "TTree.h"
 #include "ROOT/RDataFrame.hxx"
 #include "ROOT/RDF/InterfaceUtils.hxx"
+#include "ROOT/RDFHelpers.hxx"
 #include "UserCode/DataProcessing/interface/range.h"
 #include "UserCode/DataProcessing/interface/CLUEAnalysis.h"
 
@@ -24,16 +25,18 @@ class Selector {
   static std::vector<float> weight_energy_ce(const std::vector<float>&, const std::vector<unsigned>&, const bool&);
   static std::vector<float> weight_energy_ahc(const std::vector<float>&, const bool&);
   void load_noise_values();
+  void load_shift_values();
   static bool reject_noise(const mapT& map, const unsigned& mod, const unsigned& chip, const unsigned& l, const float& amp, const bool& st);
   static float ahc_energy_sum(const std::vector<float>&);
+  static bool remove_missing_dwc(const std::vector<float>&);
   
   SHOWERTYPE showertype;
   DATATYPE datatype;
   int beam_energy;
   static const int ncpus_ = 4;
   mapT noise_map_;
-
-  //em showers  
+  std::vector< std::pair<float,float> > shifts_map_;
+  
   std::string new_detid_    = "ce_clean_detid";
   std::string new_x_        = "ce_clean_x";
   std::string new_y_        = "ce_clean_y";
@@ -41,11 +44,14 @@ class Selector {
   std::string new_layer_    = "ce_clean_layer";
   std::string new_en_       = "ce_clean_energy";
   std::string new_en_MeV_   = "ce_clean_energy_MeV";
-  //had showers
+  std::string new_impX_     = "impactX_shifted";
+  std::string new_impY_     = "impactY_shifted";
+  //had showers only
   std::string new_ahc_en_     = "ahc_clean_energy";
   std::string new_ahc_en_MeV_ = "ahc_clean_energy_MeV";
   //columns to save
-  ROOT::Detail::RDF::ColumnNames_t savedcols_ = {"event", "run", "NRechits", new_detid_, new_x_, new_y_, new_z_, new_layer_, new_en_MeV_, new_ahc_en_MeV_, "beamEnergy"};
+  ROOT::Detail::RDF::ColumnNames_t savedcols_;
+  ROOT::Detail::RDF::ColumnNames_t impactcols_, impactXcols_, impactYcols_;
 
   struct indata {
     std::string file_path = "/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/ntuple_1000.root";

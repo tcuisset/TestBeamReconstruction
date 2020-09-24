@@ -108,6 +108,6 @@ len="${#ENERGIES[@]}"
 for(( j=0; j<${len}; j++ )); do
     IN="/eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/job_output/${JOBSFOLDER}/outEcut_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGIES[j]}_";
     if [[ $(ls "${IN}"*root -A) ]]; then #in case the input files do exist
-	hadd -f /eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/job_output/"${JOBSFOLDER}"/hadd_"${ANALYSISTYPE}"_"${DATATYPE}"_"${SHOWERTYPE}"_beamen${ENERGIES[j]}.root "${IN}"*root;
+	hadd -f -k /eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/job_output/"${JOBSFOLDER}"/hadd_"${ANALYSISTYPE}"_"${DATATYPE}"_"${SHOWERTYPE}"_beamen${ENERGIES[j]}.root "${IN}"*root;
     fi
 done

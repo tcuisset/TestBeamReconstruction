@@ -94,7 +94,7 @@ void CLUEAnalysis::calculateLayerDepVars(const std::vector<float>& xpos, const s
 }
 
 //calculate the number of clusterized hits and clusterized energy per layer and per cluster
-void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const std::vector<float>& ypos, const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
+void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const std::vector<float>& ypos, const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid, const std::vector<float>& impactX, const std::vector<float>& impactY) {
   assert(!weights.empty() && !clusterid.empty() && !layerid.empty());
 
   std::vector<unsigned> nclusters_per_layer(this->lmax, 0); //number of clusters per layer for resizing the vectors
@@ -189,7 +189,18 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
   //fill std::array with clusterized cluster number of hits and energy
   //both vectors might well be empty, in case there was no cluster in a particular layer
   for(unsigned ilayer=0; ilayer<lmax; ++ilayer)
-    clusterdep_vars_.at(ilayer) = std::make_tuple( hits_per_cluster.at(ilayer), en_per_cluster.at(ilayer), x_per_cluster.at(ilayer), y_per_cluster.at(ilayer));
+    {
+      //spatial resolution calculation (estimated impact point in layer minus CLUE's position of each cluster)
+      assert( x_per_cluster[ilayer].size() == y_per_cluster[ilayer].size() );
+      std::vector<float> dx(x_per_cluster[ilayer].size()), dy(x_per_cluster[ilayer].size());
+      for(unsigned iclust=0; iclust<x_per_cluster[ilayer].size(); ++iclust) 
+	{
+	  dx[iclust] = impactX[ilayer] - x_per_cluster[ilayer][iclust];
+	  dy[iclust] = impactY[ilayer] - y_per_cluster[ilayer][iclust];
+	}
+      //store all cluster-related variables
+      clusterdep_vars_.at(ilayer) = std::make_tuple( hits_per_cluster[ilayer], en_per_cluster[ilayer], x_per_cluster[ilayer], y_per_cluster[ilayer], dx, dy);
+    }
 }
 
 //Returns quantities of interest of individual clusters
@@ -249,7 +260,7 @@ dataformats::layervars CLUEAnalysis::getTotalLayerDepOutput() {
 }
 
 //Returns the number of clusterized hits and clusterized energy per layer and per cluster
-std::vector< std::tuple< std::vector<unsigned>, std::vector<float>, std::vector<float>, std::vector<float> > > CLUEAnalysis::getTotalClusterDepOutput() {
+dataformats::clustervars CLUEAnalysis::getTotalClusterDepOutput() {
   return this->clusterdep_vars_;
 }
 

@@ -72,7 +72,26 @@ def add_args(parser, mode):
             action='store_true',
             help="Run the cluster analysis on the X and Y positions f clusters"
         )
-
+        parser.add_argument(
+            '--dx',
+            action='store_true',
+            help="Run the cluster analysis on their X spatial resolution"
+        )
+        parser.add_argument(
+            '--dy',
+            action='store_true',
+            help="Run the cluster analysis on their Y spatial resolution"
+        )
+        parser.add_argument(
+            '--dx_2D',
+            action='store_true',
+            help="Run the cluster analysis on their X spatial resolution (2D: resolution vs. layer)"
+        )
+        parser.add_argument(
+            '--dy_2D',
+            action='store_true',
+            help="Run the cluster analysis on their Y spatial resolution (2D: resolution vs. layer)"
+        )
 
         variables_to_ignore = ['datatype', 'showertype']
         parser.add_argument(

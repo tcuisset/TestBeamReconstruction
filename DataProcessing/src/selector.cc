@@ -28,7 +28,20 @@ Selector::Selector(const std::string& in_file_path, const std::string& out_file_
     this->indata_.tree_name_friend = in_tree_name_friend.value();
   if(out_tree_name != std::nullopt)
     this->indata_.tree_name = out_tree_name.value();
+
+  //establish which data columns will be saved
+  this->savedcols_ = {"event", "run", "NRechits", new_detid_, new_x_, new_y_, new_z_, new_layer_, new_en_MeV_, new_ahc_en_MeV_, "beamEnergy", new_impX_, new_impY_};
+  for(unsigned i=1; i<=detectorConstants::totalnlayers; ++i) {
+    impactXcols_.push_back("myFriend.impactX_HGCal_layer_" + std::to_string(i));
+    impactcols_.push_back("myFriend.impactX_HGCal_layer_" + std::to_string(i));
+    impactYcols_.push_back("myFriend.impactY_HGCal_layer_" + std::to_string(i));
+    impactcols_.push_back("myFriend.impactY_HGCal_layer_" + std::to_string(i));
+  }
+  
+
+  //load external data
   this->load_noise_values();
+  this->load_shift_values();
 }
 
 Selector::~Selector()
@@ -57,6 +70,25 @@ void Selector::load_noise_values()
       temp = std::make_pair(mod_chip, noise);
       this->noise_map_.insert(temp);
     }
+}
+
+void Selector::load_shift_values()
+{
+  std::string home( getenv("HOME") );
+  std::string rel( getenv("CMSSW_VERSION") );
+  std::string filename = home + "/" + rel + "/src/UserCode/DataProcessing/Impact_Shifts.txt";
+  std::ifstream in(filename);
+  if(!in.is_open())
+    throw std::invalid_argument("File " + filename + " could not be opened.");
+
+  unsigned layer;
+  float shiftx, shifty;
+  for(unsigned i=0; i<2; ++i) //lines to skip
+    in.ignore(std::numeric_limits<unsigned>::max(), '\n');
+  for(unsigned i=0; i<detectorConstants::totalnlayers; ++i) {
+    in >> layer >> shiftx >> shifty;
+    this->shifts_map_.emplace_back( shiftx, shifty );
+  }
 }
 
 bool Selector::reject_noise(const mapT& map, const unsigned& mod, const unsigned& chip, const unsigned& l, const float& amp, const bool& st)
@@ -187,22 +219,27 @@ std::vector<float> Selector::weight_energy_ahc(const std::vector<float>& en, con
   return en_weighted;  
 }
 
+bool Selector::remove_missing_dwc(const std::vector<float>& v)
+{
+  for(auto& x : v) {
+    if(x == -999)
+      return false;
+  }
+  return true;
+}
+    
 void Selector::select_relevant_branches()
 {
   ROOT::RDataFrame *d;
   TFile *f_had = nullptr;
   TTree *t_had1 = nullptr;
   TTree *t_had2 = nullptr;
-  if(showertype == SHOWERTYPE::HAD)
-    {
-      f_had = new TFile(this->indata_.file_path.c_str());
-      t_had1 = static_cast<TTree*>( f_had->Get(this->indata_.tree_name.c_str()) ); 
-      t_had2 = static_cast<TTree*>( f_had->Get(this->indata_.tree_name_friend.c_str()) ); 
-      t_had1->AddFriend(t_had2, "myFriend");
-      d = new ROOT::RDataFrame(*t_had1);
-    }
-  else if(showertype == SHOWERTYPE::EM)
-    d = new ROOT::RDataFrame(this->indata_.tree_name.c_str(), this->indata_.file_path.c_str());
+
+  f_had = new TFile(this->indata_.file_path.c_str());
+  t_had1 = static_cast<TTree*>( f_had->Get(this->indata_.tree_name.c_str()) ); 
+  t_had2 = static_cast<TTree*>( f_had->Get(this->indata_.tree_name_friend.c_str()) ); 
+  t_had1->AddFriend(t_had2, "myFriend");
+  d = new ROOT::RDataFrame(*t_had1);
 
   ROOT::EnableImplicitMT( ncpus_ ); //enable parallelism
   ROOT::Detail::RDF::ColumnNames_t clean_cols = {"rechit_energy", "rechit_layer", "rechit_chip", "rechit_channel", "rechit_module", "rechit_amplitudeHigh", "rechit_noise_flag", "st"};
@@ -225,6 +262,20 @@ void Selector::select_relevant_branches()
 			  return v;
 			};
 
+  auto shift_impactX = [this](const std::vector<float>& v) {
+    std::vector<float> newv(v.size());
+    for(unsigned i=0; i<v.size(); ++i)
+      newv[i] = (-1.f * v[i]) + this->shifts_map_[i].first;
+    return newv;
+  };
+
+  auto shift_impactY = [this](const std::vector<float>& v) {
+    std::vector<float> newv(v.size());
+    for(unsigned i=0; i<v.size(); ++i)
+      newv[i] = (-1.f * v[i]) + this->shifts_map_[i].second;
+    return newv;
+  };
+
   std::string filter_str = "true", define_str = "return false;";
   if(this->showertype == SHOWERTYPE::HAD) {
     filter_str = "myFriend.dwcReferenceType>=13 && myFriend.trackChi2_X<10 && myFriend.trackChi2_Y<10";
@@ -232,8 +283,11 @@ void Selector::select_relevant_branches()
   }
 
   auto partial_process = d->Filter(filter_str.c_str())
+    .Filter(ROOT::RDF::PassAsVec<static_cast<unsigned>(2*detectorConstants::totalnlayers), float>(remove_missing_dwc),
+	    impactcols_)
+    .Define(new_impX_, ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>(shift_impactX), impactXcols_)
+    .Define(new_impY_, ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>(shift_impactY), impactYcols_)
     .Define(clean_cols.back(), define_str) //showertype: em or had
-    //.Define("shower_start", calculate_shower_start, {})
     .Define(new_detid_,   wrapper_uint,  clean_cols_detid)
     .Define(new_x_,       wrapper_float, clean_cols_x)
     .Define(new_y_,       wrapper_float, clean_cols_y)

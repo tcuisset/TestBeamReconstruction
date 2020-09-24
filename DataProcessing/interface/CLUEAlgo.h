@@ -58,18 +58,14 @@ class CLUEAlgo{
 	    continue;
 	  float endeposited_mip = layer[i] <= detectorConstants::layerBoundary ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
 
-	  float weight_tmp, ecut_tmp;
-	  if(layer[i] > detectorConstants::nlayers_emshowers) {
-	    ecut_tmp = 0.f;
+	  float weight_tmp;
+	  if(layer[i] > detectorConstants::nlayers_emshowers)
 	    weight_tmp = detectorConstants::globalWeightCEH;
-	  }
-	  else {
-	    ecut_tmp = ecut_;
+	  else
 	    weight_tmp = detectorConstants::dEdX.at(layer[i]-1);
-	  }
-
-	  if( weight[i] < ecut_tmp * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * weight_tmp )
+	  if( weight[i] < ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * weight_tmp )
 	    continue;
+	  
 	  points_.x.push_back(x[i]);
 	  points_.y.push_back(y[i]);
 	  points_.layer.push_back(layer[i]-1);

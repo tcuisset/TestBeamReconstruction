@@ -56,6 +56,8 @@ void Analyzer::runCLUE() {
   std::vector< std::vector<unsigned int> > layer_;
   std::vector< std::vector<float> > weight_;
   std::vector< std::vector<unsigned int> > rechits_id_; //not required by CLUE
+  std::vector< std::vector<float> > impactX_;
+  std::vector< std::vector<float> > impactY_;
   
   std::pair<unsigned int, float> out_pair;
   unsigned int nevents = 0;
@@ -75,7 +77,7 @@ void Analyzer::runCLUE() {
       weight_.clear();
       rechits_id_.clear();
 
-      out_pair = this->_readTree( this->names_[i].first, x_, y_, layer_, weight_, rechits_id_ );
+      out_pair = this->_readTree( this->names_[i].first, x_, y_, layer_, weight_, rechits_id_, impactX_, impactY_ );
       nevents = out_pair.first;
       beam_energy = out_pair.second;
       beam_energies_[i] = beam_energy;
@@ -148,7 +150,7 @@ void Analyzer::runCLUE() {
 	  this->layer_hitvars_.at(i).push_back( hitvars_tmp );
 
 	  //calculate per cluster and per layer clusterized number of hits and energy
-	  clueAna.calculateClusterDepVars( clueAlgo.getHitsPosX(), clueAlgo.getHitsPosY(), clueAlgo.getHitsWeight(), clueAlgo.getHitsClusterId(), clueAlgo.getHitsLayerId() );
+	  clueAna.calculateClusterDepVars( clueAlgo.getHitsPosX(), clueAlgo.getHitsPosY(), clueAlgo.getHitsWeight(), clueAlgo.getHitsClusterId(), clueAlgo.getHitsLayerId(), impactX_[iEvent], impactY_[iEvent] );
 	  clusterdep_vars = clueAna.getTotalClusterDepOutput();
 	  this->clusterdep_.at(i).push_back( clusterdep_vars );
 	}
@@ -158,7 +160,8 @@ void Analyzer::runCLUE() {
 std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
 			std::vector< std::vector<float> >& x, std::vector< std::vector<float> >& y, 
 			std::vector< std::vector<unsigned int> >& layer, std::vector< std::vector<float> >& weight, 
-			std::vector< std::vector<unsigned int> >& rechits_id ) {
+	                std::vector< std::vector<unsigned int> >& rechits_id,
+		        std::vector< std::vector<float> >& impactX, std::vector< std::vector<float> >& impactY) {
   //enable parallel execution
   ROOT::EnableImplicitMT( ncpus_ );
   //creates RDataFrame object
@@ -170,29 +173,36 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
   std::array< std::vector< std::vector<unsigned int> >, ncpus_ > layer_split;
   std::array< std::vector< std::vector<float> >, ncpus_ > weight_split;
   std::array< std::vector< std::vector<unsigned int> >, ncpus_ > rechits_id_split;
+  std::array< std::vector< std::vector<float> >, ncpus_ > impactX_split;
+  std::array< std::vector< std::vector<float> >, ncpus_ > impactY_split;
 
   float beam_energy = 0;
   //lambda function passed to RDataFrame.ForeachSlot(); the first parameters gives the thread number contained in [0;ncpus[
-  auto fill = [&x_split, &y_split, &layer_split, &weight_split, &rechits_id_split, &beam_energy](unsigned int slot, 
-			  std::vector<float>& x_, std::vector<float>& y_, std::vector<unsigned int>& layer_, std::vector<float>& weight_,
-                          std::vector<unsigned int>& rechits_id_, float beamen) {
+  auto fill = [&x_split, &y_split, &layer_split, &weight_split, &rechits_id_split, &beam_energy, 
+	       &impactX_split, &impactY_split](unsigned int slot, std::vector<float>& x_, std::vector<float>& y_, 
+					       std::vector<unsigned int>& layer_, std::vector<float>& weight_,
+					       std::vector<unsigned int>& rechits_id_, float beamen, 
+					       std::vector<float> impactX_, std::vector<float> impactY_) {
 
     x_split[slot].push_back(x_);
     y_split[slot].push_back(y_);
     layer_split[slot].push_back(layer_);
     weight_split[slot].push_back(weight_);
     rechits_id_split[slot].push_back(rechits_id_);
+    impactX_split[slot].push_back(impactX_);
+    impactY_split[slot].push_back(impactY_);
     if(beam_energy == 0)
       beam_energy = beamen; //only changes the first time to avoid extra operations
   };
 
   //loop over the TTree pointed by the RDataFrame
-  d.ForeachSlot(fill, {"ce_clean_x", "ce_clean_y", "ce_clean_layer", "ce_clean_energy_MeV", "ce_clean_detid", "beamEnergy"});
+  d.ForeachSlot(fill, {"ce_clean_x", "ce_clean_y", "ce_clean_layer", "ce_clean_energy_MeV", "ce_clean_detid", "beamEnergy",
+	"impactX_shifted", "impactY_shifted"});
 
   //calculate number of events taking into account that ncpus is just a hint to EnableImplicitMT
   std::vector<unsigned int> nevents_v;
   for(unsigned int iThread=0; iThread<ncpus_; ++iThread) {
-    nevents_v.push_back( x_split[iThread].size() ); //assumes x, y, layer and weight sizes are equal
+    nevents_v.push_back( x_split[iThread].size() ); //assumes all the sizes are the same
   }
   unsigned int nevents = std::accumulate(nevents_v.begin(), nevents_v.end(), 0);
   std::vector<unsigned int> nevents_cumsum( nevents_v.size() );
@@ -219,11 +229,15 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
     layer.push_back(layer_split[iThread_new][iEvent - padding]);
     weight.push_back(weight_split[iThread_new][iEvent - padding]);
     rechits_id.push_back(rechits_id_split[iThread_new][iEvent - padding]);
+    impactX.push_back(impactX_split[iThread_new][iEvent - padding]);
+    impactY.push_back(impactY_split[iThread_new][iEvent - padding]);
   }
   assert( x.size() == y.size() );
   assert( x.size() == layer.size() );
   assert( x.size() == weight.size() );
   assert( x.size() == rechits_id.size() );
+  assert( x.size() == impactX.size() );
+  assert( x.size() == impactY.size() );
   return std::make_pair(nevents, beam_energy);
 }
 
@@ -231,17 +245,13 @@ bool Analyzer::ecut_selection(const float& energy, const unsigned int& layer)
 {
   float endeposited_mip = layer < detectorConstants::layerBoundary ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
 
-  float weight_tmp, ecut_tmp;
-  if(layer >= detectorConstants::nlayers_emshowers) {
-    ecut_tmp = 0.0f;
+  float weight_tmp;
+  if(layer >= detectorConstants::nlayers_emshowers)
     weight_tmp = detectorConstants::globalWeightCEH;
-  }
-  else {
-    ecut_tmp = ecut_;
+  else
     weight_tmp = detectorConstants::dEdX.at(layer);
-  }
-
-  return energy > ecut_tmp * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * weight_tmp;
+  
+  return energy > ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * weight_tmp;
 }
 
 void Analyzer::sum_energy(const bool& with_ecut)
@@ -435,16 +445,22 @@ void Analyzer::save_to_file_cluster_dependent(const std::string& filename) {
       std::vector< std::vector<float> > arr_en(this->lmax);
       std::vector< std::vector<float> > arr_x(this->lmax);
       std::vector< std::vector<float> > arr_y(this->lmax);
+      std::vector< std::vector<float> > arr_dx(this->lmax);
+      std::vector< std::vector<float> > arr_dy(this->lmax);
       for(unsigned int ilayer=0; ilayer<this->lmax; ++ilayer) 
 	{
 	  std::string bname_hits   = "Nhits_layer"  + std::to_string(ilayer + 1);
 	  std::string bname_energy = "Energy_layer" + std::to_string(ilayer + 1);
 	  std::string bname_x      = "X_layer"      + std::to_string(ilayer + 1);
 	  std::string bname_y      = "Y_layer"      + std::to_string(ilayer + 1);
+	  std::string bname_dx     = "dX_layer"     + std::to_string(ilayer + 1);
+	  std::string bname_dy     = "dY_layer"     + std::to_string(ilayer + 1);
 	  tmptree.Branch(bname_hits.c_str(),   &arr_hits[ilayer]);
 	  tmptree.Branch(bname_energy.c_str(), &arr_en[ilayer]);
 	  tmptree.Branch(bname_x.c_str(),      &arr_x[ilayer]);
 	  tmptree.Branch(bname_y.c_str(),      &arr_y[ilayer]);	 
+	  tmptree.Branch(bname_dx.c_str(),     &arr_dx[ilayer]);
+	  tmptree.Branch(bname_dy.c_str(),     &arr_dy[ilayer]);	 
 	}
 
       //loop over TTree and fill branches
@@ -457,6 +473,8 @@ void Analyzer::save_to_file_cluster_dependent(const std::string& filename) {
 	      arr_en[ilayer]   = std::get<1>( this->clusterdep_.at(i).at(ientry).at(ilayer) );
 	      arr_x[ilayer]    = std::get<2>( this->clusterdep_.at(i).at(ientry).at(ilayer) );
 	      arr_y[ilayer]    = std::get<3>( this->clusterdep_.at(i).at(ientry).at(ilayer) );
+	      arr_dx[ilayer]   = std::get<4>( this->clusterdep_.at(i).at(ientry).at(ilayer) );
+	      arr_dy[ilayer]   = std::get<5>( this->clusterdep_.at(i).at(ientry).at(ilayer) );
 	    }
 	  tmptree.Fill();
 	}

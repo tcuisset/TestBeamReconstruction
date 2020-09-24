@@ -46,7 +46,7 @@ namespace dataformats {
   using layerfracs = std::vector< std::tuple<float, float> >;
   using layervars = std::vector< std::tuple<unsigned int, std::vector<float>, std::vector<float>, std::vector<float>, std::vector<bool>, std::vector<float>, std::vector<float>, std::vector<unsigned int>> >;
   using layerhitvars = std::vector< std::tuple<std::vector<float>, std::vector<float>, std::vector<float>, std::vector<bool>, std::vector<float>, std::vector<float>, std::vector<unsigned int>> >;
-  using clustervars = std::vector< std::tuple< std::vector<unsigned int>, std::vector<float>, std::vector<float>, std::vector<float>> >;
+  using clustervars = std::vector< std::tuple< std::vector<unsigned int>, std::vector<float>, std::vector<float>, std::vector<float>, std::vector<float>, std::vector<float>> >;
 }
 
 class CLUEAnalysis {
@@ -58,7 +58,7 @@ private:
   std::vector<dataformats::position> pos_;
   std::vector< float > en_;
   dataformats::layervars layerdep_vars_; //clusterized nhits and clusterized energy per event and per layer, densities, distances, isSeed boolean flag, x position and y position
-  std::vector< std::tuple< std::vector<unsigned int>, std::vector<float>, std::vector<float>, std::vector<float> > > clusterdep_vars_; //clusterized nhits and clusterized energy per event, per layer and per cluster
+  dataformats::clustervars clusterdep_vars_; //clusterized nhits and clusterized energy per event, per layer and per cluster
   std::vector<float> frac_clust_hits_;
 
   float hit_distance(const float&, const float&, const float&, const float&);
@@ -69,11 +69,11 @@ public:
   void calculateEnergy(const std::vector<float>&, const std::vector<int>&);
   void verboseResults(std::string&);
   void calculateLayerDepVars(const std::vector<float>&, const std::vector<float>&, const std::vector<float>&, const std::vector<int>&, const std::vector<int>&, const std::vector<float>&, const std::vector<float>&, const std::vector<bool>&, const std::vector<unsigned int>&);
-  void calculateClusterDepVars(const std::vector<float>&, const std::vector<float>&, const std::vector<float>&, const std::vector<int>&, const std::vector<int>&);
+  void calculateClusterDepVars(const std::vector<float>&, const std::vector<float>&, const std::vector<float>&, const std::vector<int>&, const std::vector<int>&, const std::vector<float>&, const std::vector<float>&);
   std::vector<dataformats::data> getTotalPositionsAndEnergyOutput(std::string& outputFileName, bool verbose=0);
   float getTotalEnergyOutput(const std::string& outputFileName, bool verbose=0);
   dataformats::layervars getTotalLayerDepOutput();
-  std::vector< std::tuple< std::vector<unsigned int>, std::vector<float>, std::vector<float>, std::vector<float> > > getTotalClusterDepOutput();
+  dataformats::clustervars getTotalClusterDepOutput();
 };
 
 #endif //CLUEAnalysis_h
