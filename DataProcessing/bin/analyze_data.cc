@@ -7,8 +7,8 @@ void analysis_CLUE(const std::string& in_fname, const std::string& out_fname, co
   /*////////////////////////
     Run custom analyzer
   *////////////////////////
-  Analyzer ana(in_fname, in_tname, dc, kappa, ecut);
-  ana.runCLUE(st);
+  Analyzer ana(in_fname, in_tname, dc, kappa, ecut, st);
+  ana.runCLUE();
   ana.save_to_file(out_fname);
   ana.save_to_file_layer_dependent(out_fname2);
   ana.save_to_file_cluster_dependent(out_fname3);

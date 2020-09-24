@@ -1,6 +1,6 @@
 #include "UserCode/DataProcessing/interface/analyzer.h"
 
-Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut): dc_(dc), kappa_(kappa), ecut_(ecut)
+Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut, const SHOWERTYPE& st): dc_(dc), kappa_(kappa), ecut_(ecut), st_(st)
 {
   nfiles_ = in_file_path.size();
   std::cout << "Number of files being processed: " << nfiles_ << std::endl;
@@ -19,7 +19,7 @@ Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::st
 }
 
 //Overloaded constructor for job submission. Each job processes one file only.
-Analyzer::Analyzer(const std::string& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut): dc_(dc), kappa_(kappa), ecut_(ecut)
+Analyzer::Analyzer(const std::string& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut, const SHOWERTYPE& st): dc_(dc), kappa_(kappa), ecut_(ecut), st_(st)
 {
   nfiles_ = 1;
   std::cout << "Number of files being processed: " << nfiles_ << std::endl;
@@ -46,7 +46,7 @@ void Analyzer::resize_vectors()
   this->clusterdep_.resize(this->lmax);
 }
 
-void Analyzer::runCLUE(const SHOWERTYPE& st) {
+void Analyzer::runCLUE() {
   float tot_en;
   dataformats::layervars layerdep_vars;
   dataformats::clustervars clusterdep_vars;
@@ -61,7 +61,7 @@ void Analyzer::runCLUE(const SHOWERTYPE& st) {
   unsigned int nevents = 0;
   float beam_energy = -1;
   CLUEAlgo clueAlgo(dc_, kappa_, ecut_); //non-verbose
-  CLUEAnalysis clueAna(st);
+  CLUEAnalysis clueAna(this->st_);
   this->lmax = clueAna.getLayerMax();
   resize_vectors();
 
@@ -246,41 +246,59 @@ bool Analyzer::ecut_selection(const float& energy, const unsigned int& layer)
 
 void Analyzer::sum_energy(const bool& with_ecut)
 {
-  //anonymous function to pass to RDataFrame.ForEach()
-  std::mutex mut;
+  std::mutex mut; //anonymous function to pass to RDataFrame.ForEach()
 
-  //enable parallelism
-  ROOT::EnableImplicitMT( ncpus_ );
+  ROOT::EnableImplicitMT( ncpus_ ); //enable parallelism
 
   for(unsigned int i=0; i<nfiles_; ++i)
     {
-      auto sum = [&](const std::vector<float>& ce_en, const std::vector<unsigned int>& ce_layer, const std::vector<float>& ahc_en, float beamen)
-	{ 
-	  float entot = 0.f;
-	  for(unsigned int ien=0; ien<ce_en.size(); ++ien)
-	    {
-	      if(ce_layer[ien] > this->lmax)
-		continue;
-	      if(with_ecut and ! ecut_selection(ce_en[ien], ce_layer[ien]-1))
-		continue;
+      auto sum_ce = [&](const std::vector<float>& ce_en, const std::vector<unsigned int>& ce_layer, float beamen)
+		    { 
+		      float entot = 0.f;
+		      for(unsigned int ien=0; ien<ce_en.size(); ++ien)
+			{
+			  if(ce_layer[ien] > this->lmax)
+			    continue;
+			  if(with_ecut and ! ecut_selection(ce_en[ien], ce_layer[ien]-1))
+			    continue;
 
-	      entot += ce_en[ien];
-	    }
-	  for(unsigned int ien=0; ien<ahc_en.size(); ++ien)
-	    {
-	      entot += ahc_en[ien];
-	    }
-	  { //mutex lock scope
-	    std::lock_guard lock(mut);
-	    this->en_total_[i].push_back(std::make_tuple(entot, beamen));
-	  }
-	};
+			  entot += ce_en[ien];
+			}
+		      { //mutex lock scope
+			std::lock_guard lock(mut);
+			this->en_total_[i].push_back(std::make_tuple(entot, beamen));
+		      }
+		    };
+
+      auto sum_ahc = [&](const std::vector<float>& ce_en, const std::vector<unsigned int>& ce_layer, const std::vector<float>& ahc_en, float beamen)
+		     { 
+		       float entot = 0.f;
+		       for(unsigned int ien=0; ien<ce_en.size(); ++ien)
+			 {
+			   if(ce_layer[ien] > this->lmax)
+			     continue;
+			   if(with_ecut and ! ecut_selection(ce_en[ien], ce_layer[ien]-1))
+			     continue;
+
+			   entot += ce_en[ien];
+			 }
+		       for(unsigned int ien=0; ien<ahc_en.size(); ++ien)
+			 entot += ahc_en[ien];
+
+		       { //mutex lock scope
+			 std::lock_guard lock(mut);
+			 this->en_total_[i].push_back(std::make_tuple(entot, beamen));
+		       }
+		     };
 
       //define dataframe that owns the TTree
       ROOT::RDataFrame d(this->names_[i].second.c_str(), this->names_[i].first.c_str());
       //store the contents of the TTree according to the specified columns
       en_total_[i].clear();
-      d.Foreach(sum, {"ce_clean_energy_MeV", "ce_clean_layer", "ahc_clean_energy_MeV", "beamEnergy"});
+      if(this->st_ == SHOWERTYPE::EM)
+	d.Foreach(sum_ce, {"ce_clean_energy_MeV", "ce_clean_layer", "beamEnergy"});
+      else if(this->st_ == SHOWERTYPE::HAD)
+	d.Foreach(sum_ahc, {"ce_clean_energy_MeV", "ce_clean_layer", "ahc_clean_energy_MeV", "beamEnergy"});
     }
 };
 

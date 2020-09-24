@@ -1,6 +1,7 @@
 #include <map>
 
 //given by Thorben (originally in Python format)
+//each run number is paired to the incident beam energy in GeV
 const std::map<unsigned, unsigned> run_en_map = { {179, 150},
 						  {180, 150},
 						  {181, 150},

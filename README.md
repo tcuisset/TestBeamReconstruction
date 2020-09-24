@@ -24,7 +24,7 @@ Pipeline description
 
 - fits, histogram manipulation and dataframe operations are performed
 	
-- quantities of interest are plotted using [BokehPlot](https://bitbucket.org/bfontana/bokehplot), a custom bokeh wrapper (under development)
+- quantities of interest are plotted using [BokehPlot](https://bitbucket.org/bfontana/bokehplot), a custom bokeh wrapper (under development, but already capable of doing the most common plotting operations)
 
 
 Steps 1) and 2) were chained with a Directed Acyclic Graph (DAG) that runs within HTCondor.
@@ -40,7 +40,7 @@ Input NTuples
 
 - **sim_noproton**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v3/electrons/```
 
-*Hadronic showers*
+*Hadronic showers* (there are no simulations available without proton contamination)
 
 - **data**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/AHCAL_ntuples/v8/``` (HGCAL+AHCAL)
 
@@ -61,7 +61,7 @@ Scripts' description
 
 - ```CondorJobs/```: everything related to submitting jobs to the grid
 
-    - ```bin/write_dag.cc```: creates all the required DAG submission file
+    - ```bin/write_dag.cc```: creates all the required DAG submission files. It takes as input the ```CondorJobs/ntuple_ids.txt``` file which lists all the run numbers available and was generated with a combination of ```ls``` (applied to the folder with the input Ntuples) and ```awk```. This file is used in combination with a ```std::map``` stored in ```CondorJobs/interface/run_en_map.h``` which pairs run numbers with incident beam energy in GeV.
 
     - ```selector.sh```: used by the jobs to run step #1
 

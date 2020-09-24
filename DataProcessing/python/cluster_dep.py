@@ -140,7 +140,7 @@ def graphs_per_layer(tree, cache, axis_kwargs, columns_field, iframe, variable, 
 
     executor = concurrent.futures.ThreadPoolExecutor()
     nbins = 50
-    limit_up, limit_down = 4, 2
+    limit_up, limit_down = 3, 3
     fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height}
     fig_kwargs.update(axis_kwargs)
     
@@ -293,7 +293,7 @@ if __name__ == '__main__':
     size = ncuts*len(true_beam_energies_GeV)
     size_shift = len(true_beam_energies_GeV)
     version2 = '_prof'
-    nhits_min, nhits_max = 5, 10
+    nhits_min, nhits_max = 1, 10000
     chosen_energy = 250 #posx vs poxy plots will only refer to this energy (one plot per layer)
     assert(chosen_energy in beam_energies)
 
