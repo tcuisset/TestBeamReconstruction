@@ -45,7 +45,7 @@ class Selector {
   std::string new_ahc_en_     = "ahc_clean_energy";
   std::string new_ahc_en_MeV_ = "ahc_clean_energy_MeV";
   //columns to save
-  const ROOT::Detail::RDF::ColumnNames_t savedcols_ = {"event", "run", "NRechits", new_detid_, new_x_, new_y_, new_z_, new_layer_, new_en_MeV_, new_ahc_en_MeV_, "beamEnergy"};
+  ROOT::Detail::RDF::ColumnNames_t savedcols_ = {"event", "run", "NRechits", new_detid_, new_x_, new_y_, new_z_, new_layer_, new_en_MeV_, new_ahc_en_MeV_, "beamEnergy"};
 
   struct indata {
     std::string file_path = "/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/ntuple_1000.root";

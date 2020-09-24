@@ -1,9 +1,5 @@
 #include "UserCode/DataProcessing/interface/CLUEAnalysis.h"
 
-//Simplified with respect to the CMSSW version, since
-//   1) Only considers the EE section
-//   2) Has W0=2.9 hardcoded
-//Returns x and y position of the cluster
 CLUEAnalysis::CLUEAnalysis(const SHOWERTYPE& s): showertype(s)
 {
   if(showertype == SHOWERTYPE::EM)
@@ -17,111 +13,17 @@ CLUEAnalysis::CLUEAnalysis(const SHOWERTYPE& s): showertype(s)
   this->clusterdep_vars_.resize(lmax);
 }
 
-void CLUEAnalysis::calculatePositionsAndEnergy(const std::vector<float>& xpos, const std::vector<float>& ypos, const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
-  assert(!xpos.empty() && !ypos.empty() && !weights.empty() && !clusterid.empty()&& !layerid.empty());
-  auto start = std::chrono::high_resolution_clock::now();
-  const int nclusters = ( *( std::max_element(clusterid.begin(), clusterid.end()) ) 
-			  + 1 /*cluster index starts at zero*/  + 1 /*outliers*/ );
-  std::vector<float> total_weight(nclusters, 0.);
-  std::vector<float> total_weight_log(nclusters, 0.) ;
-  std::vector<float> x(nclusters, 0.);
-  std::vector<float> y(nclusters, 0.);
-  std::vector<float> layers(nclusters, 0.);
-  for(auto i: util::lang::indices(weights))
-    {
-      unsigned weight_index = clusterid.at(i) + 1; //outliers will correspond to total_weight[0]
-      total_weight.at(weight_index) += weights.at(i);
-    }
-  en_ = total_weight; //copy
-
-  for (auto i: util::lang::indices(weights))
-    {
-      unsigned weight_index = clusterid.at(i) + 1; //outliers will correspond to total_weight[0]
-      float Wi = std::max(W0_ + std::log(weights.at(i) / total_weight.at(weight_index)), 0.f);
-      x.at(weight_index) += xpos.at(i) * Wi;
-      y.at(weight_index) += ypos.at(i) * Wi;
-      total_weight_log.at(weight_index) += Wi;
-      if(layers[weight_index] == 0 and weight_index != 0) 
-	layers[weight_index] = layerid.at(i); //all hits in a cluster will belong to the same layer
-    }
-  for(auto i : util::lang::indices(total_weight_log))
-    {
-      if (total_weight_log.at(i) != 0.) {
-	float inv_tot_weight_log = 1.f / total_weight_log.at(i);
-	pos_.push_back( std::make_tuple( x.at(i) * inv_tot_weight_log, y.at(i) * inv_tot_weight_log, layers.at(i) ) );
-      } 
-      else
-	pos_.push_back( std::make_tuple(0.f, 0.f, 0.f) );
-    }
-  auto finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
-  //std::cout << "--- calculatePositions      " << elapsed.count() *1000 << " ms\n\n";
-}
-
-
-//Simplified with respect to the CMSSW version, since
-//   1) Only considers the EE section
-//   2) Has W0=2.9 hardcoded
-//Returns x and y position of the cluster
-void CLUEAnalysis::calculatePositions(const std::vector<float>& xpos, const std::vector<float>& ypos, const std::vector<float>& weights, const std::vector<int>& clusterid, const std::vector<int>& layerid) {
-  auto start = std::chrono::high_resolution_clock::now();
-
-  const int nclusters = *( std::max_element(clusterid.begin(), clusterid.end()) ) + 1; //number of clusters plus outliers
-  std::vector<float> total_weight(nclusters, 0.);
-  std::vector<float> total_weight_log(nclusters, 0.) ;
-  std::vector<float> x(nclusters, 0.);
-  std::vector<float> y(nclusters, 0.);
-  std::vector<float> layers(nclusters, 0.);
-
-  for(auto i: util::lang::indices(weights))
-    {
-      unsigned weight_index = clusterid[i] + 1; //outliers will correspond to total_weight[0]
-      total_weight[weight_index] += weights[i];
-    }
-
-  for (auto i: util::lang::indices(weights))
-    {
-      unsigned weight_index = clusterid[i] + 1; //outliers will correspond to total_weight[0]
-      float Wi = std::max(W0_ + std::log(weights[i] / total_weight[weight_index]), 0.f);
-      x[weight_index] += xpos[i] * Wi;
-      y[weight_index] += ypos[i] * Wi;
-      total_weight_log[weight_index] += Wi;
-      if(layers[weight_index] == 0) 
-	layers[weight_index] = layerid[i]; //all hits in a cluster will belong to the same layer
-    }
-
-  for(auto i : util::lang::indices(total_weight_log))
-    {
-      if (total_weight_log[i] != 0.) {
-	float inv_tot_weight_log = 1.f / total_weight_log[i];
-	pos_.push_back( std::make_tuple( x[i] * inv_tot_weight_log, y[i] * inv_tot_weight_log, layers[i] ) );
-      } 
-      else
-	pos_.push_back( std::make_tuple(0.f, 0.f, 0.f) );
-    }
-
-  auto finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "--- calculatePositions      " << elapsed.count() *1000 << " ms\n\n";
-}
-
 void CLUEAnalysis::calculateEnergy( const std::vector<float>& weights, const std::vector<int>& clusterid ) {
-  auto start = std::chrono::high_resolution_clock::now();
-
-  const int nclusters = *( std::max_element(clusterid.begin(), clusterid.end()) ) + 1; //number of clusters plus outliers
+  const int nclusters = *( std::max_element(clusterid.begin(), clusterid.end()) ) 
+    + 1 /*cluster index starts at zero*/ + 1 /*outliers*/;
   std::vector<float> total_weight(nclusters, 0.);
 
   for(auto i: util::lang::indices(weights))
     {
-      unsigned weight_index = clusterid[i] + 1; //outliers will correspond to total_weight[0]
-      total_weight[weight_index] += weights[i];
+      unsigned weight_index = clusterid.at(i) + 1; //outliers will correspond to total_weight[0]
+      total_weight.at(weight_index) += weights[i];
     }
-
   en_ = total_weight;
-
-  auto finish = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsed = finish - start;
-  std::cout << "--- calculateEnergy      " << elapsed.count() *1000 << " ms\n\n";
 }
 
 //calculate the number of clusterized hits and clusterized energy per layer
@@ -201,59 +103,78 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
   //calculate number of clusters per layer
   for(auto i: util::lang::indices(weights))
     {
-      if(clusterid[i]!=-1 /*outliers are not considered*/ and clusterIndexMap.find(clusterid[i]) == clusterIndexMap.end())
+      if(clusterid[i]!=-1 /*outliers are not considered*/ and 
+	 clusterIndexMap.find(clusterid[i]) == clusterIndexMap.end()) /*only once per cluster ID*/
 	{
-	  int layeridx = layerid[i]-1; //layers start at 1
+	  unsigned layeridx = static_cast<unsigned>(layerid[i]) - 1; //layers start at 1
 	  clusterIndexMap.emplace(clusterid[i], nclusters_per_layer[layeridx]);
 	  nclusters_per_layer[layeridx] += 1;
 	}
     }
   std::vector< std::vector<float> > en_per_cluster(this->lmax);
-  std::vector< std::vector<float> > en_per_cluster_log(this->lmax); //helper for calculating the positions
+  std::vector< std::vector<float> > en_per_cluster_ecut(this->lmax); //helper for position measurement
+  std::vector< std::vector<float> > en_per_cluster_log_ecut(this->lmax); //helper for position measurement
   std::vector< std::vector<unsigned> > hits_per_cluster(this->lmax);
+  std::vector< std::vector<unsigned> > idx_highest_en(this->lmax); //helper for position measurement (distance cut)
   std::vector< std::vector<float> > x_per_cluster(this->lmax);
   std::vector< std::vector<float> > y_per_cluster(this->lmax);
-  for(unsigned i=0; i<lmax; ++i) 
+  for(unsigned i=0; i<lmax; ++i)
     {
-      en_per_cluster[i].resize( nclusters_per_layer[i], 0.f ); //resizes and default-initializes to zero
-      en_per_cluster_log[i].resize( nclusters_per_layer[i], 0.f ); //resizes and default-initializes to zero
-      hits_per_cluster[i].resize( nclusters_per_layer[i], 0 ); //resizes and default-initializes to zero
-      x_per_cluster[i].resize( nclusters_per_layer[i], 0.f ); //resizes and default-initializes to zero
-      y_per_cluster[i].resize( nclusters_per_layer[i], 0.f ); //resizes and default-initializes to zero
+      en_per_cluster[i].resize( nclusters_per_layer[i], 0.f ); 
+      en_per_cluster_ecut[i].resize( nclusters_per_layer[i], 0.f ); 
+      en_per_cluster_log_ecut[i].resize( nclusters_per_layer[i], 0.f );
+      hits_per_cluster[i].resize( nclusters_per_layer[i], 0 );
+      idx_highest_en[i].resize( nclusters_per_layer[i], 0 );
+      x_per_cluster[i].resize( nclusters_per_layer[i], 0.f ); 
+      y_per_cluster[i].resize( nclusters_per_layer[i], 0.f );
     }
 
-  for(auto i: util::lang::indices(weights))
-    {
+  for(auto i: util::lang::indices(weights)) {
       if(clusterid[i] != -1)  //outliers are not considered
 	{
 	  unsigned layeridx = static_cast<unsigned>(layerid[i]) - 1; //layers start at 1
 	  unsigned vectoridx = clusterIndexMap[clusterid[i]];
 	  en_per_cluster.at(layeridx).at(vectoridx) += weights[i];
 	  hits_per_cluster.at(layeridx).at(vectoridx) += 1;
-	}
-      //Note: We should get an out-of-bounds error for trying to access info at layers > 28. 
-      //      It does not happen since all hits not in the CEE are marked as outliers by CLUE (clusterid == -1).
-    }
-  
-   for (auto i: util::lang::indices(weights))
-    {
-      if(clusterid[i] != -1)  //outliers are not considered
-	{
-	  unsigned layeridx = static_cast<unsigned>(layerid[i]) - 1; //layers start at 1
-	  unsigned vectoridx = clusterIndexMap[clusterid[i]];
-	  float Wi = std::max(W0_ + std::log(weights[i] / en_per_cluster.at(layeridx).at(vectoridx)), 0.f);
-	  x_per_cluster.at(layeridx).at(vectoridx) += xpos[i] * Wi;
-	  y_per_cluster.at(layeridx).at(vectoridx) += ypos[i] * Wi;
-	  en_per_cluster_log.at(layeridx).at(vectoridx) += Wi;
+
+	  if(weights[i] > weights[idx_highest_en.at(layeridx).at(vectoridx)])
+	    idx_highest_en[layeridx][vectoridx] = i;
 	}
     }
 
-   for(unsigned s1=0; s1<en_per_cluster_log.size(); ++s1) {
-     for(unsigned s2=0; s2<en_per_cluster_log[s1].size(); ++s2)
+  for(auto i: util::lang::indices(weights)) {
+     if(clusterid[i] != -1)  //outliers are not considered
        {
-	 if (en_per_cluster_log.at(s1).at(s2) != 0.)
+	 unsigned layeridx = static_cast<unsigned>(layerid[i]) - 1; //layers start at 1
+	 unsigned vectoridx = clusterIndexMap[clusterid[i]];
+	 unsigned maxenid = idx_highest_en[layeridx][vectoridx];
+	 if( hit_distance(xpos[i],ypos[i],xpos[maxenid],ypos[maxenid])<1.3 ) //a radius of 13mm is imposed
+	   en_per_cluster_ecut.at(layeridx).at(vectoridx) += weights[i];
+       }
+    }
+
+   for (auto i: util::lang::indices(weights)) {
+     if(clusterid[i] != -1)  //outliers are not considered
+       {
+	 unsigned layeridx = static_cast<unsigned>(layerid[i]) - 1; //layers start at 1
+	 unsigned vectoridx = clusterIndexMap[clusterid[i]];
+	 unsigned maxenid = idx_highest_en[layeridx][vectoridx];
+	 if( hit_distance(xpos[i],ypos[i],xpos[maxenid],ypos[maxenid])<1.3 ) //a radius of 13mm is imposed
 	   {
-	     float inv_log = 1.f / en_per_cluster_log.at(s1).at(s2);
+	     float Wi = std::max(W0_ + std::log(weights[i] / en_per_cluster_ecut[layeridx][vectoridx]), 0.f);
+	     x_per_cluster.at(layeridx).at(vectoridx) += xpos[i] * Wi;
+	     y_per_cluster[layeridx][vectoridx] += ypos[i] * Wi;
+	     en_per_cluster_log_ecut.at(layeridx).at(vectoridx) += Wi;
+	   }
+       }
+   }
+
+   for(unsigned s1=0; s1<en_per_cluster_log_ecut.size(); ++s1) {
+     for(unsigned s2=0; s2<en_per_cluster_log_ecut[s1].size(); ++s2)
+       {
+	 if (en_per_cluster_log_ecut.at(s1).at(s2) != 0.)
+	   {
+	     float inv_log = 1.f / en_per_cluster_log_ecut.at(s1).at(s2);
 	     x_per_cluster.at(s1).at(s2) *= inv_log;
 	     y_per_cluster.at(s1).at(s2) *= inv_log;
 	   }
@@ -265,7 +186,6 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
        }
    }
 
-   
   //fill std::array with clusterized cluster number of hits and energy
   //both vectors might well be empty, in case there was no cluster in a particular layer
   for(unsigned ilayer=0; ilayer<lmax; ++ilayer)
@@ -313,16 +233,13 @@ std::vector<dataformats::data> CLUEAnalysis::getTotalPositionsAndEnergyOutput(st
 //Returns the sum of all quantities of interest of individual clusters
 float CLUEAnalysis::getTotalEnergyOutput(const std::string& outputFileName, bool verbose) {
   assert( !en_.empty() );
-  float toten = 0.;
-  for(unsigned i=1; i<en_.size(); ++i) //outliers (i=0) are skipped!
-    toten += en_[i];
-  if(verbose) 
-    {
-      std::ofstream oFile(outputFileName, std::ios::out);
-      oFile << "###Cluster Analysis: total energy\n";
-      oFile << toten << std::endl;
-      oFile.close();
-    }
+  float toten = std::accumulate(en_.begin()+1, en_.end(), 0.f); //outliers (first item) are skipped!
+  if(verbose) {
+    std::ofstream oFile(outputFileName, std::ios::out);
+    oFile << "###Cluster Analysis: total energy\n";
+    oFile << toten << std::endl;
+    oFile.close();
+  }
   return toten;
 }
 
@@ -335,3 +252,8 @@ dataformats::layervars CLUEAnalysis::getTotalLayerDepOutput() {
 std::vector< std::tuple< std::vector<unsigned>, std::vector<float>, std::vector<float>, std::vector<float> > > CLUEAnalysis::getTotalClusterDepOutput() {
   return this->clusterdep_vars_;
 }
+
+ float CLUEAnalysis::hit_distance(const float& x1, const float& x2, const float& y1,const float& y2)
+ {
+   return std::sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+ }

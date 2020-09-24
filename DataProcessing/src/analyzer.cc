@@ -110,7 +110,7 @@ void Analyzer::runCLUE(const SHOWERTYPE& st) {
 	  clueAlgo.infoHits();
 
 	  //calculate the total energy that was clusterized (excluding outliers)
-	  clueAna.calculatePositionsAndEnergy( clueAlgo.getHitsPosX(), clueAlgo.getHitsPosY(), clueAlgo.getHitsWeight(), clueAlgo.getHitsClusterId(), clueAlgo.getHitsLayerId() );
+	  clueAna.calculateEnergy( clueAlgo.getHitsWeight(), clueAlgo.getHitsClusterId() );
 	  tot_en = clueAna.getTotalEnergyOutput("", false); //non-verbose
 	  this->en_total_[i].push_back( std::make_tuple( tot_en, beam_energy) ); 
 	  //calculate per layer fraction of clusterized number of hits and energy

@@ -182,9 +182,9 @@ def save_plots(frame_key):
     utils.create_dir( presentation_folder )
 
     #save frames
-    bokehplot.save_frame(iframe=output_html_files_map[frame_key][1], plot_width=plot_width, plot_height=plot_height, show=False)
-    if version2 in output_html_files_map.keys():
-        bokehplot.save_frame(iframe=output_html_files_map[frame_key+version2][1], plot_width=plot_width, plot_height=plot_height, show=False)
+    #bokehplot.save_frame(iframe=output_html_files_map[frame_key][1], plot_width=plot_width, plot_height=plot_height, show=False)
+    #if version2 in output_html_files_map.keys():
+    #    bokehplot.save_frame(iframe=output_html_files_map[frame_key+version2][1], plot_width=plot_width, plot_height=plot_height, show=False)
 
     #save figs
     bokehplot.save_figs(iframe=output_html_files_map[frame_key][1], path=cluster_dep_folder, mode=mode)
@@ -215,7 +215,6 @@ def main():
 
         #load ROOT TTree
         file = up.open( data_paths[iEn] )
-        print(file.keys())
         tree = file['tree0']
         
         #load cache for a specific energy

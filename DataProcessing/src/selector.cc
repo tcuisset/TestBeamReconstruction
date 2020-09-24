@@ -48,6 +48,9 @@ void Selector::load_noise_values()
   std::pair<std::pair<int,int>, float> temp;
   unsigned layer, mod_id, mod_pos, chip;
   float noise;
+
+  for(unsigned i=0; i<2; ++i) //lines to skip
+    in.ignore(std::numeric_limits<unsigned>::max(), '\n');
   while(in >> layer >> mod_id >> mod_pos >> chip >> noise)
     {
       mod_chip = std::make_pair(mod_id, chip);
@@ -237,14 +240,19 @@ void Selector::select_relevant_branches()
     .Define(new_z_,       wrapper_float, clean_cols_z)
     .Define(new_layer_,   wrapper_uint,  clean_cols_layer)
     .Define(new_en_,      wrapper_float, clean_cols_en)
-    .Define(new_ahc_en_,  clean_ahc<float>, {"ahc_hitEnergy", "ahc_hitEnergy", "ahc_hitK", clean_cols.back()})
-    .Define(new_en_MeV_, weight_energy_ce, {new_en_, new_layer_, clean_cols.back()})
+    .Define(new_en_MeV_, weight_energy_ce, {new_en_, new_layer_, clean_cols.back()});
+
+  if(this->showertype == SHOWERTYPE::HAD) {
+    partial_process = partial_process.Define(new_ahc_en_,  clean_ahc<float>, {"ahc_hitEnergy", "ahc_hitEnergy", "ahc_hitK", clean_cols.back()})
     .Define(new_ahc_en_MeV_, weight_energy_ahc, {new_ahc_en_, clean_cols.back()});
+  }
     
   if(this->datatype == DATATYPE::MC and this->showertype == SHOWERTYPE::HAD) {
     partial_process.Filter("ahc_energySum == 0").Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), savedcols_);
   }
   else if(this->datatype == DATATYPE::DATA or this->showertype == SHOWERTYPE::EM) {
+    if(this->showertype == SHOWERTYPE::EM)
+      savedcols_.erase(std::remove(savedcols_.begin(), savedcols_.end(), new_ahc_en_MeV_), savedcols_.end()); //erase-remove idiom
     partial_process.Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), savedcols_);
   }
 }

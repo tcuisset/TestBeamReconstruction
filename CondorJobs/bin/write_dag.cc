@@ -100,7 +100,7 @@ void write_data(const std::string& submission_folder, const std::string& base, c
   int _a;
   while (infile >> _a)
       a.push_back(_a);
-  //std::vector<int> avoid = {453,508,601,607,639};   //some jobs failed, therefore some input files are lacking
+  //std::vector<int> avoid = {620,621,622};
 
   std::vector<int> file_id;
   unsigned keymin=run_en_map.cbegin()->first, keymax=run_en_map.crbegin()->first;
@@ -119,7 +119,7 @@ void write_data(const std::string& submission_folder, const std::string& base, c
   std::vector<std::string> steps;
   if(last_step_only) {
     steps = {"analysis"};
-    filepath = base + "clue_data_" + showertype + steps[0] + "_only.dag";
+    filepath = base + "clue_data_" + showertype + "_" + steps[0] + "_only.dag";
   }
   else {
     steps = {"selection", "analysis"};

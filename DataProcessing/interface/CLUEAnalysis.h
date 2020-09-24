@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <tuple>
 #include <vector>
+#include <numeric>
 #include <unordered_map>
 #include <cmath>
 #include <chrono>
@@ -59,14 +60,12 @@ private:
   dataformats::layervars layerdep_vars_; //clusterized nhits and clusterized energy per event and per layer, densities, distances, isSeed boolean flag, x position and y position
   std::vector< std::tuple< std::vector<unsigned int>, std::vector<float>, std::vector<float>, std::vector<float> > > clusterdep_vars_; //clusterized nhits and clusterized energy per event, per layer and per cluster
   std::vector<float> frac_clust_hits_;
+
+  float hit_distance(const float&, const float&, const float&, const float&);
   
 public:
   CLUEAnalysis(const SHOWERTYPE&);
   unsigned getLayerMax() {return lmax;}
-  void calculatePositionsAndEnergy(const std::vector<float>&, const std::vector<float>&, 
-				   const std::vector<float>&, const std::vector<int>&, const std::vector<int>&);
-  void calculatePositions(const std::vector<float>&, const std::vector<float>&, 
-			    const std::vector<float>&, const std::vector<int>&, const std::vector<int>&);
   void calculateEnergy(const std::vector<float>&, const std::vector<int>&);
   void verboseResults(std::string&);
   void calculateLayerDepVars(const std::vector<float>&, const std::vector<float>&, const std::vector<float>&, const std::vector<int>&, const std::vector<int>&, const std::vector<float>&, const std::vector<float>&, const std::vector<bool>&, const std::vector<unsigned int>&);
