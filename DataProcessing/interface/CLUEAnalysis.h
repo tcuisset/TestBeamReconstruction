@@ -54,7 +54,7 @@ class CLUEAnalysis {
 private:
   SHOWERTYPE showertype;
   unsigned lmax;
-  const float W0_ = 2.9f;
+  const float W0_ = 2.9f, dpos_ = 1.3f; //tunable parameters for cluster position measurement
   std::vector<dataformats::position> pos_;
   std::vector< float > en_;
   dataformats::layervars layerdep_vars_; //clusterized nhits and clusterized energy per event and per layer, densities, distances, isSeed boolean flag, x position and y position

@@ -87,6 +87,7 @@ void Selector::load_shift_values()
     in.ignore(std::numeric_limits<unsigned>::max(), '\n');
   for(unsigned i=0; i<detectorConstants::totalnlayers; ++i) {
     in >> layer >> shiftx >> shifty;
+    assert(layer == i+1);
     this->shifts_map_.emplace_back( shiftx, shifty );
   }
 }

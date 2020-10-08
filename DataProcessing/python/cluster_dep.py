@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import concurrent.futures
 import argparse
+from tqdm import tqdm
 from argparser import add_args
 from scipy.interpolate import UnivariateSpline
 import utils
@@ -135,28 +136,50 @@ def graphs_per_energy(df, axis_kwargs, columns_field, iframe, variable, energy_i
 
 def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2, weight_by_energy=False):
     """Plots cluster-related quantities per layer"""
-    if variable not in ('pos', 'spatialres_x', 'spatialres_y'):
+    if variable not in ('pos', 'spatialres_x', 'spatialres_y', 'spatialres_xy'):
         raise ValueError('graphs_per_layer: Variable {} is not supported.'.format(variable))
 
+    hdf5_name = os.path.join(data_path_start, 
+        'cluster_' + FLAGS.showertype + '_' + FLAGS.datatype + '_' + variable + '_' + str(FLAGS.chosen_energy) + 'GeV.h5' )
+    compression_level = 9
+
     executor = concurrent.futures.ThreadPoolExecutor()
-    nbins = 50 if variable == 'pos' else 500
-    limit_up, limit_down = 3, 3
+    nbins = 200 if variable == 'pos' else 100 if variable == 'spatialres_xy' else 500
+    limit_up, limit_down = 4, 2
     fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height}
     fig_kwargs.update(axis_kwargs)
-    
-    datamax, datamin = [ -np.inf for _ in range(ncuts) ], [ np.inf for _ in range(ncuts) ] #the second list is for the results with cuts
-    for ilayer in range(1,nlayers+1):
+
+    #store data for faster retrieval at a later time
+    if not FLAGS.use_saved_data:
+        emptyfracs = []
+
+        for ilayer in tqdm(range(1,nlayers+1)):
+            nx = 'X_layer'+str(ilayer) if variable == 'pos' else 'dX_layer'+str(ilayer)
+            ny = 'Y_layer'+str(ilayer) if variable == 'pos' else 'dY_layer'+str(ilayer)
+            ne = 'Energy_layer'+str(ilayer)
+            nn = 'Nhits_layer'+str(ilayer)
+
+            df_ = tree.arrays([nx, ny, ne, nn], outputtype=pd.DataFrame, flatten=True, executor=executor, blocking=True, cache=cache)
+            nhits_selection = (df_[nn] >= nhits_min) & (df_[nn] < nhits_max)
+            df_ = df_[nhits_selection]
+            df_layer = df_
+            df_layer.to_hdf(hdf5_name, key='layer'+str(ilayer), complevel=compression_level, mode='r+' if ilayer != 1 else 'w')
+            
+            df_layer_out = df_[ nhits_selection & (df_[nx] < -98) & (df_[ny] < -98)]
+            emptyfracs.append(df_layer_out.shape[0] / df_.shape[0])
+
+        emptyfracs = pd.Series(emptyfracs)
+        emptyfracs.to_hdf(hdf5_name, key='fracs', complevel=compression_level, mode='r+')
+
+
+    print('Converting data to plot format...')
+    emptyfracs = pd.read_hdf(hdf5_name, 'fracs')
+    for ilayer in tqdm(range(1,nlayers+1)):
+        df_layer = pd.read_hdf(hdf5_name, 'layer'+str(ilayer))
         nx = 'X_layer'+str(ilayer) if variable == 'pos' else 'dX_layer'+str(ilayer)
         ny = 'Y_layer'+str(ilayer) if variable == 'pos' else 'dY_layer'+str(ilayer)
         ne = 'Energy_layer'+str(ilayer)
         nn = 'Nhits_layer'+str(ilayer)
-
-        print('Processing layer {}...'.format(ilayer))
-        df_layer = tree.arrays([nx, ny, ne, nn], outputtype=pd.DataFrame, flatten=True, executor=executor, blocking=True, cache=cache)
-        
-        #determine adequate binning
-        df_layer = df_layer[ (df_layer[nn] >= nhits_min) & (df_layer[nn] < nhits_max) ]
-        df_layer = df_layer.drop([nn], axis=1)
 
         for thisCut in range(ncuts):
             if 'spatialres' in variable and thisCut != 0:
@@ -170,6 +193,7 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
             tmp_fig_kwargs.update(fig_kwargs)
 
             df_layer_cut = df_layer[ df_layer[ne] > energy_cuts[thisCut] ]
+            df_layer_cut = df_layer_cut[ (df_layer_cut[nn] >= 5)]
             if weight_by_energy:
                 bokehplot.histogram( np.histogram2d( x=df_layer_cut[nx].to_numpy(), y=df_layer_cut[ny].to_numpy(), bins=nbins,
                                                      weights=df_layer_cut[ne].to_numpy(), range=[[-limit_up,limit_down],[-limit_down,limit_up]] ),
@@ -180,11 +204,24 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
                 if variable == 'pos':
                     bokehplot.histogram( np.histogram2d(x=df_layer_cut[nx].to_numpy(), y=df_layer_cut[ny].to_numpy(), bins=nbins, range=[[-limit_up,limit_down],[-limit_down,limit_up]]), idx=ilayer-1+thisCut*nlayers, iframe=iframe, style='quad%Cividis', fig_kwargs=tmp_fig_kwargs)
                 elif variable == 'spatialres_x':
-                    bokehplot.histogram( np.histogram(df_layer_cut[nx].to_numpy(), bins=nbins), 
-                                         idx=ilayer-1+thisCut*nlayers, iframe=iframe, fig_kwargs=tmp_fig_kwargs)                 
+                    bokehplot.histogram( np.histogram(df_layer_cut[nx].to_numpy(), bins=nbins, range=[-15.,15.]), 
+                                         idx=ilayer-1, iframe=iframe, color='green', fig_kwargs=tmp_fig_kwargs)                 
                 elif variable == 'spatialres_y':
-                    bokehplot.histogram( np.histogram(df_layer_cut[ny].to_numpy(), bins=nbins), 
-                                         idx=ilayer-1+thisCut*nlayers, iframe=iframe, style='.%.5%green', fig_kwargs=tmp_fig_kwargs )
+                    bokehplot.histogram( np.histogram(df_layer_cut[ny].to_numpy(), bins=nbins, range=[-15.,15.]), 
+                                         idx=ilayer-1+thisCut*nlayers, iframe=iframe, color='blue', fig_kwargs=tmp_fig_kwargs )
+                elif variable == 'spatialres_xy':
+                    bokehplot.histogram( np.histogram2d(x=df_layer_cut[nx].to_numpy(), y=df_layer_cut[ny].to_numpy(), bins=nbins, range=[[-5.,5.],[-5.,5.]]), idx=ilayer-1, iframe=iframe, style='quad%CET_L17', fig_kwargs=tmp_fig_kwargs )
+                    kwargs_other = {'x.axis_label': "#hits / cluster", 'y.axis_label': "hit energy [MeV]",
+                                    't.text': text, 'plot_width': plot_width, 'plot_height': plot_height }
+                    bokehplot.histogram( np.histogram2d(x=df_layer_cut[nn].to_numpy(), y=df_layer_cut[ne].to_numpy(), bins=(15,100), range=[[0.1,15.],[0.1,100]]), idx=ilayer-1+nlayers, iframe=iframe, style='quad%CET_L17', scale='log', fig_kwargs=kwargs_other )
+
+
+            if variable == 'pos' and thisCut == 0:
+                emptyfrac_kwargs = {'t.text': '{} GeV beam energy'.format(true_beam_energies_GeV[energy_index]),
+                                    'x.axis_label': 'Layer', 'y.axis_label': 'Fraction of clusters were the position measurement failed'}
+                bokehplot.histogram( (np.array(emptyfracs), np.arange(.5,nlayers+1)), 
+                                     idx=ncuts*nlayers, iframe=iframe, color='orange',
+                                     fig_kwargs=emptyfrac_kwargs)   
         del df_layer
 
 def save_plots(frame_key):
@@ -193,7 +230,7 @@ def save_plots(frame_key):
     utils.create_dir( presentation_folder )
 
     #save frames
-    #bokehplot.save_frame(iframe=output_html_files_map[frame_key][1], plot_width=plot_width, plot_height=plot_height, show=False)
+    bokehplot.save_frame(iframe=output_html_files_map[frame_key][1], plot_width=plot_width, plot_height=plot_height, show=False)
     #if version2 in output_html_files_map.keys():
     #    bokehplot.save_frame(iframe=output_html_files_map[frame_key+version2][1], plot_width=plot_width, plot_height=plot_height, show=False)
 
@@ -260,7 +297,7 @@ def main():
 
         ######Custer X positions######################
         if FLAGS.posx:
-            print('Loading X positions data for {}GeV...'.format(beam_energies[iEn]))
+            print('Loading and storing X positions data for {}GeV...'.format(beam_energies[iEn]))
             df_posx = tree.arrays(['X*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
 
             axis_kwargs_posx = {'x.axis_label': 'Layer', 'y.axis_label': "Clusters' X position"}
@@ -269,7 +306,7 @@ def main():
 
         ######Custer Y positions######################
         if FLAGS.posy:
-            print('Loading Y positions data for {}GeV...'.format(beam_energies[iEn]))
+            print('Loading and storing Y positions data for {}GeV...'.format(beam_energies[iEn]))
             df_posy = tree.arrays(['Y*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
 
             axis_kwargs_posy = {'x.axis_label': 'Layer', 'y.axis_label': "Clusters' Y position"}
@@ -278,28 +315,35 @@ def main():
 
         ######Custer X vs Cluster Y positions######################
         if FLAGS.posx_posy and thisEn == chosen_energy:
-            print('Loading X and Y positions data for {}GeV...'.format(beam_energies[iEn]))
+            print('Loading and storing X and Y positions data for {}GeV...'.format(beam_energies[iEn]))
 
             axis_kwargs_posxy = {'x.axis_label': "Clusters' X position", 'y.axis_label': "Clusters' Y position"}
             graphs_per_layer(tree, up_cache, axis_kwargs_posxy, variable='pos', iframe=output_html_files_map['posx_posy'][1], energy_index=iEn, weight_by_energy=True)
 
         ######Custer 1D X spatial resolution######################
         if FLAGS.dx and thisEn == chosen_energy:
-            print('Loading X spatial resolution data for {}GeV...'.format(beam_energies[iEn]))
+            print('Loading and storing X spatial resolution data for {}GeV...'.format(beam_energies[iEn]))
 
             axis_kwargs_dx = {'x.axis_label': "Clusters' X spatial resolution [cm]", 'y.axis_label': "Counts"}
             graphs_per_layer(tree, up_cache, axis_kwargs_dx, variable='spatialres_x', iframe=output_html_files_map['dx'][1], energy_index=iEn, weight_by_energy=False)
 
         ######Custer 1D X spatial resolution######################
         if FLAGS.dy and thisEn == chosen_energy:
-            print('Loading X spatial resolution data for {}GeV...'.format(beam_energies[iEn]))
+            print('Loading and storing X spatial resolution data for {}GeV...'.format(beam_energies[iEn]))
 
             axis_kwargs_dy = {'x.axis_label': "Clusters' Y spatial resolution [cm]", 'y.axis_label': "Counts"}
             graphs_per_layer(tree, up_cache, axis_kwargs_dy, variable='spatialres_y', iframe=output_html_files_map['dy'][1], energy_index=iEn, weight_by_energy=False)
 
+        ######Custer 1D X spatial resolution######################
+        if FLAGS.dx_dy and thisEn == chosen_energy:
+            print('Loading and storing X and Y spatial resolution data for {}GeV...'.format(beam_energies[iEn]))
+
+            axis_kwargs_dx = {'x.axis_label': "Clusters' X spatial resolution [cm]", 'y.axis_label': "Clusters' Y spatial resolution [cm]"}
+            graphs_per_layer(tree, up_cache, axis_kwargs_dx, variable='spatialres_xy', iframe=output_html_files_map['dx_dy'][1], energy_index=iEn, weight_by_energy=False)
+
         ######Custer 2D X spatial resolution######################
         if FLAGS.dx_2D:
-            print('Loading 2D X spatial resolution data for {}GeV...'.format(beam_energies[iEn]))
+            print('Loading and storing 2D X spatial resolution data for {}GeV...'.format(beam_energies[iEn]))
             df_dx2D = tree.arrays(['dX*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
 
             axis_kwargs_dx2D = {'x.axis_label': 'Layer', 'y.axis_label': "Clusters' X spatial resolution"}
@@ -308,7 +352,7 @@ def main():
 
         ######Custer Y spatial resolution######################
         if FLAGS.dy_2D:
-            print('Loading Y spatial resolution data for {}GeV...'.format(beam_energies[iEn]))
+            print('Loading and storing Y spatial resolution data for {}GeV...'.format(beam_energies[iEn]))
             df_dy2D = tree.arrays(['dY*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
 
             axis_kwargs_dy2D = {'x.axis_label': 'Layer', 'y.axis_label': "Clusters' Y spatial resolution"}
@@ -337,7 +381,7 @@ if __name__ == '__main__':
     size_shift = len(true_beam_energies_GeV)
     version2 = '_prof'
     nhits_min, nhits_max = 1, 10000
-    chosen_energy = 250 #posx vs poxy plots will only refer to this energy (one plot per layer)
+    chosen_energy = FLAGS.chosen_energy #posx vs poxy plots will only refer to this energy (one plot per layer)
     assert(chosen_energy in beam_energies)
 
     #define local data paths and variables
@@ -358,7 +402,7 @@ if __name__ == '__main__':
     #create output files with plots
     utils.create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype) )
     output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype)
-    outlambda = lambda x: os.path.join(output_html_dir, FLAGS.datatype + '_' + FLAGS.showertype + x)
+    outlambda = lambda x: os.path.join(output_html_dir, FLAGS.datatype + '_' + FLAGS.showertype + '_' + str(chosen_energy) + x)
     output_html_files_potential_map = { 'hits':                ( outlambda('_plot_clusters_hits.html'),         size ),
                                         'energies':            ( outlambda('_plot_clusters_energy.html'),       size ),
                                         'numbers':             ( outlambda('_plot_clusters_number.html'),       size ),
@@ -369,9 +413,10 @@ if __name__ == '__main__':
                                         'numbers' + version2:  ( outlambda(version2 + '_clusters_number.html'), size ),
                                         'posx' + version2:     ( outlambda(version2 + '_clusters_posx.html'),   size ),
                                         'posy' + version2:     ( outlambda(version2 + '_clusters_posy.html'),   size ),
-                                        'posx_posy':           ( outlambda('_plot_clusters_posx_vs_posy_{}_{}_hits_{}GeV.html'.format(nhits_min, nhits_max, chosen_energy)), ncuts*nlayers ),
-                                        'dx':                  ( outlambda('_plot_clusters_dx.html'),           nlayers ),
+                                        'posx_posy':           ( outlambda('_plot_clusters_posx_vs_posy_{}_{}_hits_{}GeV.html'.format(nhits_min, nhits_max, chosen_energy)), ncuts*nlayers + 1 ),
+                                        'dx':                  ( outlambda('_plot_clusters_dx_cut5hits.html'),           nlayers),
                                         'dy':                  ( outlambda('_plot_clusters_dy.html'),           nlayers ),
+                                        'dx_dy':               ( outlambda('_plot_clusters_dxdy.html'),         2*nlayers ),
                                         'dx_2D':               ( outlambda('_plot_clusters_dx2D.html'),         size ),
                                         'dy_2D':               ( outlambda('_plot_clusters_dy2D.html'),         size )}
     counter = 0

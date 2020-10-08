@@ -83,6 +83,11 @@ def add_args(parser, mode):
             help="Run the cluster analysis on their Y spatial resolution"
         )
         parser.add_argument(
+            '--dx_dy',
+            action='store_true',
+            help="Run the cluster analysis on their X and Y spatial resolution (2D plots)"
+        )
+        parser.add_argument(
             '--dx_2D',
             action='store_true',
             help="Run the cluster analysis on their X spatial resolution (2D: resolution vs. layer)"
@@ -91,6 +96,17 @@ def add_args(parser, mode):
             '--dy_2D',
             action='store_true',
             help="Run the cluster analysis on their Y spatial resolution (2D: resolution vs. layer)"
+        )
+        parser.add_argument(
+            '--use_saved_data',
+            action='store_true',
+            help='Whether to use the prunned Pandas dataframes stored previously'
+        )
+        parser.add_argument(
+            '--chosen_energy',
+            type=int,
+            default=50,
+            help='Beam energy used for all the plots that are layer dependent (positions, resolutions, ...)'
         )
 
         variables_to_ignore = ['datatype', 'showertype']

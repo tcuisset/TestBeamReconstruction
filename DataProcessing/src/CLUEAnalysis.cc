@@ -47,31 +47,6 @@ void CLUEAnalysis::calculateLayerDepVars(const std::vector<float>& xpos, const s
       if(clusterid[i] != -1)  //outliers are not considered
 	{
 	  int layeridx = layerid[i]-1; //layers start at 1
-
-	  //////////////////////////////////////////////////////////////////////////////////////
-	  /*Algorithm for finding the number of hits in the cluster to which each hit is associated*/
-
-	  /*
-	  if( i >= old_i + this_cluster_size ) //'==' does not work when clusterid == -1
-	    {
-	      this_cluster_size = 1;
-	      unsigned next_idx = i+1;
-	      if(next_idx < weights.size()) //if it overflows the cluster size is 1 (last hit in the vector)
-		{
-		  while( clusterid[i] == clusterid[next_idx])
-		    {
-		      this_cluster_size += 1;
-		      ++next_idx;
-		      if( next_idx >= weights.size()) //exit if it overflows
-			break;
-		    }
-		}
-	      for(unsigned j=0; j<this_cluster_size; ++j)
-		cluster_size_per_layer.at(layeridx).push_back( this_cluster_size );
-	      old_i = i;
-	    }
-	  */
-	  //////////////////////////////////////////////////////////////////////////////////////
 	  hits_per_layer.at(layeridx) += 1;
 	  en_per_layer.at(layeridx).push_back( weights[i] );
 	  rhos_per_layer.at(layeridx).push_back( rhos[i] );
@@ -115,18 +90,29 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
   std::vector< std::vector<float> > en_per_cluster_ecut(this->lmax); //helper for position measurement
   std::vector< std::vector<float> > en_per_cluster_log_ecut(this->lmax); //helper for position measurement
   std::vector< std::vector<unsigned> > hits_per_cluster(this->lmax);
-  std::vector< std::vector<unsigned> > idx_highest_en(this->lmax); //helper for position measurement (distance cut)
   std::vector< std::vector<float> > x_per_cluster(this->lmax);
   std::vector< std::vector<float> > y_per_cluster(this->lmax);
+  //helpers for position measurement (distance cut)
+  std::vector< std::vector<float> > xmax_per_cluster(this->lmax);
+  std::vector< std::vector<float> > ymax_per_cluster(this->lmax);
+  std::vector< std::vector< std::vector<float> > > xpositions(this->lmax);
+  std::vector< std::vector< std::vector<float> > > ypositions(this->lmax);
+  std::vector< std::vector< std::vector<float> > > energies(this->lmax);
+  
   for(unsigned i=0; i<lmax; ++i)
     {
       en_per_cluster[i].resize( nclusters_per_layer[i], 0.f ); 
       en_per_cluster_ecut[i].resize( nclusters_per_layer[i], 0.f ); 
       en_per_cluster_log_ecut[i].resize( nclusters_per_layer[i], 0.f );
       hits_per_cluster[i].resize( nclusters_per_layer[i], 0 );
-      idx_highest_en[i].resize( nclusters_per_layer[i], 9999 ); //there are no clusters with these many hits!
       x_per_cluster[i].resize( nclusters_per_layer[i], 0.f ); 
       y_per_cluster[i].resize( nclusters_per_layer[i], 0.f );
+
+      xmax_per_cluster[i].resize( nclusters_per_layer[i], 9999.f );
+      ymax_per_cluster[i].resize( nclusters_per_layer[i], 9999.f );
+      xpositions[i].resize( nclusters_per_layer[i], std::vector<float>() );
+      ypositions[i].resize( nclusters_per_layer[i], std::vector<float>() );
+      energies[i].resize( nclusters_per_layer[i], std::vector<float>() );
     }
 
   for(auto i: util::lang::indices(weights)) {
@@ -135,22 +121,20 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
       unsigned vectoridx = clusterIndexMap[clusterid[i]];
       en_per_cluster.at(layeridx).at(vectoridx) += weights[i];
       hits_per_cluster.at(layeridx).at(vectoridx) += 1;
-      
-      //avoid repeating loops over the same cluster
-      if(idx_highest_en[layeridx][vectoridx] != 9999 )
-	continue;
 
-      //find the index of the seed in the same 2D cluster
-      for(auto j: util::lang::indices(weights)) 
-	{
-	  unsigned lidx = static_cast<unsigned>(layerid[j]) - 1;
-	  unsigned vidx = clusterIndexMap[clusterid[j]];
-	  if(lidx == layeridx and vidx == vectoridx) //hit in the same 2D cluster
-	    {
-	      if(weights[j] >= weights[i]) //it also works if we are comparing the same hit
-		idx_highest_en[layeridx][vectoridx] = j;
-	    }
-	}
+      xpositions.at(layeridx).at(vectoridx).push_back(xpos[i]);
+      ypositions[layeridx][vectoridx].push_back(ypos[i]);
+      energies[layeridx][vectoridx].push_back(weights[i]);
+    }
+  }
+  for(size_t i=0; i<energies.size(); ++i) {
+    for(size_t j=0; j<energies[i].size(); ++j) {
+      if(energies[i][j].size() > 0) {
+	float max_ = *std::max_element( energies[i][j].begin(), energies[i][j].end() );
+	int idxmax_ = std::distance( energies[i][j].begin(), std::find( energies[i][j].begin(), energies[i][j].end(), max_ ) );
+	xmax_per_cluster[i][j] = xpositions[i][j].at(idxmax_);
+	ymax_per_cluster[i][j] = ypositions[i][j][idxmax_];
+      }
     }
   }
 
@@ -159,27 +143,34 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
        {
 	 unsigned layeridx = static_cast<unsigned>(layerid[i]) - 1; //layers start at 1
 	 unsigned vectoridx = clusterIndexMap[clusterid[i]];
-	 unsigned maxenid = idx_highest_en[layeridx][vectoridx];
-	 if( hit_distance(xpos[i],xpos[maxenid],ypos[i],ypos[maxenid])<1.3 ) //a radius of 13mm is imposed
+	 float xmax_ = xmax_per_cluster[layeridx][vectoridx];
+	 float ymax_ = ymax_per_cluster[layeridx][vectoridx];
+	 if( hit_distance(xpos[i],xmax_,ypos[i],ymax_)<this->dpos_ ) //a radius of 13mm is imposed
 	   en_per_cluster_ecut.at(layeridx).at(vectoridx) += weights[i];
        }
     }
 
-   for (auto i: util::lang::indices(weights)) {
-     if(clusterid[i] != -1)  //outliers are not considered
-       {
-	 unsigned layeridx = static_cast<unsigned>(layerid[i]) - 1; //layers start at 1
-	 unsigned vectoridx = clusterIndexMap[clusterid[i]];
-	 unsigned maxenid = idx_highest_en[layeridx][vectoridx];
-	 if( hit_distance(xpos[i],xpos[maxenid],ypos[i],ypos[maxenid])<1.3 ) //a radius of 13mm is imposed
-	   {
-	     float Wi = std::max(W0_ + std::log(weights[i] / en_per_cluster_ecut[layeridx][vectoridx]), 0.f);
-	     x_per_cluster.at(layeridx).at(vectoridx) += xpos[i] * Wi;
-	     y_per_cluster[layeridx][vectoridx] += ypos[i] * Wi;
-	     en_per_cluster_log_ecut.at(layeridx).at(vectoridx) += Wi;
-	   }
-       }
-   }
+  //int counter1=0, counter2=0;
+  for (auto i: util::lang::indices(weights)) {
+    if(clusterid[i] != -1)  //outliers are not considered
+      {
+	//counter2 += 1;
+	unsigned layeridx = static_cast<unsigned>(layerid[i]) - 1; //layers start at 1
+	unsigned vectoridx = clusterIndexMap[clusterid[i]];
+	float xmax_ = xmax_per_cluster[layeridx][vectoridx];
+	float ymax_ = ymax_per_cluster[layeridx][vectoridx];
+	if( hit_distance(xpos[i],xmax_,ypos[i],ymax_)<this->dpos_ )
+	  {
+	    assert(en_per_cluster_ecut[layeridx][vectoridx] != 0);
+	    float Wi = std::max(W0_ + std::log(weights[i] / en_per_cluster_ecut[layeridx][vectoridx]), 0.f);
+	    x_per_cluster.at(layeridx).at(vectoridx) += xpos[i] * Wi;
+	    y_per_cluster[layeridx][vectoridx] += ypos[i] * Wi;
+	    en_per_cluster_log_ecut.at(layeridx).at(vectoridx) += Wi;
+	  }
+	//else counter1 += 1;
+      }
+  }
+  //std::cout << (float)counter1/counter2 << ", " << counter1 << ", " << counter2 << std::endl;
 
    for(unsigned s1=0; s1<en_per_cluster_log_ecut.size(); ++s1) {
      for(unsigned s2=0; s2<en_per_cluster_log_ecut[s1].size(); ++s2)
@@ -194,6 +185,7 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
 	   {
 	     x_per_cluster.at(s1).at(s2) = -99.f;
 	     y_per_cluster.at(s1).at(s2) = -99.f;
+	     std::cout << "UPS!" << std::endl;
 	   }
        }
    }
