@@ -140,7 +140,7 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
         raise ValueError('graphs_per_layer: Variable {} is not supported.'.format(variable))
 
     hdf5_name = os.path.join(data_path_start, 
-        'cluster_' + FLAGS.showertype + '_' + FLAGS.datatype + '_' + variable + '_' + str(FLAGS.chosen_energy) + 'GeV.h5' )
+        'cluster_' + FLAGS.showertype + '_' + FLAGS.datatype + '_' + str(FLAGS.chosen_energy) + 'GeV.h5' )
     compression_level = 9
 
     executor = concurrent.futures.ThreadPoolExecutor()
@@ -154,12 +154,14 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
         emptyfracs = []
 
         for ilayer in tqdm(range(1,nlayers+1)):
-            nx = 'X_layer'+str(ilayer) if variable == 'pos' else 'dX_layer'+str(ilayer)
-            ny = 'Y_layer'+str(ilayer) if variable == 'pos' else 'dY_layer'+str(ilayer)
+            nx = 'X_layer'+str(ilayer)
+            ny = 'Y_layer'+str(ilayer) 
+            ndx = 'dX_layer'+str(ilayer)
+            ndy = 'dY_layer'+str(ilayer)
             ne = 'Energy_layer'+str(ilayer)
             nn = 'Nhits_layer'+str(ilayer)
 
-            df_ = tree.arrays([nx, ny, ne, nn], outputtype=pd.DataFrame, flatten=True, executor=executor, blocking=True, cache=cache)
+            df_ = tree.arrays([nx, ny, ndx, ndy, ne, nn], outputtype=pd.DataFrame, flatten=True, executor=executor, blocking=True, cache=cache)
             nhits_selection = (df_[nn] >= nhits_min) & (df_[nn] < nhits_max)
             df_ = df_[nhits_selection]
             df_layer = df_
@@ -174,10 +176,13 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
 
     print('Converting data to plot format...')
     emptyfracs = pd.read_hdf(hdf5_name, 'fracs')
+    bias, ebias, res, eres = ([] for _ in range(4))
     for ilayer in tqdm(range(1,nlayers+1)):
         df_layer = pd.read_hdf(hdf5_name, 'layer'+str(ilayer))
-        nx = 'X_layer'+str(ilayer) if variable == 'pos' else 'dX_layer'+str(ilayer)
-        ny = 'Y_layer'+str(ilayer) if variable == 'pos' else 'dY_layer'+str(ilayer)
+        nx = 'X_layer'+str(ilayer) 
+        ny = 'Y_layer'+str(ilayer) 
+        ndx = 'dX_layer'+str(ilayer)
+        ndy = 'dY_layer'+str(ilayer)
         ne = 'Energy_layer'+str(ilayer)
         nn = 'Nhits_layer'+str(ilayer)
 
@@ -193,36 +198,56 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
             tmp_fig_kwargs.update(fig_kwargs)
 
             df_layer_cut = df_layer[ df_layer[ne] > energy_cuts[thisCut] ]
-            df_layer_cut = df_layer_cut[ (df_layer_cut[nn] >= 5)]
-            if weight_by_energy:
-                bokehplot.histogram( np.histogram2d( x=df_layer_cut[nx].to_numpy(), y=df_layer_cut[ny].to_numpy(), bins=nbins,
-                                                     weights=df_layer_cut[ne].to_numpy(), range=[[-limit_up,limit_down],[-limit_down,limit_up]] ),
-                                     #colorbar_limits=(0,3e6),
-                                     idx=ilayer-1+thisCut*nlayers, iframe=iframe, style='quad%Cividis', fig_kwargs=tmp_fig_kwargs)
+            #df_layer_cut = df_layer_cut[ (df_layer_cut[nn] >= 5) & (df_layer_cut[nx]<-2.3) ]
+            df_layer_cut = df_layer_cut[ (df_layer_cut[nn] >= 5) ]
 
-            else:
-                if variable == 'pos':
-                    bokehplot.histogram( np.histogram2d(x=df_layer_cut[nx].to_numpy(), y=df_layer_cut[ny].to_numpy(), bins=nbins, range=[[-limit_up,limit_down],[-limit_down,limit_up]]), idx=ilayer-1+thisCut*nlayers, iframe=iframe, style='quad%Cividis', fig_kwargs=tmp_fig_kwargs)
-                elif variable == 'spatialres_x':
-                    bokehplot.histogram( np.histogram(df_layer_cut[nx].to_numpy(), bins=nbins, range=[-15.,15.]), 
-                                         idx=ilayer-1, iframe=iframe, color='green', fig_kwargs=tmp_fig_kwargs)                 
-                elif variable == 'spatialres_y':
-                    bokehplot.histogram( np.histogram(df_layer_cut[ny].to_numpy(), bins=nbins, range=[-15.,15.]), 
-                                         idx=ilayer-1+thisCut*nlayers, iframe=iframe, color='blue', fig_kwargs=tmp_fig_kwargs )
-                elif variable == 'spatialres_xy':
-                    bokehplot.histogram( np.histogram2d(x=df_layer_cut[nx].to_numpy(), y=df_layer_cut[ny].to_numpy(), bins=nbins, range=[[-5.,5.],[-5.,5.]]), idx=ilayer-1, iframe=iframe, style='quad%CET_L17', fig_kwargs=tmp_fig_kwargs )
-                    kwargs_other = {'x.axis_label': "#hits / cluster", 'y.axis_label': "hit energy [MeV]",
-                                    't.text': text, 'plot_width': plot_width, 'plot_height': plot_height }
-                    bokehplot.histogram( np.histogram2d(x=df_layer_cut[nn].to_numpy(), y=df_layer_cut[ne].to_numpy(), bins=(15,100), range=[[0.1,15.],[0.1,100]]), idx=ilayer-1+nlayers, iframe=iframe, style='quad%CET_L17', scale='log', fig_kwargs=kwargs_other )
+            if variable == 'pos':
+                if weight_by_energy:
+                    bokehplot.histogram( np.histogram2d( x=df_layer_cut[nx].to_numpy(), y=df_layer_cut[ny].to_numpy(), bins=nbins,
+                                                         weights=df_layer_cut[ne].to_numpy(), range=[[-limit_up,limit_down],[-limit_down,limit_up]] ),
+                                         idx=ilayer-1+thisCut*nlayers, iframe=iframe, style='quad%Cividis', fig_kwargs=tmp_fig_kwargs)
+                else:
+                    bokehplot.histogram( np.histogram2d(x=df_layer_cut[nx].to_numpy(), y=df_layer_cut[ny].to_numpy(), bins=nbins, range=[[-limit_up,limit_down],[-limit_down,limit_up]]),
+                                         idx=ilayer-1+thisCut*nlayers, iframe=iframe, style='quad%Cividis', fig_kwargs=tmp_fig_kwargs)
 
+            elif variable == 'spatialres_x':
+                bokehplot.histogram( np.histogram(df_layer_cut[ndx].to_numpy(), bins=nbins, range=[-1.,1.]), 
+                                     idx=ilayer-1, iframe=iframe, color='green', fig_kwargs=tmp_fig_kwargs)
+                common_args = {'pdf': 'gaus', 'line_width': 2.5, 'alpha': 0.8}
+                coeff, var = bokehplot.fit(p0=[2000, 0.,  .2], idx=ilayer-1, iframe=iframe, obj_idx=0, color='black', line_dash='dashed', debug=False, **common_args)
 
-            if variable == 'pos' and thisCut == 0:
-                emptyfrac_kwargs = {'t.text': '{} GeV beam energy'.format(true_beam_energies_GeV[energy_index]),
-                                    'x.axis_label': 'Layer', 'y.axis_label': 'Fraction of clusters were the position measurement failed'}
-                bokehplot.histogram( (np.array(emptyfracs), np.arange(.5,nlayers+1)), 
-                                     idx=ncuts*nlayers, iframe=iframe, color='orange',
-                                     fig_kwargs=emptyfrac_kwargs)   
+            elif variable == 'spatialres_y':
+                bokehplot.histogram( np.histogram(df_layer_cut[ndy].to_numpy(), bins=nbins, range=[-1.,1.]), 
+                                     idx=ilayer-1+thisCut*nlayers, iframe=iframe, color='blue', fig_kwargs=tmp_fig_kwargs )
+                common_args = {'pdf': 'gaus', 'line_width': 2.5, 'alpha': 0.8}
+                coeff, var = bokehplot.fit(p0=[2000, 0.,  .2], idx=ilayer-1, iframe=iframe, obj_idx=0, color='black', line_dash='dashed', debug=False, **common_args)
+            elif variable == 'spatialres_xy':
+                bokehplot.histogram( np.histogram2d(x=df_layer_cut[ndx].to_numpy(), y=df_layer_cut[ndy].to_numpy(), bins=nbins, range=[[-1.,1.],[-1.,1.]]), idx=ilayer-1, iframe=iframe, style='quad%CET_L17', fig_kwargs=tmp_fig_kwargs )
+                kwargs_other = {'x.axis_label': "#hits / cluster", 'y.axis_label': "hit energy [MeV]",
+                                't.text': text, 'plot_width': plot_width, 'plot_height': plot_height }
+                bokehplot.histogram( np.histogram2d(x=df_layer_cut[nn].to_numpy(), y=df_layer_cut[ne].to_numpy(), bins=(15,100), range=[[0.1,15.],[0.1,100]]), idx=ilayer-1+nlayers, iframe=iframe, style='quad%CET_L17', scale='log', fig_kwargs=kwargs_other )
+
+            if variable == 'spatialres_x' or variable == 'spatialres_y':
+                bias.append( coeff[1] )
+                res.append( coeff[2] )
+                err = np.sqrt(np.diag(var))
+                ebias.append( round(err[1],3) )
+                eres.append( round(err[2],3) )
+
         del df_layer
+
+    if variable == 'pos':
+        emptyfrac_kwargs = {'t.text': '{} GeV beam energy'.format(true_beam_energies_GeV[energy_index]),
+                            'x.axis_label': 'Layer', 'y.axis_label': 'Fraction of clusters were the position measurement failed'}
+        bokehplot.histogram( (np.array(emptyfracs), np.arange(.5,nlayers+1)), 
+                             idx=ncuts*nlayers, iframe=iframe, color='orange',
+                             fig_kwargs=emptyfrac_kwargs)
+    elif variable == 'spatialres_x' or variable == 'spatialres_y':
+        resolution_kwargs = {'t.text': '{} GeV beam energy'.format(true_beam_energies_GeV[energy_index]), 'x.axis_label': 'Layer'}
+        bokehplot.graph(data=[np.arange(1,nlayers+1), np.array(bias)], errors=[[np.zeros(nlayers),np.zeros(nlayers)],[np.array(ebias)/2, np.array(ebias)/2]],
+                        idx=nlayers, iframe=iframe, color='orange', fig_kwargs=dict(resolution_kwargs, **{'y.axis_label': 'Position ' + variable[-1].upper() + ' bias'}))
+        bokehplot.graph(data=[np.arange(1,nlayers+1), np.array(res)], errors=[[np.zeros(nlayers),np.zeros(nlayers)],[np.array(eres)/2, np.array(eres)/2]],
+                        idx=nlayers+1, iframe=iframe, color='orange', fig_kwargs=dict(resolution_kwargs, **{'y.axis_label': 'Position ' + variable[-1].upper() + ' resolution'}))
 
 def save_plots(frame_key):
     mode = 'png'
@@ -301,7 +326,7 @@ def main():
             df_posx = tree.arrays(['X*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
 
             axis_kwargs_posx = {'x.axis_label': 'Layer', 'y.axis_label': "Clusters' X position"}
-            graphs_per_energy(df_posx, axis_kwargs_posx, columns_field='X', variable='pos', iframe=output_html_files_map['posx'][1], energy_index=iEn, weight_by_energy=False)
+            graphs_per_energy(df_posx, axis_kwargs_posx, columns_field='X', variable='pos', iframe=output_html_files_map['posx'][1], energy_index=iEn, weight_by_energy=True)
             del df_posx
 
         ######Custer Y positions######################
@@ -310,7 +335,7 @@ def main():
             df_posy = tree.arrays(['Y*', 'Energy*'], outputtype=pd.DataFrame, cache=up_cache, executor=executor, blocking=True)
 
             axis_kwargs_posy = {'x.axis_label': 'Layer', 'y.axis_label': "Clusters' Y position"}
-            graphs_per_energy(df_posy, axis_kwargs_posy, columns_field='Y', variable='pos', iframe=output_html_files_map['posy'][1], energy_index=iEn, weight_by_energy=False)
+            graphs_per_energy(df_posy, axis_kwargs_posy, columns_field='Y', variable='pos', iframe=output_html_files_map['posy'][1], energy_index=iEn, weight_by_energy=True)
             del df_posy
 
         ######Custer X vs Cluster Y positions######################
@@ -413,9 +438,9 @@ if __name__ == '__main__':
                                         'numbers' + version2:  ( outlambda(version2 + '_clusters_number.html'), size ),
                                         'posx' + version2:     ( outlambda(version2 + '_clusters_posx.html'),   size ),
                                         'posy' + version2:     ( outlambda(version2 + '_clusters_posy.html'),   size ),
-                                        'posx_posy':           ( outlambda('_plot_clusters_posx_vs_posy_{}_{}_hits_{}GeV.html'.format(nhits_min, nhits_max, chosen_energy)), ncuts*nlayers + 1 ),
-                                        'dx':                  ( outlambda('_plot_clusters_dx_cut5hits.html'),           nlayers),
-                                        'dy':                  ( outlambda('_plot_clusters_dy.html'),           nlayers ),
+                                        'posx_posy':           ( outlambda('_plot_clusters_posx_vs_posy.html'.format(chosen_energy)), ncuts*nlayers + 1 ),
+                                        'dx':                  ( outlambda('_plot_clusters_dx_nowindow.html'),  nlayers + 2),
+                                        'dy':                  ( outlambda('_plot_clusters_dy.html'),           nlayers + 2),
                                         'dx_dy':               ( outlambda('_plot_clusters_dxdy.html'),         2*nlayers ),
                                         'dx_2D':               ( outlambda('_plot_clusters_dx2D.html'),         size ),
                                         'dy_2D':               ( outlambda('_plot_clusters_dy2D.html'),         size )}
