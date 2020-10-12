@@ -56,6 +56,8 @@ Step #3 was divided into independent micro-analysis:
 
 - **cluster-level**: number of hits, energies, number of clusters, 'x' and 'y' position of the clusters in the detector
 
+    - spatial resolution: it is possible to summarize its information across multiple tags (datasets with different conditions)
+
 Scripts' description
 ------------------
 
@@ -63,9 +65,7 @@ Scripts' description
 
     - ```bin/write_dag.cc```: creates all the required DAG submission files. It takes as input the ```CondorJobs/ntuple_ids.txt``` file which lists all the run numbers available and was generated with a combination of ```ls``` (applied to the folder with the input Ntuples) and ```awk```. This file is used in combination with a ```std::map``` stored in ```CondorJobs/interface/run_en_map.h``` which pairs run numbers with incident beam energy in GeV.
 
-    - ```selector.sh```: used by the jobs to run step #1
-
-    - ```analyzer.sh```: used by the jobs to run step #2
+    - ```launcher.sh```: used by the jobs to run step #1 and #2
 
     - ```clean.sh```: very simple utility that cleans the output files of the jobs once they are not needed
 
@@ -93,6 +93,8 @@ Scripts' description
 
     - ```python/cluster_dep.py```: run the cluster-level analysis type
 
+    - ```python/summarize_tags.py```: summaryze cluster spatial resolution related quantities for different tags
+
 - ```Step3Anlz/```: a CMSSW subpackage to create simulation files. This analysis framework can then be applied both to testbeam data and to CMS simulated data, making comparisons possible. Simulated data is converted into flat Ntuples, so that it can be treated in the exact same way as testbeam data.
 
 Standard workflow
@@ -105,29 +107,34 @@ If the user wants to process the ```sim_proton``` dataset with electromagnetic s
 - Produce DAG files
 
 ```bash
-write_dag --datatype sim_proton --showertype em
+write_dag --datatype sim_proton --showertype em --tag <anything>
 ```
 
-For hadronic showers, ```had``` is the option to use. Alternatively, if only the analysis step is required, once can do
+where ```--tag``` is used for identifying a particular data production step, and should ideally indicate the conditions the data was produced; the data will be stored in a folder named after the tag. Given that the selection stage is seen as something general, the ```--tag``` only affects the analysis step.
+
+> **_WARNING:_** If the same tag is specified more than once, the files will be written in the same folder. If the ```showertype``` and ```datatype``` are also the same, the files will be rewritten, and the old ones lost.
+
+For hadronic showers, ```--showertype had``` is the option to use.
+If only the analysis step is required, one can do
 
 ```bash
-write_dag --datatype sim_proton --showertype em --last_step_only
+write_dag --datatype sim_proton --showertype em --tag <anything> --last_step_only
 ```
 
 - Run the jobs (the submission files will be stored under ```CondorJobs/submission/selection/``` and ```CondorJobs/submission/analysis/```
 
 ```bash
-condor_submit_dag CondorJobs/clue_sim_proton_em.dag
+condor_submit_dag CondorJobs/clue_sim_proton_em_sometag.dag
 ```
 
-> **_NOTE:_** When the file has already been run Condor automatically uses its *rescue* files, *i.e.*, tries to run only the jobs that did not suceed in previous attempts. To remove all previous files, including job outputs, use ```bash CondorJobs/clean.sh```.
+> **_NOTE:_** When the file has already been run Condor automatically uses its *rescue* files, *i.e.*, tries to run only the jobs that did not suceed in previous attempts. To remove all previous files, including job outputs, use ```bash CondorJobs/clean.sh``` (or manually remove the files).
 
 
 - Join the output files according to their beam energy
 
 ```bash
-bash DataProcessing/join_ntuples.sh --datatype sim_proton --showertype em --analysistype layerdep
-bash DataProcessing/join_ntuples.sh --datatype sim_proton --showertype em --analysistype clusterdep
+bash DataProcessing/join_ntuples.sh --datatype sim_proton --showertype em --analysistype layerdep --tag <anything>
+bash DataProcessing/join_ntuples.sh --datatype sim_proton --showertype em --analysistype clusterdep --tag <anything>
 ```
 
 The outputs are currently being stored under ```/eos/user/<first username letter>/<username>/TestBeamReconstruction/job_output/```. Please create the required folders if needed. Under ```/job_output/``` the files are stored in the ```hit_dependent/```, ```layer_dependent/``` and ```cluster_dependent/``` folders.
@@ -139,10 +146,20 @@ There is no need to join the data of the **hit-level** analysis type, since they
 - Run the python analysis and plotting macros
 
 ```bash
-python DataProcessing/python/resp_res.py --datatype sim_proton --showertype em    #hit level
-python DataProcessing/python/layer_dep.py --datatype sim_proton --showertype em --all   #layer level
-python DataProcessing/python/cluster_dep.py --datatype sim_proton --showertype em --all #cluster level
+python DataProcessing/python/resp_res.py --datatype sim_proton --showertype em --tag <anything>   #hit level
+python DataProcessing/python/layer_dep.py --datatype sim_proton --showertype em --tag <anything> --all   #layer level
+python DataProcessing/python/cluster_dep.py --datatype sim_proton --showertype em --tag <anything> --all #cluster level
 ```
+
+If one needs to rerun the plotting stage for ```cluster_dep.py``` simply due to plot formatting or an additional cut, the option ```--use_saved_data``` can be added, effectively speeding-up the macro by reusing the previously stored dataset.
+
+To summarize the X or Y spatial resolution information of multiple tags, calculated by the ```cluster_dep.py``` macro, an additional plotting macro is available:
+
+```bash
+python DataProcessing/python/summarize_tags.py --datatype data --showertype em --var dx
+```
+
+where the tags to be used have to be specified manually in the macro.
 
 Please run the scripts with the ```--help``` option for more information, including running the last step only for a subset of final variables (this can be done at **layer-level** and **cluster-level**).
     

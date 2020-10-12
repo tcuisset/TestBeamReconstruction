@@ -7,7 +7,7 @@ declare -a ANALYSISTYPES=("layerdep" "clusterdep")
 ##########################
 ########PARSING###########
 ##########################
-ARGS=`getopt -o "" -l ",datatype:,showertype:,analysistype:" -n "getopts_${0}" -- "$@"`
+ARGS=`getopt -o "" -l ",datatype:,showertype:,analysistype:,tag:" -n "getopts_${0}" -- "$@"`
 
 #Bad arguments
 if [ $? -ne 0 ];
@@ -56,6 +56,13 @@ while true; do
 		fi
 	    fi
 	    shift 2;;
+	
+	--tag)
+	    if [ -n "$2" ]; then
+		TAG="${2}";
+		echo "Tag: ${TAG}";
+	    fi
+	    shift 2;;
 
 	--)
 	    shift
@@ -94,7 +101,14 @@ if [[ -z "${ANALYSISTYPE}" ]]; then
     printf "%s " "${ANALYSISTYPES[@]}"
     printf "\n"
     exit 1;
-fi  
+fi
+
+BASEFOLDER="/eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/${TAG}/"
+if [[ ( -z "${TAG}" ) || ( ! -d "${BASEFOLDER}" ) ]]; then
+    echo "Make sure the tag you specify corresponds to an existing data directory."
+    exit 1;
+fi
+
 ##########################
 ##########################
 ##########################
@@ -106,8 +120,8 @@ elif [[ "${ANALYSISTYPE}" == "clusterdep" ]]; then
 fi
 len="${#ENERGIES[@]}"
 for(( j=0; j<${len}; j++ )); do
-    IN="/eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/job_output/${JOBSFOLDER}/outEcut_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGIES[j]}_";
+    IN="${BASEFOLDER}${JOBSFOLDER}/outEcut_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGIES[j]}_";
     if [[ $(ls "${IN}"*root -A) ]]; then #in case the input files do exist
-	hadd -f -k /eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/job_output/"${JOBSFOLDER}"/hadd_"${ANALYSISTYPE}"_"${DATATYPE}"_"${SHOWERTYPE}"_beamen${ENERGIES[j]}.root "${IN}"*root;
+	hadd -f -k /eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/"${TAG}"/"${JOBSFOLDER}"/hadd_"${ANALYSISTYPE}"_"${DATATYPE}"_"${SHOWERTYPE}"_beamen${ENERGIES[j]}.root "${IN}"*root;
     fi
 done
