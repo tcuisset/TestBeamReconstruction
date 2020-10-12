@@ -109,7 +109,7 @@ def add_args(parser, mode):
             help='Beam energy used for all the plots that are layer dependent (positions, resolutions, ...)'
         )
 
-        variables_to_ignore = ['datatype', 'showertype']
+        variables_to_ignore = ['datatype', 'showertype', 'tag']
         parser.add_argument(
             '--all',
             action=AllAction,
@@ -132,7 +132,46 @@ def add_args(parser, mode):
             required=True,
             help='Choose the showertype to run the analysis on: "em" OR "had"'
         )
+        requiredNamedGroup.add_argument(
+            '--tag',
+            type=str,
+            required=True,
+            help='Identify the tag used for producing the input files.'
+        )
 
+        return parser.parse_known_args()
+
+    def summary():
+        parser.add_argument(
+            '--chosen_energy',
+            type=int,
+            default=50,
+            help='Beam energy used for all the plots that are layer dependent (positions, resolutions, ...)'
+        )
+        
+        requiredNamedGroup = parser.add_argument_group('required named arguments')
+        requiredNamedGroup.add_argument(
+            '--datatype',
+            type=str,
+            choices=['data', 'sim_proton', 'sim_noproton'],
+            required=True,
+            help='Choose the datatype to run the analysis on: "data" OR "sim_proton" OR "sim_noproton"'
+        )
+        requiredNamedGroup.add_argument(
+            '--showertype',
+            type=str,
+            choices=['em', 'had'],
+            required=True,
+            help='Choose the showertype to run the analysis on: "em" OR "had"'
+        )
+        requiredNamedGroup.add_argument(
+            '--var',
+            type=str,
+            choices=['dx', 'dy'],
+            required=True,
+            help='Choose the resolution dimension to summarize.'
+        )
+        
         return parser.parse_known_args()
 
     def layers():
@@ -177,7 +216,7 @@ def add_args(parser, mode):
             help="Run the layer analysis on the hits' X and Y positions in the same plot"
         )
         
-        variables_to_ignore = ['datatype', 'showertype', 'distances_2D', 'densities_2D', 'posx_posy']
+        variables_to_ignore = ['datatype', 'showertype', 'distances_2D', 'densities_2D', 'posx_posy', 'tag']
         parser.add_argument(
             '--all',
             action=AllAction,
@@ -200,12 +239,20 @@ def add_args(parser, mode):
             required=True,
             help='Choose the showertype to run the analysis on: "em" OR "had"'
         )
+        requiredNamedGroup.add_argument(
+            '--tag',
+            type=str,
+            required=True,
+            help='Identify the tag used for producing the input files.'
+        )
         return parser.parse_known_args()
 
     if mode == 'resp_res':
         return resp_res()
     elif mode == 'clusters':
         return clusters()
+    elif mode == 'summary':
+        return summary()
     elif mode == 'layers':
         return layers()
     else:

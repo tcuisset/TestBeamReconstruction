@@ -354,7 +354,7 @@ def main():
         cacheobj.dump() #dump cache for specific energy
     
     print('Saving BokehPlot frames...')
-    layer_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep', FLAGS.datatype, FLAGS.showertype)
+    layer_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
     utils.create_dir( layer_dep_folder )
     presentation_path = os.path.join(home, release, 'DN/figs', 'layer_dep', FLAGS.datatype, FLAGS.showertype)
     utils.create_dir( presentation_path )
@@ -386,8 +386,8 @@ if __name__ == '__main__':
     release = 'CMSSW_11_1_0_pre2/src/' #'/' + subprocess.check_output(b'echo $CMSSW_VERSION', shell=True, encoding='utf-8').split('\n')[0] + '/src/'
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     analysis_directory = 'TestBeamReconstruction/'
-    data_directory = 'job_output/layer_dependent/'
-    data_path_start = os.path.join(eos_base, cms_user[0], cms_user, analysis_directory, data_directory)
+    data_directory = 'layer_dependent/'
+    data_path_start = os.path.join(eos_base, cms_user[0], cms_user, analysis_directory, FLAGS.tag, data_directory)
     data_paths = [os.path.join(data_path_start, 'hadd_layerdep_' + FLAGS.datatype + '_' + FLAGS.showertype + '_beamen' + str(x) + '.root') for x in beam_energies]
 
     #define cache names and paths
@@ -397,7 +397,7 @@ if __name__ == '__main__':
     utils.print_input_data(data_paths)
     
     #create output files with plots
-    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep', FLAGS.datatype, FLAGS.showertype)
+    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
     utils.create_dir( output_html_dir )
     plot_width, plot_height = 600, 400
     

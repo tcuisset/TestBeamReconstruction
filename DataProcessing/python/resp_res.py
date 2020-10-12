@@ -223,8 +223,8 @@ def analyze_data():
     usercode_path = 'src/UserCode/DataProcessing/job_output'
 
     #difference due to historic reasons; this will have to be removed if the analysis step is rerun
-    path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, 
-                        'job_output/hit_dependent/outEcut_' + FLAGS.datatype + "_" + FLAGS.showertype)
+    path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, FLAGS.tag,
+                        'hit_dependent/outEcut_' + FLAGS.datatype + "_" + FLAGS.showertype)
 
     if FLAGS.showertype == 'em':
         bins = (1000, 1800, 4200, 5000, 5000, 4200, 5700, 5500, 5500, 500)
@@ -322,7 +322,7 @@ def analyze_data():
     histo_ranges2_corrected2 = tuple(Range1d(x.start/calibration_slope2, x.end/calibration_slope2) for x in histo_ranges2)
     _, _, _, _, res2, eres2 = HandleHistograms.fit(hist2_corrected2, pars2_corrected2, histo_ranges2_corrected2, iframe=4)
 
-    save_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype, FLAGS.showertype)
+    save_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
     utils.create_dir( save_folder )
     presentation_path = os.path.join(home, release, 'DN/figs', 'resp_res', FLAGS.datatype)
     print(presentation_path)
@@ -346,7 +346,7 @@ def final_plots():
     for name in variables_created:
         variables_stored.append( hf.get(name) )
 
-    save_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype)
+    save_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype, FLAGS.tag)
     utils.create_dir( save_folder )
     presentation_path = os.path.join(home, release, 'DN/figs', 'resp_res', FLAGS.datatype)
     utils.create_dir( presentation_path )
@@ -388,7 +388,7 @@ if __name__ == '__main__':
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
 
-    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype, FLAGS.showertype)
+    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
     outlambda = lambda x: os.path.join(output_html_dir, FLAGS.datatype + '_' + FLAGS.showertype + '_' + x)
     output_html_files = ( outlambda('pure_rechit_energy_Ecut.html'),
                           outlambda('pure_rechit_energy_Ecut_scaled.html'),
@@ -403,7 +403,7 @@ if __name__ == '__main__':
     line_colors = ['black', 'blue', 'green', 'red', 'orange', 'purple', 'greenyellow', 'brown', 'pink', 'grey']
 
     #HDF5 data file related variables
-    h5filename = os.path.join( eos_base, cms_user[0], cms_user, data_directory, 'hdf5', FLAGS.datatype + "_" + FLAGS.showertype + '_' + os.path.splitext( os.path.basename(__file__) )[0] + '.h5')
+    h5filename = os.path.join( eos_base, cms_user[0], cms_user, data_directory, FLAGS.tag, FLAGS.datatype + "_" + FLAGS.showertype + '_' + os.path.splitext( os.path.basename(__file__) )[0] + '.h5')
     variables_created = ('resp1', 'eresp1', 'res1', 'eres1', 'resp2', 'eresp2', 'res2', 'eres2')
 
     main()

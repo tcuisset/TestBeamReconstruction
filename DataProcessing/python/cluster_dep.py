@@ -75,7 +75,7 @@ def graphs_per_energy(df, axis_kwargs, columns_field, iframe, variable, energy_i
                 else:
                     counts, edges = np.histogram(dl[thisCut][ilayer-1], bins=bins[thisCut], weights=data_weights)
             else:
-                counts, edges = np.histogram(dl[thisCut][ilayer-1], bins=bins[thisCut])
+                counts, edges = np.histogram(dl[thisCut][ilayer-1], bins=bins[thisCut], range=(-1.,1.))
 
             centers = (edges[:-1]+edges[1:])/2
             assert(len(counts) == len(centers))
@@ -140,7 +140,7 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
         raise ValueError('graphs_per_layer: Variable {} is not supported.'.format(variable))
 
     hdf5_name = os.path.join(data_path_start, 
-        'cluster_' + FLAGS.showertype + '_' + FLAGS.datatype + '_' + str(FLAGS.chosen_energy) + 'GeV.h5' )
+        'cluster_' + FLAGS.showertype + '_' + FLAGS.datatype + '_' + str(FLAGS.chosen_energy) + 'GeV_' + FLAGS.tag + '.h5' )
     compression_level = 9
 
     executor = concurrent.futures.ThreadPoolExecutor()
@@ -225,7 +225,7 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
                 bokehplot.histogram( np.histogram2d(x=df_layer_cut[ndx].to_numpy(), y=df_layer_cut[ndy].to_numpy(), bins=nbins, range=[[-1.,1.],[-1.,1.]]), idx=ilayer-1, iframe=iframe, style='quad%CET_L17', fig_kwargs=tmp_fig_kwargs )
                 kwargs_other = {'x.axis_label': "#hits / cluster", 'y.axis_label': "hit energy [MeV]",
                                 't.text': text, 'plot_width': plot_width, 'plot_height': plot_height }
-                bokehplot.histogram( np.histogram2d(x=df_layer_cut[nn].to_numpy(), y=df_layer_cut[ne].to_numpy(), bins=(15,100), range=[[0.1,15.],[0.1,100]]), idx=ilayer-1+nlayers, iframe=iframe, style='quad%CET_L17', scale='log', fig_kwargs=kwargs_other )
+                bokehplot.histogram( np.histogram2d(x=df_layer_cut[nn].to_numpy(), y=df_layer_cut[ne].to_numpy(), bins=(15,100), range=[[0.1,15.],[0.1,200]]), idx=ilayer-1+nlayers, iframe=iframe, style='quad%CET_L17', scale='log', fig_kwargs=kwargs_other )
 
             if variable == 'spatialres_x' or variable == 'spatialres_y':
                 bias.append( coeff[1] )
@@ -238,16 +238,17 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
 
     if variable == 'pos':
         emptyfrac_kwargs = {'t.text': '{} GeV beam energy'.format(true_beam_energies_GeV[energy_index]),
-                            'x.axis_label': 'Layer', 'y.axis_label': 'Fraction of clusters were the position measurement failed'}
+                            'x.axis_label': 'Layer', 'y.axis_label': 'Fraction of clusters were the position measurement failed',
+                            'plot_width': plot_width, 'plot_height': plot_height}
         bokehplot.histogram( (np.array(emptyfracs), np.arange(.5,nlayers+1)), 
                              idx=ncuts*nlayers, iframe=iframe, color='orange',
                              fig_kwargs=emptyfrac_kwargs)
     elif variable == 'spatialres_x' or variable == 'spatialres_y':
-        resolution_kwargs = {'t.text': '{} GeV beam energy'.format(true_beam_energies_GeV[energy_index]), 'x.axis_label': 'Layer'}
-        bokehplot.graph(data=[np.arange(1,nlayers+1), np.array(bias)], errors=[[np.zeros(nlayers),np.zeros(nlayers)],[np.array(ebias)/2, np.array(ebias)/2]],
-                        idx=nlayers, iframe=iframe, color='orange', fig_kwargs=dict(resolution_kwargs, **{'y.axis_label': 'Position ' + variable[-1].upper() + ' bias'}))
-        bokehplot.graph(data=[np.arange(1,nlayers+1), np.array(res)], errors=[[np.zeros(nlayers),np.zeros(nlayers)],[np.array(eres)/2, np.array(eres)/2]],
-                        idx=nlayers+1, iframe=iframe, color='orange', fig_kwargs=dict(resolution_kwargs, **{'y.axis_label': 'Position ' + variable[-1].upper() + ' resolution'}))
+        extra = variable[-1]
+        pd.Series(bias).to_hdf(hdf5_name, key='bias'+extra, complevel=compression_level, mode='r+')
+        pd.Series(ebias).to_hdf(hdf5_name, key='ebias'+extra, complevel=compression_level, mode='r+')
+        pd.Series(res).to_hdf(hdf5_name, key='res'+extra, complevel=compression_level, mode='r+')
+        pd.Series(eres).to_hdf(hdf5_name, key='eres'+extra, complevel=compression_level, mode='r+')
 
 def save_plots(frame_key):
     mode = 'png'
@@ -339,28 +340,28 @@ def main():
             del df_posy
 
         ######Custer X vs Cluster Y positions######################
-        if FLAGS.posx_posy and thisEn == chosen_energy:
+        if FLAGS.posx_posy and thisEn == FLAGS.chosen_energy:
             print('Loading and storing X and Y positions data for {}GeV...'.format(beam_energies[iEn]))
 
             axis_kwargs_posxy = {'x.axis_label': "Clusters' X position", 'y.axis_label': "Clusters' Y position"}
             graphs_per_layer(tree, up_cache, axis_kwargs_posxy, variable='pos', iframe=output_html_files_map['posx_posy'][1], energy_index=iEn, weight_by_energy=True)
 
         ######Custer 1D X spatial resolution######################
-        if FLAGS.dx and thisEn == chosen_energy:
+        if FLAGS.dx and thisEn == FLAGS.chosen_energy:
             print('Loading and storing X spatial resolution data for {}GeV...'.format(beam_energies[iEn]))
 
             axis_kwargs_dx = {'x.axis_label': "Clusters' X spatial resolution [cm]", 'y.axis_label': "Counts"}
             graphs_per_layer(tree, up_cache, axis_kwargs_dx, variable='spatialres_x', iframe=output_html_files_map['dx'][1], energy_index=iEn, weight_by_energy=False)
 
         ######Custer 1D X spatial resolution######################
-        if FLAGS.dy and thisEn == chosen_energy:
+        if FLAGS.dy and thisEn == FLAGS.chosen_energy:
             print('Loading and storing X spatial resolution data for {}GeV...'.format(beam_energies[iEn]))
 
             axis_kwargs_dy = {'x.axis_label': "Clusters' Y spatial resolution [cm]", 'y.axis_label': "Counts"}
             graphs_per_layer(tree, up_cache, axis_kwargs_dy, variable='spatialres_y', iframe=output_html_files_map['dy'][1], energy_index=iEn, weight_by_energy=False)
 
         ######Custer 1D X spatial resolution######################
-        if FLAGS.dx_dy and thisEn == chosen_energy:
+        if FLAGS.dx_dy and thisEn == FLAGS.chosen_energy:
             print('Loading and storing X and Y spatial resolution data for {}GeV...'.format(beam_energies[iEn]))
 
             axis_kwargs_dx = {'x.axis_label': "Clusters' X spatial resolution [cm]", 'y.axis_label': "Clusters' Y spatial resolution [cm]"}
@@ -406,8 +407,7 @@ if __name__ == '__main__':
     size_shift = len(true_beam_energies_GeV)
     version2 = '_prof'
     nhits_min, nhits_max = 1, 10000
-    chosen_energy = FLAGS.chosen_energy #posx vs poxy plots will only refer to this energy (one plot per layer)
-    assert(chosen_energy in beam_energies)
+    assert(FLAGS.chosen_energy in beam_energies)
 
     #define local data paths and variables
     eos_base = '/eos/user/'
@@ -415,7 +415,7 @@ if __name__ == '__main__':
     release = 'CMSSW_11_1_0_pre2/src/' #subprocess.check_output(b'echo $CMSSW_VERSION', shell=True, encoding='utf-8').split('\n')[0] + '/src/'
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
-    data_path_start = os.path.join(eos_base, cms_user[0], cms_user, data_directory, "job_output/cluster_dependent/")
+    data_path_start = os.path.join(eos_base, cms_user[0], cms_user, data_directory, FLAGS.tag, 'cluster_dependent')
     data_paths = [os.path.join(data_path_start, 'hadd_clusterdep_' + FLAGS.datatype + '_' + FLAGS.showertype + '_beamen' + str(x) + '.root') for x in beam_energies]
         
     #define cache names and paths
@@ -425,9 +425,9 @@ if __name__ == '__main__':
     utils.print_input_data(data_paths)
 
     #create output files with plots
-    utils.create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype) )
-    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype)
-    outlambda = lambda x: os.path.join(output_html_dir, FLAGS.datatype + '_' + FLAGS.showertype + '_' + str(chosen_energy) + x)
+    utils.create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag) )
+    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
+    outlambda = lambda x: os.path.join(output_html_dir, FLAGS.datatype + '_' + FLAGS.showertype + '_' + str(FLAGS.chosen_energy) + x)
     output_html_files_potential_map = { 'hits':                ( outlambda('_plot_clusters_hits.html'),         size ),
                                         'energies':            ( outlambda('_plot_clusters_energy.html'),       size ),
                                         'numbers':             ( outlambda('_plot_clusters_number.html'),       size ),
@@ -438,7 +438,7 @@ if __name__ == '__main__':
                                         'numbers' + version2:  ( outlambda(version2 + '_clusters_number.html'), size ),
                                         'posx' + version2:     ( outlambda(version2 + '_clusters_posx.html'),   size ),
                                         'posy' + version2:     ( outlambda(version2 + '_clusters_posy.html'),   size ),
-                                        'posx_posy':           ( outlambda('_plot_clusters_posx_vs_posy.html'.format(chosen_energy)), ncuts*nlayers + 1 ),
+                                        'posx_posy':           ( outlambda('_plot_clusters_posx_vs_posy.html'.format(FLAGS.chosen_energy)), ncuts*nlayers + 1 ),
                                         'dx':                  ( outlambda('_plot_clusters_dx_nowindow.html'),  nlayers + 2),
                                         'dy':                  ( outlambda('_plot_clusters_dy.html'),           nlayers + 2),
                                         'dx_dy':               ( outlambda('_plot_clusters_dxdy.html'),         2*nlayers ),
@@ -463,7 +463,7 @@ if __name__ == '__main__':
     
     bokehplot = bkp.BokehPlot(filenames=output_html_files_list, nfigs=nfigs, nframes=nframes)
     plot_width, plot_height = 600, 400
-    cluster_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype)
+    cluster_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
     utils.create_dir( cluster_dep_folder )
 
     main()
