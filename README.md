@@ -65,9 +65,7 @@ Scripts' description
 
     - ```bin/write_dag.cc```: creates all the required DAG submission files. It takes as input the ```CondorJobs/ntuple_ids.txt``` file which lists all the run numbers available and was generated with a combination of ```ls``` (applied to the folder with the input Ntuples) and ```awk```. This file is used in combination with a ```std::map``` stored in ```CondorJobs/interface/run_en_map.h``` which pairs run numbers with incident beam energy in GeV.
 
-    - ```selector.sh```: used by the jobs to run step #1
-
-    - ```analyzer.sh```: used by the jobs to run step #2
+    - ```launcher.sh```: used by the jobs to run step #1 and #2
 
     - ```clean.sh```: very simple utility that cleans the output files of the jobs once they are not needed
 
@@ -153,6 +151,14 @@ python DataProcessing/python/cluster_dep.py --datatype sim_proton --showertype e
 ```
 
 If one needs to rerun the plotting stage for ```cluster_dep.py``` simply due to plot formatting or an additional cut, the option ```--use_saved_data``` can be added, effectively speeding-up the macro by reusing the previously stored dataset.
+
+To summarize the X or Y spatial resolution information of multiple tags, calculated by the ```cluster_dep.py``` macro, an additional plotting macro is available:
+
+```bash
+python DataProcessing/python/summarize_tags.py --datatype data --showertype em --var dx
+```
+
+where the tags to be used have to be specified manually in the macro.
 
 Please run the scripts with the ```--help``` option for more information, including running the last step only for a subset of final variables (this can be done at **layer-level** and **cluster-level**).
     
