@@ -93,6 +93,8 @@ Scripts' description
 
     - ```python/cluster_dep.py```: run the cluster-level analysis type
 
+- ```Step3Anlz/```: a CMSSW subpackage to create simulation files. This analysis framework can then be applied both to testbeam data and to CMS simulated data, making comparisons possible. Simulated data is converted into flat Ntuples, so that it can be treated in the exact same way as testbeam data.
+
 Standard workflow
 -----------------
 
