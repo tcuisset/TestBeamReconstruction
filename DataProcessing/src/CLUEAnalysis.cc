@@ -1,6 +1,6 @@
 #include "UserCode/DataProcessing/interface/CLUEAnalysis.h"
 
-CLUEAnalysis::CLUEAnalysis(const SHOWERTYPE& s): showertype(s)
+CLUEAnalysis::CLUEAnalysis(const SHOWERTYPE& s, const float& W0, const float& dpos): showertype(s), W0_(W0), dpos_(dpos)
 {
   if(showertype == SHOWERTYPE::EM)
     lmax = detectorConstants::nlayers_emshowers;
@@ -162,7 +162,7 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
 	if( hit_distance(xpos[i],xmax_,ypos[i],ymax_)<this->dpos_ )
 	  {
 	    assert(en_per_cluster_ecut[layeridx][vectoridx] != 0);
-	    float Wi = std::max(W0_ + std::log(weights[i] / en_per_cluster_ecut[layeridx][vectoridx]), 0.f);
+	    float Wi = std::max(this->W0_ + std::log(weights[i] / en_per_cluster_ecut[layeridx][vectoridx]), 0.f);
 	    x_per_cluster.at(layeridx).at(vectoridx) += xpos[i] * Wi;
 	    y_per_cluster[layeridx][vectoridx] += ypos[i] * Wi;
 	    en_per_cluster_log_ecut.at(layeridx).at(vectoridx) += Wi;

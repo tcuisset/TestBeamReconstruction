@@ -1,6 +1,6 @@
 #include "UserCode/DataProcessing/interface/analyzer.h"
 
-Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut, const SHOWERTYPE& st): dc_(dc), kappa_(kappa), ecut_(ecut), st_(st)
+Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut, const SHOWERTYPE& st, const float& W0=2.9f, const float& dpos=1.3f): dc_(dc), kappa_(kappa), ecut_(ecut), st_(st), W0_(W0), dpos_(dpos)
 {
   nfiles_ = in_file_path.size();
   std::cout << "Number of files being processed: " << nfiles_ << std::endl;
@@ -19,7 +19,7 @@ Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::st
 }
 
 //Overloaded constructor for job submission. Each job processes one file only.
-Analyzer::Analyzer(const std::string& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut, const SHOWERTYPE& st): dc_(dc), kappa_(kappa), ecut_(ecut), st_(st)
+Analyzer::Analyzer(const std::string& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut, const SHOWERTYPE& st, const float& W0=2.9f, const float& dpos=1.3f): dc_(dc), kappa_(kappa), ecut_(ecut), st_(st), W0_(W0), dpos_(dpos)
 {
   nfiles_ = 1;
   std::cout << "Number of files being processed: " << nfiles_ << std::endl;
@@ -63,7 +63,7 @@ void Analyzer::runCLUE() {
   unsigned int nevents = 0;
   float beam_energy = -1;
   CLUEAlgo clueAlgo(dc_, kappa_, ecut_); //non-verbose
-  CLUEAnalysis clueAna(this->st_);
+  CLUEAnalysis clueAna(this->st_, this->W0_, this->dpos_);
   this->lmax = clueAna.getLayerMax();
   resize_vectors();
 

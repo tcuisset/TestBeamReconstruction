@@ -32,8 +32,8 @@ void __M_Assert(const char* expr_str, bool expr, const char* file, int line, con
 
 class Analyzer {
  public:
-  Analyzer(const std::vector< std::string >&, const std::string&, const float&, const float&, const float&, const SHOWERTYPE&);
-  Analyzer(const std::string&, const std::string&, const float&, const float&, const float&, const SHOWERTYPE&);
+  Analyzer(const std::vector< std::string >&, const std::string&, const float&, const float&, const float&, const SHOWERTYPE&, const float&, const float&);
+  Analyzer(const std::string&, const std::string&, const float&, const float&, const float&, const SHOWERTYPE&, const float&, const float&);
   ~Analyzer();
   void runCLUE();
   void sum_energy(const bool&);
@@ -54,6 +54,7 @@ class Analyzer {
   unsigned lmax=0;
   float dc_, kappa_, ecut_;
   SHOWERTYPE st_;
+  float W0_, dpos_;
   //weights and thickness corrections taken from the third column of Table 3 of CMS DN-19-019
   std::vector< std::pair<std::string, std::string> > names_; //file and tree names
   std::vector<float> beam_energies_;

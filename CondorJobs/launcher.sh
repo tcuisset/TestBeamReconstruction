@@ -18,7 +18,7 @@ varExists() {
 ##########################
 ########PARSING###########
 ##########################
-ARGS=`getopt -o "" -l ",ntupleid:,step:,datatype:,showertype:,energy:,tag:" -n "getopts_${0}" -- "$@"`
+ARGS=`getopt -o "" -l ",ntupleid:,step:,datatype:,showertype:,energy:,tag:,w0:,dpos:" -n "getopts_${0}" -- "$@"`
 
 #Bad arguments
 if [ $? -ne 0 ];
@@ -93,6 +93,20 @@ while true; do
 		echo "Tag: ${TAG}";
 	    fi
 	    shift 2;;
+
+	--w0)
+	    if [ -n "$2" ]; then
+		W0="${2}";
+		echo "w0 (cluster position measurement): ${W0}";
+	    fi
+	    shift 2;;
+
+	--dpos)
+	    if [ -n "$2" ]; then
+		DPOS="${2}";
+		echo "dpos (cluster position measurement): ${DPOS}";
+	    fi
+	    shift 2;;
 	
 	--)
 	    shift
@@ -145,7 +159,15 @@ if [[ -z "${ENERGY}" ]]; then
     exit 1;
 fi
 if [[ ( -z "${TAG}" ) && ( "${STEP}" == "analysis" ) ]]; then
-    echo "Please specify the tag whne running the analysis step."
+    echo "Please specify the tag when running the analysis step."
+    exit 1;
+fi
+if [[ ( -z "${W0}" ) && ( "${STEP}" == "analysis" ) ]]; then
+    echo "Please specify the 'w0' parameter when running the analysis step, to fully specify the cluster position measurement algorithm."
+    exit 1;
+fi
+if [[ ( -z "${DPOS}" ) && ( "${STEP}" == "analysis" ) ]]; then
+    echo "Please specify the 'dpos' parameter when running the analysis step, to fully specify the cluster position measurement algorithm."
     exit 1;
 fi
 
@@ -156,17 +178,15 @@ export XRD_NETWORKSTACK=IPv4
 export SCRAM_ARCH="slc7_amd64_gcc820"
 
 if [ $(varExists "${INIT_FOLDER}") = true ] && [ $(varExists "${CMSSW_PATH}") = true ] &&
-    [ $(varExists "${HOME_DIR}") = true ] && [ $(varExists "${FULL_PATH}") = true ]; then
+    [ $(varExists "${HOME_DIR}") = true ] && [ $(varExists "${ANALYSIS_PATH}") = true ]; then
     INIT_FOLDER=$(pwd);
-    CMSSW_PATH="/${CMSSW_VERSION}/src/";
-    HOME_DIR="/afs/cern.ch/user/b/bfontana";
-    FULL_PATH="${HOME_DIR}""${CMSSW_PATH}";
+    ANALYSIS_PATH="/afs/cern.ch/user/${USER:0:1}/${USER}/TestBeamAnalysis/src/";
 else
     echo "Use different variable names.";
     exit 0;
 fi
 
-cd "${FULL_PATH}";
+cd "${ANALYSIS_PATH}";
 source /afs/cern.ch/cms/cmsset_default.sh
 eval `scramv1 runtime -sh` #cmsenv substitute
 
@@ -224,6 +244,6 @@ elif [[ "${STEP}" == "analysis" ]]; then
 
     echo "Input file: ${INFILE}"
     echo -e "Output files:\n${OUTFILE1}\n${OUTFILE2}\n${OUTFILE3}"
-    analyze_data_exe "${INFILE}" "${OUTFILE1}" "${OUTFILE2}" "${OUTFILE3}" "${SHOWERTYPE}";
+    analyze_data_exe "${INFILE}" "${OUTFILE1}" "${OUTFILE2}" "${OUTFILE3}" "${SHOWERTYPE}" "${W0}" "${DPOS}";
 
 fi

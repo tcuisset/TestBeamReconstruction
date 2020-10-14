@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 echo "Are you sure you want to delete the contents of the out/, log/ and submission/ folders? [y/n]"
 eval `scramv1 runtime -sh`;
-CLEANPATH="$HOME/${CMSSW_VERSION}/src/UserCode/CondorJobs"
+CLEANPATH="$HOME/TestBeamAnalysis/src/UserCode/CondorJobs"
 while true; do
     read in
     if [[ "${in}" == "y" ]]; then 

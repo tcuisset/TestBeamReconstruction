@@ -18,6 +18,8 @@ struct DataParameters {
   std::string showertype;
   bool last_step_only;
   std::string tag;
+  std::string w0;
+  std::string dpos;
 };
 
 //write all individual submission jobs: selection stage
@@ -30,16 +32,17 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
 
   std::string memory, flavour;
   if(mode == "selection") {
-    memory = "1.5GB";
+    memory = "1.3GB";
     flavour = "\"workday\"";
   }
   else {
-    memory = "500MB";
+    memory = "400MB";
     flavour = "\"longlunch\"";
   }
   fw << "executable = " + base + "launcher.sh" << std::endl;
   
   fw << "arguments = --ntupleid " + n + " --datatype " + p.datatype + " --showertype " + p.showertype + " --tag " + p.tag;
+  fw << " --w0 " + p.w0 + " --dpos " + p.dpos;
   fw << " --energy " + std::to_string(energy);
   fw << " --step " + mode;
   fw << std::endl;
@@ -230,7 +233,7 @@ int main(int argc, char **argv) {
   std::unordered_map< std::string, std::vector<std::string> > valid_args;
   valid_args["--datatype"] = {"data", "sim_noproton", "sim_proton"};
   valid_args["--showertype"] = {"em", "had"};
-  std::vector<std::string> free_args = {"--tag"}; //any argument allowed
+  std::vector<std::string> free_args = {"--tag", "--w0", "--dpos"}; //any argument allowed
   std::vector<std::string> optional_args = {"--last_step_only"}; //any argument allowed
   
   int nargsmin = (valid_args.size()+free_args.size()) * 2 + 1;
@@ -245,9 +248,9 @@ int main(int argc, char **argv) {
     for(std::string& elem : free_args) {
       std::string elem2 = elem;
       elem2.erase(0,2);
-      std::cout << elem2 + ": required, all names allowed" << std::endl;
+      std::cout << elem2 + ": required, any choice allowed" << std::endl;
     }
-    std::cout << "last_step_only (optional)" << std::endl;
+    std::cout << "last_step_only: optional" << std::endl;
     return 1;
   }
   for(int iarg=0; iarg<argc; ++iarg) {
@@ -289,12 +292,19 @@ int main(int argc, char **argv) {
   pars.datatype = chosen_args["--datatype"];
   pars.showertype = chosen_args["--showertype"];
   pars.tag = chosen_args["--tag"];
+  pars.w0 = chosen_args["--w0"];
+  pars.dpos = chosen_args["--dpos"];
   
   //define common variables
   std::string cmssw_base = std::getenv("CMSSW_BASE");
   std::string condorjobs = "/src/UserCode/CondorJobs/";
   std::string submission_folder = "submission/";
   std::string condorjobs_base = cmssw_base + condorjobs;
+
+  //create directories if required
+  system( (std::string("mkdir -p ") + condorjobs_base).c_str() );
+  system( (std::string("mkdir -p ") + condorjobs_base + std::string("selection/")).c_str() );
+  system( (std::string("mkdir -p ") + condorjobs_base + std::string("analysis/")).c_str() );
 
   //write DAG files
   if(pars.datatype == "data")

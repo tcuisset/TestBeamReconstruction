@@ -139,8 +139,9 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
     if variable not in ('pos', 'spatialres_x', 'spatialres_y', 'spatialres_xy'):
         raise ValueError('graphs_per_layer: Variable {} is not supported.'.format(variable))
 
-    hdf5_name = os.path.join(data_path_start, 
-        'cluster_' + FLAGS.showertype + '_' + FLAGS.datatype + '_' + str(FLAGS.chosen_energy) + 'GeV_' + FLAGS.tag + '.h5' )
+    hdf5_name_ = 'cluster_' + FLAGS.showertype + '_' + FLAGS.datatype + '_' + str(FLAGS.chosen_energy) + 'GeV_' + FLAGS.tag
+    hdf5_name = os.path.join(data_path_start, hdf5_name_ + '.h5' )
+    print(hdf5_name)
     compression_level = 9
 
     executor = concurrent.futures.ThreadPoolExecutor()
@@ -245,10 +246,11 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
                              fig_kwargs=emptyfrac_kwargs)
     elif variable == 'spatialres_x' or variable == 'spatialres_y':
         extra = variable[-1]
-        pd.Series(bias).to_hdf(hdf5_name, key='bias'+extra, complevel=compression_level, mode='r+')
-        pd.Series(ebias).to_hdf(hdf5_name, key='ebias'+extra, complevel=compression_level, mode='r+')
-        pd.Series(res).to_hdf(hdf5_name, key='res'+extra, complevel=compression_level, mode='r+')
-        pd.Series(eres).to_hdf(hdf5_name, key='eres'+extra, complevel=compression_level, mode='r+')
+        hdf5_name_summ = os.path.join(data_path_start, hdf5_name_ + '_d' + variable[-1] + '_summary.h5' )
+        pd.Series(bias).to_hdf(hdf5_name_summ, key='bias'+extra, complevel=compression_level, mode='w')
+        pd.Series(ebias).to_hdf(hdf5_name_summ, key='ebias'+extra, complevel=compression_level, mode='r+')
+        pd.Series(res).to_hdf(hdf5_name_summ, key='res'+extra, complevel=compression_level, mode='r+')
+        pd.Series(eres).to_hdf(hdf5_name_summ, key='eres'+extra, complevel=compression_level, mode='r+')
 
 def save_plots(frame_key):
     mode = 'png'
@@ -439,8 +441,8 @@ if __name__ == '__main__':
                                         'posx' + version2:     ( outlambda(version2 + '_clusters_posx.html'),   size ),
                                         'posy' + version2:     ( outlambda(version2 + '_clusters_posy.html'),   size ),
                                         'posx_posy':           ( outlambda('_plot_clusters_posx_vs_posy.html'.format(FLAGS.chosen_energy)), ncuts*nlayers + 1 ),
-                                        'dx':                  ( outlambda('_plot_clusters_dx_nowindow.html'),  nlayers + 2),
-                                        'dy':                  ( outlambda('_plot_clusters_dy.html'),           nlayers + 2),
+                                        'dx':                  ( outlambda('_plot_clusters_dx_nowindow.html'),  nlayers),
+                                        'dy':                  ( outlambda('_plot_clusters_dy.html'),           nlayers),
                                         'dx_dy':               ( outlambda('_plot_clusters_dxdy.html'),         2*nlayers ),
                                         'dx_2D':               ( outlambda('_plot_clusters_dx2D.html'),         size ),
                                         'dy_2D':               ( outlambda('_plot_clusters_dy2D.html'),         size )}
