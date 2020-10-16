@@ -26,7 +26,13 @@ struct DataParameters {
 void write_submission_file(const int& id, const std::string& jobpath, const std::string& base, std::string mode,
 			   const unsigned int& energy, const DataParameters& p)
 {
-  assert(mode == "selection" or mode == "analysis");
+  std::string cpp_exec;
+  if(mode == "selection")
+    cpp_exec = "process_data_exe";
+  else if(mode == "analysis")
+    cpp_exec = "analyze_data_exe";
+  else
+    throw std::invalid_argument("Mode " + mode + " does not exist.");
   std::string n = std::to_string(id);
   std::ofstream fw(jobpath, std::ios_base::ate);
 
@@ -39,7 +45,12 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
     memory = "400MB";
     flavour = "\"longlunch\"";
   }
-  fw << "executable = " + base + "launcher.sh" << std::endl;
+  fw << "indir = " + base << std::endl;
+  fw << "executable = launcher.sh" << std::endl;
+
+  fw << "should_transfer_files = YES" << std::endl;
+  fw << "when_to_transfer_output = ON_EXIT" << std::endl;
+  fw << "public_input_files = ../../../../TestBeamAnalysis/bin/" + std::string(getenv("SCRAM_ARCH")) + "/" + cpp_exec << std::endl;
   
   fw << "arguments = --ntupleid " + n + " --datatype " + p.datatype + " --showertype " + p.showertype + " --tag " + p.tag;
   fw << " --w0 " + p.w0 + " --dpos " + p.dpos;
@@ -51,9 +62,9 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
   fw << "requirements = (OpSysAndVer =?= \"CentOS7\")" << std::endl;
 
   std::string outname = mode + "_" + p.datatype + "_" + p.showertype + "_" + p.tag + "." + n;
-  fw << "output = " + base + "out/" + outname + ".out" << std::endl;
-  fw << "error = "  + base + "out/" + outname + ".err" << std::endl;
-  fw << "log = "    + base + "log/" + outname + ".log" << std::endl;
+  fw << "output = out/" + outname + ".out" << std::endl;
+  fw << "error =  out/" + outname + ".err" << std::endl;
+  fw << "log =    log/" + outname + ".log" << std::endl;
 
   fw << "getenv = True" << std::endl;
   
