@@ -16,7 +16,7 @@ void print_vector_elements(const std::vector<std::string>& v)
 struct DataParameters {
   std::string datatype;
   std::string showertype;
-  bool last_step_only;
+  bool last_step_only = false;
   std::string tag;
   std::string w0;
   std::string dpos;
@@ -137,15 +137,15 @@ void write_data(const std::string& submission_folder, const std::string& base, c
 	}
     }
 
-  std::string filepath;
+  std::string filepath = base + "clue_data_" + p.showertype + "_" + p.tag;
   std::vector<std::string> steps;
   if(p.last_step_only) {
     steps = {"analysis"};
-    filepath = base + "clue_data_" + p.showertype + "_" + p.tag + "_" + steps[0] + "_only.dag";
+    filepath += "_" + steps[0] + "_only.dag";
   }
   else {
     steps = {"selection", "analysis"};
-    filepath = base + "clue_data_" + p.showertype + ".dag";
+    filepath += ".dag";
   }
   const unsigned int nsteps = steps.size();
   
