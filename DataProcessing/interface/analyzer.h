@@ -32,18 +32,18 @@ void __M_Assert(const char* expr_str, bool expr, const char* file, int line, con
 
 class Analyzer {
  public:
-  Analyzer(const std::vector< std::string >&, const std::string&, const float&, const float&, const float&, const SHOWERTYPE&, const float&, const float&);
-  Analyzer(const std::string&, const std::string&, const float&, const float&, const float&, const SHOWERTYPE&, const float&, const float&);
+  Analyzer(const std::vector< std::string >&, const std::string&, const float&, const float&, const float&, const SHOWERTYPE&, const float&, const float&, const bool&);
+  Analyzer(const std::string&, const std::string&, const float&, const float&, const float&, const SHOWERTYPE&, const float&, const float&, const bool&);
   ~Analyzer();
   void runCLUE();
-  void sum_energy(const bool&);
+  void sum_energy();
   void save_to_file(const std::string&);
   void save_to_file_layer_dependent(const std::string&);
   void save_to_file_cluster_dependent(const std::string&);
   
  private:
   //methods 
-  std::pair<unsigned int, float> _readTree( const std::string&, std::vector< std::vector<float> >& x, std::vector< std::vector<float> >&, std::vector< std::vector<unsigned int> >&, std::vector< std::vector<float> >&, std::vector< std::vector<unsigned int> >&, std::vector< std::vector<float> >&, std::vector< std::vector<float> >&);
+  std::pair<unsigned int, float> _readTree( const std::pair<std::string,std::string>&, std::vector< std::vector<float> >& x, std::vector< std::vector<float> >&, std::vector< std::vector<unsigned int> >&, std::vector< std::vector<float> >&, std::vector< std::vector<unsigned int> >&, std::vector< std::vector<float> >&, std::vector< std::vector<float> >&);
   int sanity_checks(const std::string&);
   bool ecut_selection(const float&, const unsigned int&);
   void resize_vectors();
@@ -55,6 +55,7 @@ class Analyzer {
   float dc_, kappa_, ecut_;
   SHOWERTYPE st_;
   float W0_, dpos_;
+  bool clean_hits_;
   //weights and thickness corrections taken from the third column of Table 3 of CMS DN-19-019
   std::vector< std::pair<std::string, std::string> > names_; //file and tree names
   std::vector<float> beam_energies_;

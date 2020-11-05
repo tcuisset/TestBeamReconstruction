@@ -414,7 +414,7 @@ if __name__ == '__main__':
     #define local data paths and variables
     eos_base = '/eos/user/'
     cms_user = subprocess.check_output("echo $USER", shell=True, encoding='utf-8').split('\n')[0]
-    release = 'CMSSW_11_1_0_pre2/src/' #subprocess.check_output(b'echo $CMSSW_VERSION', shell=True, encoding='utf-8').split('\n')[0] + '/src/'
+    release = 'TestBeamAnalysis/src/' #subprocess.check_output(b'echo $CMSSW_VERSION', shell=True, encoding='utf-8').split('\n')[0] + '/src/'
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
     data_path_start = os.path.join(eos_base, cms_user[0], cms_user, data_directory, FLAGS.tag, 'cluster_dependent')

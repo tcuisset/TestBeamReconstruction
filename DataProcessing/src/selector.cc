@@ -37,7 +37,6 @@ Selector::Selector(const std::string& in_file_path, const std::string& out_file_
     impactYcols_.push_back("myFriend.impactY_HGCal_layer_" + std::to_string(i));
     impactcols_.push_back("myFriend.impactY_HGCal_layer_" + std::to_string(i));
   }
-  
 
   //load external data
   this->load_noise_values();

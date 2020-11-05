@@ -107,18 +107,20 @@ If the user wants to process the ```sim_proton``` dataset with electromagnetic s
 - Produce DAG files
 
 ```bash
-write_dag --datatype sim_proton --showertype em --tag <anything>
+write_dag --datatype sim_proton --showertype em --tag <anything> --w0 2.9 --dpos 1.3
 ```
 
 where ```--tag``` is used for identifying a particular data production step, and should ideally indicate the conditions the data was produced; the data will be stored in a folder named after the tag. Given that the selection stage is seen as something general, the ```--tag``` only affects the analysis step.
 
 > **_WARNING:_** If the same tag is specified more than once, the files will be written in the same folder. If the ```showertype``` and ```datatype``` are also the same, the files will be rewritten, and the old ones lost.
 
+The parameters ```--w0``` and ```--dpos``` refer to the log-weighted algorithm which calculates the position of the clusters and is described [here](https://indico.cern.ch/event/776790/contributions/3230583/attachments/1761511/2865143/positionResolutionFor2DClusters_amartell_29Nov.pdf) and implemented in ```src/CLUEAnalysis.cc``` in the ```calculateClusterDepVars()``` function.
+
 For hadronic showers, ```--showertype had``` is the option to use.
 If only the analysis step is required, one can do
 
 ```bash
-write_dag --datatype sim_proton --showertype em --tag <anything> --last_step_only
+write_dag --datatype sim_proton --showertype em --tag <anything> --w0 2.9 --dpos 1.3 --last_step_only
 ```
 
 - Run the jobs (the submission files will be stored under ```CondorJobs/submission/selection/``` and ```CondorJobs/submission/analysis/```

@@ -18,14 +18,13 @@ class CLUEAlgo{
 
   public:
     // constructor
-  CLUEAlgo(float dc, float kappa, float ecut, bool verbose=false ){ 
+  CLUEAlgo(float dc, float kappa, float ecut, bool verbose=false) { 
       dc_ = dc; 
       ecut_ = ecut;
       kappa_ = kappa;
       //dm_ =  std::max(deltao_, deltac_);
       outlierDeltaFactor_ = 2.;
       verbose_ = verbose;
-    
     }
     // destructor
     ~CLUEAlgo(){} 
@@ -33,7 +32,7 @@ class CLUEAlgo{
     // public variables
     float dc_, ecut_, kappa_, outlierDeltaFactor_;
     bool verbose_;
-    
+  
     Points points_;
 
     std::vector<float> getHitsPosX();
@@ -48,7 +47,7 @@ class CLUEAlgo{
   
     //returns 1 if no hit passes the initial energy cut
     //Note: The layer input and output (see getHitsLayerId()) start counting at 1, but the calculations inside use a 0-based index
-    bool setPoints(int n, float* x, float* y, unsigned int* layer, float* weight) {
+  bool setPoints(int n, float* x, float* y, unsigned int* layer, float* weight) {
       points_.clear();
 
       // input variables
@@ -56,6 +55,7 @@ class CLUEAlgo{
 	{
 	  if(layer[i] > detectorConstants::totalnlayers) //em filters should be applied
 	    continue;
+
 	  float endeposited_mip = layer[i] <= detectorConstants::layerBoundary ? detectorConstants::energyDepositedByMIP[0] : detectorConstants::energyDepositedByMIP[1];
 
 	  float weight_tmp;
@@ -63,6 +63,7 @@ class CLUEAlgo{
 	    weight_tmp = detectorConstants::globalWeightCEH;
 	  else
 	    weight_tmp = detectorConstants::dEdX.at(layer[i]-1);
+
 	  if( weight[i] < ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * weight_tmp )
 	    continue;
 	  

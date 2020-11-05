@@ -42,10 +42,16 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
     flavour = "\"workday\"";
   }
   else {
-    memory = "400MB";
-    flavour = "\"longlunch\"";
+    if(p.datatype == "sim_cmssw") {
+      memory = "15MB";
+      flavour = "\"microcentury\"";
+    }
+    else {
+      memory = "400MB";
+      flavour = "\"longlunch\"";
+    }
   }
-  fw << "indir = " + base << std::endl;
+  fw << "initialdir = " + base << std::endl;
   fw << "executable = launcher.sh" << std::endl;
 
   fw << "should_transfer_files = YES" << std::endl;
@@ -62,9 +68,9 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
   fw << "requirements = (OpSysAndVer =?= \"CentOS7\")" << std::endl;
 
   std::string outname = mode + "_" + p.datatype + "_" + p.showertype + "_" + p.tag + "." + n;
-  fw << "output = out/" + outname + ".out" << std::endl;
-  fw << "error =  out/" + outname + ".err" << std::endl;
-  fw << "log =    log/" + outname + ".log" << std::endl;
+  fw << "output = $(initialdir)out/" + outname + ".out" << std::endl;
+  fw << "error =  $(initialdir)out/" + outname + ".err" << std::endl;
+  fw << "log =    $(initialdir)log/" + outname + ".log" << std::endl;
 
   fw << "getenv = True" << std::endl;
   
@@ -115,29 +121,32 @@ void write_dag_repetitions(const std::string& filepath, const std::vector<std::s
   f_write << std::endl;
 }
 
-void write_data(const std::string& submission_folder, const std::string& base, const DataParameters& p)
+void write_v1(const std::string& submission_folder, const std::string& base, const DataParameters& p)
 {
-  std::ifstream infile(base + "ntuple_ids.txt");
-  std::vector<int> a;
+  std::ifstream infile(base + "ntuple_" + p.datatype + "_ids.txt");
+  std::vector<int> file_id;
   int _a;
   while (infile >> _a)
-      a.push_back(_a);
-  //std::vector<int> avoid = {620,621,622};
+    file_id.push_back(_a);
 
-  std::vector<int> file_id;
-  unsigned keymin=run_en_map.cbegin()->first, keymax=run_en_map.crbegin()->first;
-  for(unsigned i=keymin; i<=keymax; ++i) //min and max run numbers for data configuration #22
+  if(p.datatype == "data")
     {
-      if( ( p.showertype == "em" and ( (i>=435 and i<=509) or (i>=594 and i<=676) ) )
-	  or
-	  ( p.showertype == "had" and ( i==321 or (i>=512 and i<=523) or (i>=525 and i<= 593) or (i>=679 and i<=697) ) ) )
+      std::vector<int> a;
+      unsigned keymin=run_en_map.cbegin()->first, keymax=run_en_map.crbegin()->first;
+      for(unsigned i=keymin; i<=keymax; ++i) //min and max run numbers for data configuration #22
 	{
-	  if( std::find(a.begin(), a.end(), i) != a.end() /*and std::find(avoid.begin(), avoid.end(), i) == avoid.end()*/ )
-	    file_id.push_back(i);
+	  if( ( p.showertype == "em" and ( (i>=435 and i<=509) or (i>=594 and i<=676) ) )
+	      or
+	      ( p.showertype == "had" and ( i==321 or (i>=512 and i<=523) or (i>=525 and i<= 593) or (i>=679 and i<=697) ) ) )
+	    {
+	      if( std::find(a.begin(), a.end(), i) != a.end() /*and std::find(avoid.begin(), avoid.end(), i) == avoid.end()*/ )
+		a.push_back(i);
+	    }
 	}
+      file_id = a;
     }
 
-  std::string filepath = base + "clue_data_" + p.showertype + "_" + p.tag;
+  std::string filepath = base + "clue_" + p.datatype + "_" + p.showertype + "_" + p.tag;
   std::vector<std::string> steps;
   if(p.last_step_only) {
     steps = {"analysis"};
@@ -156,7 +165,13 @@ void write_data(const std::string& submission_folder, const std::string& base, c
       for(auto i: util::lang::indices(file_id))
 	{
 	  const std::string n = std::to_string(file_id[i]);
-	  const std::string thisJobname = steps[thisStep] + "_data_" + p.showertype + "_beamen" + std::to_string(run_en_map.at(file_id[i])) + "_" + n + "_" + p.tag;
+	  std::string thisJobname = steps[thisStep] + "_" + p.datatype + "_" + p.showertype;
+
+	  if(p.datatype == "data")
+	    thisJobname += "_beamen" + std::to_string(run_en_map.at(file_id[i])) + "_" + n + "_" + p.tag;
+	  else if(p.datatype == "sim_cmssw")
+	    thisJobname += "_beamen50_" + n + "_" + p.tag;
+	  
 	  jobnames[thisStep].push_back(thisJobname);
 	  jobpaths[thisStep].push_back(base + submission_folder + steps[thisStep] + "/" + thisJobname + ".sub");
 	}
@@ -177,14 +192,14 @@ void write_data(const std::string& submission_folder, const std::string& base, c
   for(auto i: util::lang::indices(file_id))
     {
       const unsigned int thisID = file_id[i];
-      const unsigned int thisEnergy = run_en_map.at(thisID);
+      const unsigned int thisEnergy = p.datatype == "sim_cmssw" ? 50 : run_en_map.at(thisID);
       write_submission_file(thisID, jobpaths[0][i], base, steps[0], thisEnergy, p);
       if(!p.last_step_only)
 	write_submission_file(thisID, jobpaths[1][i], base, steps[1], thisEnergy, p); 
     }
 }
 
-void write_simulation(const std::string& submission_folder, const std::string& base, const DataParameters& p)
+void write_v2(const std::string& submission_folder, const std::string& base, const DataParameters& p)
 {
   constexpr unsigned int ntuples_per_energy = 5; //ntuples indexes with simulation data range from 0 to 4
   std::vector<unsigned int> energies = {{20, 30, 50, 80, 100, 120, 150, 200, 250, 300}};
@@ -242,7 +257,7 @@ void write_simulation(const std::string& submission_folder, const std::string& b
 
 int main(int argc, char **argv) {
   std::unordered_map< std::string, std::vector<std::string> > valid_args;
-  valid_args["--datatype"] = {"data", "sim_noproton", "sim_proton"};
+  valid_args["--datatype"] = {"data", "sim_noproton", "sim_proton", "sim_cmssw"};
   valid_args["--showertype"] = {"em", "had"};
   std::vector<std::string> free_args = {"--tag", "--w0", "--dpos"}; //any argument allowed
   std::vector<std::string> optional_args = {"--last_step_only"}; //any argument allowed
@@ -318,8 +333,8 @@ int main(int argc, char **argv) {
   system( (std::string("mkdir -p ") + condorjobs_base + std::string("analysis/")).c_str() );
 
   //write DAG files
-  if(pars.datatype == "data")
-    write_data(submission_folder, condorjobs_base, pars);
+  if(pars.datatype == "data" or pars.datatype == "sim_cmssw")
+    write_v1(submission_folder, condorjobs_base, pars);
   else
-    write_simulation(submission_folder, condorjobs_base, pars);
+    write_v2(submission_folder, condorjobs_base, pars);
 }

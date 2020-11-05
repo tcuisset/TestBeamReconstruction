@@ -98,7 +98,7 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
   std::vector< std::vector< std::vector<float> > > xpositions(this->lmax);
   std::vector< std::vector< std::vector<float> > > ypositions(this->lmax);
   std::vector< std::vector< std::vector<float> > > energies(this->lmax);
-  
+
   for(unsigned i=0; i<lmax; ++i)
     {
       en_per_cluster[i].resize( nclusters_per_layer[i], 0.f ); 
@@ -127,6 +127,7 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
       energies[layeridx][vectoridx].push_back(weights[i]);
     }
   }
+
   for(size_t i=0; i<energies.size(); ++i) {
     for(size_t j=0; j<energies[i].size(); ++j) {
       if(energies[i][j].size() > 0) {
@@ -139,22 +140,20 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
   }
 
   for(auto i: util::lang::indices(weights)) {
-     if(clusterid[i] != -1)  //outliers are not considered
-       {
-	 unsigned layeridx = static_cast<unsigned>(layerid[i]) - 1; //layers start at 1
-	 unsigned vectoridx = clusterIndexMap[clusterid[i]];
-	 float xmax_ = xmax_per_cluster[layeridx][vectoridx];
-	 float ymax_ = ymax_per_cluster[layeridx][vectoridx];
-	 if( hit_distance(xpos[i],xmax_,ypos[i],ymax_)<this->dpos_ ) //a radius of 13mm is imposed
-	   en_per_cluster_ecut.at(layeridx).at(vectoridx) += weights[i];
-       }
-    }
+    if(clusterid[i] != -1)  //outliers are not considered
+      {
+	unsigned layeridx = static_cast<unsigned>(layerid[i]) - 1; //layers start at 1
+	unsigned vectoridx = clusterIndexMap[clusterid[i]];
+	float xmax_ = xmax_per_cluster[layeridx][vectoridx];
+	float ymax_ = ymax_per_cluster[layeridx][vectoridx];
+	if( hit_distance(xpos[i],xmax_,ypos[i],ymax_)<this->dpos_ ) //a radius of 13mm is imposed
+	  en_per_cluster_ecut.at(layeridx).at(vectoridx) += weights[i];
+      }
+  }
 
-  //int counter1=0, counter2=0;
   for (auto i: util::lang::indices(weights)) {
     if(clusterid[i] != -1)  //outliers are not considered
       {
-	//counter2 += 1;
 	unsigned layeridx = static_cast<unsigned>(layerid[i]) - 1; //layers start at 1
 	unsigned vectoridx = clusterIndexMap[clusterid[i]];
 	float xmax_ = xmax_per_cluster[layeridx][vectoridx];
@@ -167,28 +166,26 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
 	    y_per_cluster[layeridx][vectoridx] += ypos[i] * Wi;
 	    en_per_cluster_log_ecut.at(layeridx).at(vectoridx) += Wi;
 	  }
-	//else counter1 += 1;
       }
   }
-  //std::cout << (float)counter1/counter2 << ", " << counter1 << ", " << counter2 << std::endl;
 
-   for(unsigned s1=0; s1<en_per_cluster_log_ecut.size(); ++s1) {
-     for(unsigned s2=0; s2<en_per_cluster_log_ecut[s1].size(); ++s2)
-       {
-	 if (en_per_cluster_log_ecut.at(s1).at(s2) != 0.)
-	   {
-	     float inv_log = 1.f / en_per_cluster_log_ecut.at(s1).at(s2);
-	     x_per_cluster.at(s1).at(s2) *= inv_log;
-	     y_per_cluster.at(s1).at(s2) *= inv_log;
-	   }
-	 else
-	   {
-	     x_per_cluster.at(s1).at(s2) = -99.f;
-	     y_per_cluster.at(s1).at(s2) = -99.f;
-	     std::cout << "UPS!" << std::endl;
-	   }
-       }
-   }
+  for(unsigned s1=0; s1<en_per_cluster_log_ecut.size(); ++s1) {
+    for(unsigned s2=0; s2<en_per_cluster_log_ecut[s1].size(); ++s2)
+      {
+	if (en_per_cluster_log_ecut.at(s1).at(s2) != 0.)
+	  {
+	    float inv_log = 1.f / en_per_cluster_log_ecut.at(s1).at(s2);
+	    x_per_cluster.at(s1).at(s2) *= inv_log;
+	    y_per_cluster.at(s1).at(s2) *= inv_log;
+	  }
+	else
+	  {
+	    x_per_cluster.at(s1).at(s2) = -99.f;
+	    y_per_cluster.at(s1).at(s2) = -99.f;
+	    std::cout << "UPS!" << std::endl;
+	  }
+      }
+  }
 
   //fill std::array with clusterized cluster number of hits and energy
   //both vectors might well be empty, in case there was no cluster in a particular layer
@@ -199,7 +196,7 @@ void CLUEAnalysis::calculateClusterDepVars(const std::vector<float>& xpos, const
       std::vector<float> dx(x_per_cluster[ilayer].size()), dy(x_per_cluster[ilayer].size());
       for(unsigned iclust=0; iclust<x_per_cluster[ilayer].size(); ++iclust) 
 	{
-	  dx[iclust] = impactX[ilayer] - x_per_cluster[ilayer][iclust];
+	  dx[iclust] = impactX.at(ilayer) - x_per_cluster[ilayer][iclust];
 	  dy[iclust] = impactY[ilayer] - y_per_cluster[ilayer][iclust];
 	}
       //store all cluster-related variables

@@ -1,6 +1,6 @@
 #include "UserCode/DataProcessing/interface/analyzer.h"
 
-Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut, const SHOWERTYPE& st, const float& W0=2.9f, const float& dpos=1.3f): dc_(dc), kappa_(kappa), ecut_(ecut), st_(st), W0_(W0), dpos_(dpos)
+Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut, const SHOWERTYPE& st, const float& W0=2.9f, const float& dpos=1.3f, const bool& clean_hits=true): dc_(dc), kappa_(kappa), ecut_(ecut), st_(st), W0_(W0), dpos_(dpos), clean_hits_(clean_hits)
 {
   nfiles_ = in_file_path.size();
   std::cout << "Number of files being processed: " << nfiles_ << std::endl;
@@ -19,7 +19,7 @@ Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::st
 }
 
 //Overloaded constructor for job submission. Each job processes one file only.
-Analyzer::Analyzer(const std::string& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut, const SHOWERTYPE& st, const float& W0=2.9f, const float& dpos=1.3f): dc_(dc), kappa_(kappa), ecut_(ecut), st_(st), W0_(W0), dpos_(dpos)
+Analyzer::Analyzer(const std::string& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut, const SHOWERTYPE& st, const float& W0=2.9f, const float& dpos=1.3f, const bool& clean_hits=true): dc_(dc), kappa_(kappa), ecut_(ecut), st_(st), W0_(W0), dpos_(dpos), clean_hits_(clean_hits)
 {
   nfiles_ = 1;
   std::cout << "Number of files being processed: " << nfiles_ << std::endl;
@@ -77,7 +77,7 @@ void Analyzer::runCLUE() {
       weight_.clear();
       rechits_id_.clear();
 
-      out_pair = this->_readTree( this->names_[i].first, x_, y_, layer_, weight_, rechits_id_, impactX_, impactY_ );
+      out_pair = this->_readTree( this->names_[i], x_, y_, layer_, weight_, rechits_id_, impactX_, impactY_ );
       nevents = out_pair.first;
       beam_energy = out_pair.second;
       beam_energies_[i] = beam_energy;
@@ -98,7 +98,7 @@ void Analyzer::runCLUE() {
 	      unsigned int layeridx = layer_.at(iEvent).at(j) - 1;
 	      if(layeridx > this->lmax - 1)
 		continue;
-	      if( ! ecut_selection(weight_.at(iEvent).at(j), layeridx) )
+	      if( this->clean_hits_ and ! ecut_selection(weight_.at(iEvent).at(j), layeridx) )
 		continue;
 	      tot_hits_per_layer.at(layeridx) += 1;
 	      tot_en_per_layer.at(layeridx) += weight_.at(iEvent).at(j);
@@ -148,16 +148,18 @@ void Analyzer::runCLUE() {
 	    }
 	  this->layer_fracs_.at(i).push_back( fracs_tmp );
 	  this->layer_hitvars_.at(i).push_back( hitvars_tmp );
-
+	  std::cout << "check5" << std::endl;
 	  //calculate per cluster and per layer clusterized number of hits and energy
 	  clueAna.calculateClusterDepVars( clueAlgo.getHitsPosX(), clueAlgo.getHitsPosY(), clueAlgo.getHitsWeight(), clueAlgo.getHitsClusterId(), clueAlgo.getHitsLayerId(), impactX_[iEvent], impactY_[iEvent] );
+	  std::cout << "check6" << std::endl;
 	  clusterdep_vars = clueAna.getTotalClusterDepOutput();
+	  std::cout << "check7" << std::endl;
 	  this->clusterdep_.at(i).push_back( clusterdep_vars );
 	}
     }
 }
 
-std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
+std::pair<unsigned int, float> Analyzer::_readTree( const std::pair<std::string, std::string>& innames,
 			std::vector< std::vector<float> >& x, std::vector< std::vector<float> >& y, 
 			std::vector< std::vector<unsigned int> >& layer, std::vector< std::vector<float> >& weight, 
 	                std::vector< std::vector<unsigned int> >& rechits_id,
@@ -165,8 +167,27 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
   //enable parallel execution
   ROOT::EnableImplicitMT( ncpus_ );
   //creates RDataFrame object
-  std::string intree = "relevant_branches";
-  ROOT::RDataFrame d( intree.c_str(), infile.c_str() );
+  ROOT::RDataFrame d( innames.second.c_str(), innames.first.c_str() );
+  auto colNames = d.GetColumnNames();
+  std::string impX_str, impY_str, beamEn_str;
+  if( std::find(colNames.begin(), colNames.end(), "impactX_shifted") == colNames.end() and
+      std::find(colNames.begin(), colNames.end(), "impactY_shifted") == colNames.end() and
+      std::find(colNames.begin(), colNames.end(), "beamEnergy") == colNames.end() )
+    {
+      impX_str = "std::vector<float> v(" + std::to_string(detectorConstants::totalnlayers) + "); return v;";
+      impY_str = "std::vector<float> v(" + std::to_string(detectorConstants::totalnlayers) + "); return v;";
+      beamEn_str = "return 50.f;";
+    }
+  else
+    {
+      impX_str = "return impactX_shifted;";
+      impY_str = "return impactY_shifted;";
+      beamEn_str = "return beamEnergy;";
+    }
+  auto d2 = d.Define("impactX_shifted_new", impX_str);
+  d2 = d2.Define("impactY_shifted_new", impY_str);
+  d2 = d2.Define("beamEnergy_new", beamEn_str);
+  
   //declare data vectors per event to be separately filled by independent cpu threads. dimension: (ncpus, nentries)
   std::array< std::vector< std::vector<float> >, ncpus_ > x_split;
   std::array< std::vector< std::vector<float> >, ncpus_ > y_split;
@@ -196,8 +217,8 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
   };
 
   //loop over the TTree pointed by the RDataFrame
-  d.ForeachSlot(fill, {"ce_clean_x", "ce_clean_y", "ce_clean_layer", "ce_clean_energy_MeV", "ce_clean_detid", "beamEnergy",
-	"impactX_shifted", "impactY_shifted"});
+  d2.ForeachSlot(fill, {"ce_clean_x", "ce_clean_y", "ce_clean_layer", "ce_clean_energy_MeV", "ce_clean_detid", "beamEnergy_new",
+		       "impactX_shifted_new", "impactY_shifted_new"});
 
   //calculate number of events taking into account that ncpus is just a hint to EnableImplicitMT
   std::vector<unsigned int> nevents_v;
@@ -254,7 +275,7 @@ bool Analyzer::ecut_selection(const float& energy, const unsigned int& layer)
   return energy > ecut_ * detectorConstants::sigmaNoiseSiSensor / endeposited_mip * weight_tmp;
 }
 
-void Analyzer::sum_energy(const bool& with_ecut)
+void Analyzer::sum_energy()
 {
   std::mutex mut; //anonymous function to pass to RDataFrame.ForEach()
 
@@ -269,7 +290,7 @@ void Analyzer::sum_energy(const bool& with_ecut)
 			{
 			  if(ce_layer[ien] > this->lmax)
 			    continue;
-			  if(with_ecut and ! ecut_selection(ce_en[ien], ce_layer[ien]-1))
+			  if(this->clean_hits_ and ! ecut_selection(ce_en[ien], ce_layer[ien]-1))
 			    continue;
 
 			  entot += ce_en[ien];
@@ -287,7 +308,7 @@ void Analyzer::sum_energy(const bool& with_ecut)
 			 {
 			   if(ce_layer[ien] > this->lmax)
 			     continue;
-			   if(with_ecut and ! ecut_selection(ce_en[ien], ce_layer[ien]-1))
+			   if(this->clean_hits_ and ! ecut_selection(ce_en[ien], ce_layer[ien]-1))
 			     continue;
 
 			   entot += ce_en[ien];
@@ -303,12 +324,22 @@ void Analyzer::sum_energy(const bool& with_ecut)
 
       //define dataframe that owns the TTree
       ROOT::RDataFrame d(this->names_[i].second.c_str(), this->names_[i].first.c_str());
+      auto colNames = d.GetColumnNames();
+      std::string beamEn_str;
+  
+      if( std::find(colNames.begin(), colNames.end(), "beamEnergy") == colNames.end() )
+	beamEn_str = "return 50.f;";
+      else
+	beamEn_str = "return beamEnergy;";
+
+      auto d2 = d.Define("beamEnergy_new", beamEn_str);
+      
       //store the contents of the TTree according to the specified columns
       en_total_[i].clear();
       if(this->st_ == SHOWERTYPE::EM)
-	d.Foreach(sum_ce, {"ce_clean_energy_MeV", "ce_clean_layer", "beamEnergy"});
+	d2.Foreach(sum_ce, {"ce_clean_energy_MeV", "ce_clean_layer", "beamEnergy_new"});
       else if(this->st_ == SHOWERTYPE::HAD)
-	d.Foreach(sum_ahc, {"ce_clean_energy_MeV", "ce_clean_layer", "ahc_clean_energy_MeV", "beamEnergy"});
+	d2.Foreach(sum_ahc, {"ce_clean_energy_MeV", "ce_clean_layer", "ahc_clean_energy_MeV", "beamEnergy_new"});
     }
 };
 

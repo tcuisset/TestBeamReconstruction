@@ -384,7 +384,7 @@ if __name__ == '__main__':
     #local CMSSW variables and paths
     eos_base = '/eos/user'
     cms_user = subprocess.check_output(b'echo $USER', shell=True, encoding='utf-8').split('\n')[0]
-    release = 'CMSSW_11_1_0_pre2/src/' #'/' + subprocess.check_output(b'echo $CMSSW_VERSION', shell=True, encoding='utf-8').split('\n')[0] + '/src/'
+    release = 'TestBeamAnalysis/src/' #'/' + subprocess.check_output(b'echo $CMSSW_VERSION', shell=True, encoding='utf-8').split('\n')[0] + '/src/'
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
 

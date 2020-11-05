@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 declare -a ENERGIES=("20" "30" "50" "80" "100" "120" "150" "200" "250" "300")
-declare -a DATATYPES=("data" "sim_proton" "sim_noproton")
+declare -a DATATYPES=("data" "sim_proton" "sim_noproton" "sim_cmssw")
 declare -a SHOWERTYPES=("em" "had")
 declare -a STEPS=("selection" "analysis")
 
@@ -48,7 +48,7 @@ while true; do
 		echo "Ntuple id: ${NTUPLEID}";
 	    fi
 	    shift 2;;
-		
+
 	--datatype)
 	    if [ -n "$2" ]; then
 		if [[ " ${DATATYPES[@]} " =~ " ${2} " ]]; then
@@ -136,7 +136,8 @@ if [[ -z "${DATATYPE}" ]]; then
     printf "\n"
     exit 1;
 fi
-if [[ ( "${DATATYPE}" == *"sim"* ) && ( "${NTUPLEID}" -gt 4 ) ]]; then
+if [[ ( ( "${DATATYPE}" == "sim_proton" ) || ( "${DATATYPE}" == "sim_noproton" ) )
+	&& ( "${NTUPLEID}" -gt 4 ) ]]; then
     echo "Simulation data has Ntuples numbered from 0 to 4."
     exit 1;
 fi
@@ -147,8 +148,16 @@ if [[ -z "${SHOWERTYPE}" ]]; then
     printf "\n"
     exit 1;
 fi
+if [[ ( "${DATATYPE}" == "sim_cmssw" ) && ( "${STEP}" == "selection" ) ]]; then
+    echo "The locally produced CMSSW simulation samples do not require any selection step."
+    exit 1;
+fi
 if [[ ( "${DATATYPE}" == "sim_noproton" ) && ( "${SHOWERTYPE}" == "had" ) ]]; then
     echo "There is no proton-free sample for hadronic showers."
+    exit 1;
+fi
+if [[ ( "${DATATYPE}" == "sim_cmssw" ) && ( "${SHOWERTYPE}" != "em" ) ]]; then
+    echo "The locally produced CMSSW simulation samples only took into account the EE section."
     exit 1;
 fi
 if [[ -z "${ENERGY}" ]]; then
@@ -156,6 +165,10 @@ if [[ -z "${ENERGY}" ]]; then
     printf "Accepted values are: "
     printf "%s " "${ENERGIES[@]}"
     printf "[GeV].\n"
+    exit 1;
+fi
+if [[ ( "${DATATYPE}" == "sim_cmssw" ) && ( "${ENERGY}" -ne 50 ) ]]; then
+    echo "The locally produced CMSSW simulation samples were produced for 50GeV em showers."
     exit 1;
 fi
 if [[ ( -z "${TAG}" ) && ( "${STEP}" == "analysis" ) ]]; then
@@ -180,7 +193,7 @@ export SCRAM_ARCH="slc7_amd64_gcc820"
 if [ $(varExists "${INIT_FOLDER}") = true ] && [ $(varExists "${CMSSW_PATH}") = true ] &&
     [ $(varExists "${HOME_DIR}") = true ] && [ $(varExists "${ANALYSIS_PATH}") = true ]; then
     INIT_FOLDER=$(pwd);
-    ANALYSIS_PATH="/afs/cern.ch/user/${USER:0:1}/${USER}/TestBeamAnalysis/src/";
+    ANALYSIS_PATH="${CMSSW_BASE}/src/";
 else
     echo "Use different variable names.";
     exit 0;
@@ -222,10 +235,20 @@ elif [[ "${STEP}" == "analysis" ]]; then
     OUTNAME="outEcut"
     if [[ "${DATATYPE}" == "data" ]]; then
 	INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_${NTUPLEID}.root";
+	INTREE="relevant_branches"
+	CLEAN=1
     elif [[ "${DATATYPE}" == "sim_noproton" ]]; then
 	INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root"
+	INTREE="relevant_branches"
+	CLEAN=1
     elif [[ "${DATATYPE}" == "sim_proton" ]]; then
 	INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root"
+	INTREE="relevant_branches"
+	CLEAN=1
+    elif [[ "${DATATYPE}" == "sim_cmssw" ]]; then
+	INFILE="/eos/user/b/bfontana/SinglePhoton/sim_cmssw_${NTUPLEID}.root"
+	INTREE="ntuplizer/relevant_branches"
+	CLEAN=0
     fi
 
     EOS_PATH="/eos/user/b/bfontana/TestBeamReconstruction/${TAG}/"
@@ -243,7 +266,8 @@ elif [[ "${STEP}" == "analysis" ]]; then
     OUTFILE3="${EOS_PATH}${CLUSTERFOLDER}${OUTNAME}_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
 
     echo "Input file: ${INFILE}"
+    echo "Input tree: ${INTREE}"
     echo -e "Output files:\n${OUTFILE1}\n${OUTFILE2}\n${OUTFILE3}"
-    analyze_data_exe "${INFILE}" "${OUTFILE1}" "${OUTFILE2}" "${OUTFILE3}" "${SHOWERTYPE}" "${W0}" "${DPOS}";
+    analyze_data_exe "${INFILE}" "${OUTFILE1}" "${OUTFILE2}" "${OUTFILE3}" "${INTREE}" "${SHOWERTYPE}" "${W0}" "${DPOS}" "${CLEAN}";
 
 fi

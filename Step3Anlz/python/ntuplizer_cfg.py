@@ -1,9 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 from Configuration.ProcessModifiers.convertHGCalDigisSim_cff import convertHGCalDigisSim
-
 from Configuration.Eras.Era_Phase2_cff import Phase2
 
-# options to customise the production of the ntuples
 import FWCore.ParameterSet.VarParsing as VarParsing
 options = VarParsing.VarParsing('analysis')
 options.parseArguments()
@@ -29,14 +27,14 @@ process.TFileService = cms.Service( "TFileService",
                                     fileName = cms.string(options.outputFile),
                                     closeFileFast = cms.untracked.bool(True) )
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
 process.source = cms.Source(
     "PoolSource",
-    fileNames = cms.untracked.vstring(options.inputFiles)
+    fileNames = cms.untracked.vstring(options.inputFiles[0])
 )
 
-process.ntuplizer = cms.EDAnalyzer( 'Ntuplizer',
+process.ntuplizer = cms.EDAnalyzer( 'SinglePhotonSpatialResolutionNtuplizer',
                                     hgcalRecHitsEE = cms.InputTag("HGCalRecHit", "HGCEERecHits"),
                                     hgcalRecHitsFH = cms.InputTag("HGCalRecHit", "HGCHEFRecHits"),
                                     hgcalRecHitsBH = cms.InputTag("HGCalRecHit", "HGCHEBRecHits") )
