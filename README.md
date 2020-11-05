@@ -58,45 +58,6 @@ Step #3 was divided into independent micro-analysis:
 
     - spatial resolution: it is possible to summarize its information across multiple tags (datasets with different conditions)
 
-Scripts' description
-------------------
-
-- ```CondorJobs/```: everything related to submitting jobs to the grid
-
-    - ```bin/write_dag.cc```: creates all the required DAG submission files. It takes as input the ```CondorJobs/ntuple_ids.txt``` file which lists all the run numbers available and was generated with a combination of ```ls``` (applied to the folder with the input Ntuples) and ```awk```. This file is used in combination with a ```std::map``` stored in ```CondorJobs/interface/run_en_map.h``` which pairs run numbers with incident beam energy in GeV.
-
-    - ```launcher.sh```: used by the jobs to run step #1 and #2
-
-    - ```clean.sh```: very simple utility that cleans the output files of the jobs once they are not needed
-
-    - ```setup.sh```: writes a file named ```ntuple_ids.txt``` which contains the identifiers of the [data ntuples](#input-ntuples) to be considered for the electromagnetic or hadronic analysis 
-
-- ```DataProcessing/```: everything related to running CLUE and extract its relevant quantities
-
-    - ```src/CLUEAlgo.cc```, ```interface/CLUEAlgo.h``` and some other files in ```interface/```: the CLUE standalone algorithm
-
-    - ```src/CLUEAnalysis.cc``` and ```interface/CLUEAnalysis.h```: calculation of all the quantities of interested from the results obtained by CLUE
-
-    - ```src/selector.cc``` and ```interface/selector.h```: class that manages step #1
-
-    - ```bin/process_data.cc```: executable that runs step #1
-
-    - ```src/analyzer.cc``` and ```interface/analyzer.h```: class that manages step #2
-
-    - ```bin/analyze_data.cc```: executable that runs step #2
-
-    - ```interface/range.h```: utility that allows looping over containers by index
-
-    - ```python/resp_res.py```: run the hit-level analysis type
-
-    - ```python/layer_dep.py```: run the layer-level analysis type
-
-    - ```python/cluster_dep.py```: run the cluster-level analysis type
-
-    - ```python/summarize_tags.py```: summaryze cluster spatial resolution related quantities for different tags
-
-- ```Step3Anlz/```: a CMSSW subpackage to create simulation files. This analysis framework can then be applied both to testbeam data and to CMS simulated data, making comparisons possible. Simulated data is converted into flat Ntuples, so that it can be treated in the exact same way as testbeam data.
-
 Standard workflow
 -----------------
 
@@ -164,6 +125,49 @@ python DataProcessing/python/summarize_tags.py --datatype data --showertype em -
 where the tags to be used have to be specified manually in the macro.
 
 Please run the scripts with the ```--help``` option for more information, including running the last step only for a subset of final variables (this can be done at **layer-level** and **cluster-level**).
+
+Scripts' description
+------------------
+
+- ```CondorJobs/```: everything related to submitting jobs to the grid
+
+    - ```bin/write_dag.cc```: creates all the required DAG submission files. It takes as input the ```CondorJobs/ntuple_ids.txt``` file which lists all the run numbers available and was generated with a combination of ```ls``` (applied to the folder with the input Ntuples) and ```awk```. This file is used in combination with a ```std::map``` stored in ```CondorJobs/interface/run_en_map.h``` which pairs run numbers with incident beam energy in GeV.
+
+    - ```launcher.sh```: used by the jobs to run step #1 and #2
+
+    - ```clean.sh```: very simple utility that cleans the output files of the jobs once they are not needed
+
+    - ```setup.sh```: writes a file named ```ntuple_ids.txt``` which contains the identifiers of the [data ntuples](#input-ntuples) to be considered for the electromagnetic or hadronic analysis 
+
+- ```DataProcessing/```: everything related to running CLUE and extract its relevant quantities
+
+    - ```src/CLUEAlgo.cc```, ```interface/CLUEAlgo.h``` and some other files in ```interface/```: the CLUE standalone algorithm
+
+    - ```src/CLUEAnalysis.cc``` and ```interface/CLUEAnalysis.h```: calculation of all the quantities of interested from the results obtained by CLUE
+
+    - ```src/selector.cc``` and ```interface/selector.h```: class that manages step #1
+
+    - ```bin/process_data.cc```: executable that runs step #1
+
+    - ```src/analyzer.cc``` and ```interface/analyzer.h```: class that manages step #2
+
+    - ```bin/analyze_data.cc```: executable that runs step #2
+
+    - ```interface/range.h```: utility that allows looping over containers by index
+
+    - ```python/resp_res.py```: run the hit-level analysis type
+
+    - ```python/layer_dep.py```: run the layer-level analysis type
+
+    - ```python/cluster_dep.py```: run the cluster-level analysis type
+
+    - ```python/summarize_tags.py```: summaryze cluster spatial resolution related quantities for different tags
+
+- ```Step3Anlz/```: a CMSSW subpackage to create simulation files. This analysis framework can then be applied both to testbeam data and to CMS simulated data, making comparisons possible. Simulated data is converted into flat Ntuples, so that it can be treated in the exact same way as testbeam data.
+
+    - ```plugins/SinglePhotonSpatialResolutionNtuplizer.cc```: CMSSW ntuplizer ```EDAnalyzer```
+
+    - ```python/ntuplizer_cfg.py```: run the ```EDAnalyzer```.
     
 Plots
 -----------------
