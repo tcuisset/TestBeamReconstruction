@@ -1,33 +1,36 @@
 Goal
 -----------------
 
-Assess the performance of HGCAL's clustering algorithm (CLUE) with testbeam data and simulation. Working under CMSSW 11_1_0_pre2 release.
+Assess the performance of HGCAL's clustering algorithm (CLUE) with testbeam data and simulation. Working under ```CMSSW_11_1_0_pre7``` release.
 
-Status
+Current and future milestones
 -----------------
 
 - Electromagnetic showers' studies completed and first draft of the Detector's Note ready for submission
-- Now starting to replicate the same studies using hadronic showers
+- Same study near to completion for hadronic showers up to layer #40
+- Assessing potential cluster position bias in HGCAL's official reconstruction after being observed in testbeam data
 
 Pipeline description
 -----------------
 
-**1)** *selection stage*: the original NTuples are pruned, in order to keep the relevant information only
+**0) Production:** if required, cred Ntuples from GEN-SIM-RECO files
 
-**2)** *analysis stage*:
+**1) Selection:** the original NTuples are pruned, in order to keep the relevant information only
+
+**2) Analysis:**
 
 - CLUE is run over the pruned NTuples
 	
-- most of the quantities of interest are calculated and stored in ```csv``` and ```ROOT``` files
+- Most of the quantities of interest are calculated and stored in ```csv``` and ```ROOT``` files
 
-**3)** *residual analysis and plotting stage*:
+**3) Residual analysis and plotting:**
 
-- fits, histogram manipulation and dataframe operations are performed
+- Fits, histogram manipulation and dataframe operations are performed
 	
-- quantities of interest are plotted using [BokehPlot](https://bitbucket.org/bfontana/bokehplot), a custom bokeh wrapper (under development, but already capable of doing the most common plotting operations)
+- Quantities of interest are plotted using [BokehPlot](https://bitbucket.org/bfontana/bokehplot), a custom bokeh wrapper (under development)
 
 
-Steps 1) and 2) were chained with a Directed Acyclic Graph (DAG) that runs within HTCondor.
+Steps 1) and 2) were chained with a Directed Acyclic Graph (DAG) which runs within HTCondor.
 
 Input NTuples
 ------------------
@@ -63,7 +66,15 @@ Standard workflow
 
 The macros were written having a particular user in mind, but extremely simple and straightforward adaptations can make it work for other users as well, since the code is reasonably abstract. In particular, running everything over a new dataset should be easy.
 
-If the user wants to process the ```sim_proton``` dataset with electromagnetic showers, he/she should do the following:
+- Produce *step3* files
+
+If the input Ntuples are ready to be used, as in the ones mentioned [here](https://github.com/b-fontana/TestBeamReconstruction/tree/master#input-ntuples), ignore this step. Otherwise, in order to produce Ntuples from existing *step3* (GEN-SIM_RECO) files run the following, which will in turn run a custom ```EDAnalyzer```:
+
+```bash
+condor_submit CondorJobs/sim_cmssw_producer.sub
+```
+
+Remember to change the input files and possibly other parameters directly in the ```.sub``` file.
 
 - Produce DAG files
 
@@ -78,13 +89,9 @@ where ```--tag``` is used for identifying a particular data production step, and
 The parameters ```--w0``` and ```--dpos``` refer to the log-weighted algorithm which calculates the position of the clusters and is described [here](https://indico.cern.ch/event/776790/contributions/3230583/attachments/1761511/2865143/positionResolutionFor2DClusters_amartell_29Nov.pdf) and implemented in ```src/CLUEAnalysis.cc``` in the ```calculateClusterDepVars()``` function.
 
 For hadronic showers, ```--showertype had``` is the option to use.
-If only the analysis step is required, one can do
+If only the analysis step is required, one can add ```--last_step_only```.
 
-```bash
-write_dag --datatype sim_proton --showertype em --tag <anything> --w0 2.9 --dpos 1.3 --last_step_only
-```
-
-- Run the jobs (the submission files will be stored under ```CondorJobs/submission/selection/``` and ```CondorJobs/submission/analysis/```
+- Run the jobs (the submission files will be stored under ```CondorJobs/submission/selection/``` and ```CondorJobs/submission/analysis/```):
 
 ```bash
 condor_submit_dag CondorJobs/clue_sim_proton_em_sometag.dag
