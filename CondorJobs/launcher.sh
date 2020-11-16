@@ -3,6 +3,7 @@ declare -a ENERGIES=("20" "30" "50" "80" "100" "120" "150" "200" "250" "300")
 declare -a DATATYPES=("data" "sim_proton" "sim_noproton" "sim_cmssw")
 declare -a SHOWERTYPES=("em" "had")
 declare -a STEPS=("selection" "analysis")
+declare -a CELLTYPES=("LD" "HD")
 
 varExists() { 
     # Checks whether a certain environment variable already exists
@@ -18,7 +19,7 @@ varExists() {
 ##########################
 ########PARSING###########
 ##########################
-ARGS=`getopt -o "" -l ",ntupleid:,step:,datatype:,showertype:,energy:,tag:,w0:,dpos:" -n "getopts_${0}" -- "$@"`
+ARGS=`getopt -o "" -l ",ntupleid:,step:,datatype:,showertype:,energy:,tag:,w0:,dpos:,celltype:" -n "getopts_${0}" -- "$@"`
 
 #Bad arguments
 if [ $? -ne 0 ];
@@ -70,6 +71,19 @@ while true; do
 		else
 		    echo "'--showertype' can be one of the following:"
 		    printf "%s " "${SHOWERTYPES[@]}"
+		    exit 1;
+		fi
+	    fi
+	    shift 2;;
+
+	--celltype)
+	    if [ -n "$2" ]; then
+		if [[ " ${CELLTYPES[@]} " =~ " ${2} " ]]; then
+		    CELLTYPE="${2}";
+		    echo "Cell type: ${CELLTYPE}";
+		else
+		    echo "'--celltype' can be one of the following:"
+		    printf "%s " "${CELLTYPES[@]}"
 		    exit 1;
 		fi
 	    fi
@@ -160,6 +174,11 @@ if [[ ( "${DATATYPE}" == "sim_cmssw" ) && ( "${SHOWERTYPE}" != "em" ) ]]; then
     echo "The locally produced CMSSW simulation samples only took into account the EE section."
     exit 1;
 fi
+if [[ ( ( "${DATATYPE}" == "sim_cmssw" ) && ( -z "${CELLTYPE}" ) )
+       || ( ( "${DATATYPE}" != "sim_cmssw" ) && ( ! -z "${CELLTYPE}" ) ) ]]; then
+    echo "The cell type should only and always be specified with '--datatype=sim_cmssw'."
+    exit 1;
+fi
 if [[ -z "${ENERGY}" ]]; then
     echo "Please specify the beam energy."
     printf "Accepted values are: "
@@ -228,7 +247,11 @@ if [[ "${STEP}" == "selection" ]]; then
     fi
     echo "Input file: ${INFILE}"
     echo "Output file: ${OUTFILE}"
-    process_data_exe "${INFILE}" "${OUTFILE}" "${DATATYPE}" "${SHOWERTYPE}" "${ENERGY}";
+
+    printf "Command:\n"
+    COMMAND="process_data_exe ${INFILE} ${OUTFILE} ${DATATYPE} ${SHOWERTYPE} ${ENERGY}";
+    echo ${COMMAND};
+    ${COMMAND};
 
 elif [[ "${STEP}" == "analysis" ]]; then
 
@@ -246,7 +269,7 @@ elif [[ "${STEP}" == "analysis" ]]; then
 	INTREE="relevant_branches"
 	CLEAN=1
     elif [[ "${DATATYPE}" == "sim_cmssw" ]]; then
-	INFILE="/eos/user/b/bfontana/SinglePhoton/sim_cmssw_${NTUPLEID}.root"
+	INFILE="/eos/user/b/bfontana/SinglePhoton/${CELLTYPE}/sim_cmssw_${NTUPLEID}.root"
 	INTREE="ntuplizer/relevant_branches"
 	CLEAN=0
     fi
@@ -268,6 +291,10 @@ elif [[ "${STEP}" == "analysis" ]]; then
     echo "Input file: ${INFILE}"
     echo "Input tree: ${INTREE}"
     echo -e "Output files:\n${OUTFILE1}\n${OUTFILE2}\n${OUTFILE3}"
-    analyze_data_exe "${INFILE}" "${OUTFILE1}" "${OUTFILE2}" "${OUTFILE3}" "${INTREE}" "${SHOWERTYPE}" "${W0}" "${DPOS}" "${CLEAN}";
+
+    printf "Command:\n"
+    COMMAND="analyze_data_exe ${INFILE} ${OUTFILE1} ${OUTFILE2} ${OUTFILE3} ${INTREE} ${SHOWERTYPE} ${W0} ${DPOS} ${CLEAN}";
+    echo ${COMMAND};
+    ${COMMAND};
 
 fi

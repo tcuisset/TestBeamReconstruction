@@ -68,7 +68,7 @@ The macros were written having a particular user in mind, but extremely simple a
 
 - Produce *step3* files
 
-If the input Ntuples are ready to be used, as in the ones mentioned [here](https://github.com/b-fontana/TestBeamReconstruction/tree/master#input-ntuples), ignore this step. Otherwise, in order to produce Ntuples from existing *step3* (GEN-SIM_RECO) files run the following, which will in turn run a custom ```EDAnalyzer```:
+If the input Ntuples are ready to be used, as in the ones [mentioned before](https://github.com/b-fontana/TestBeamReconstruction/tree/master#input-ntuples), ignore this step. Otherwise, in order to produce Ntuples from existing *step3* files (GEN-SIM-RECO) run the following, which will in turn run a custom ```EDAnalyzer```:
 
 ```bash
 condor_submit CondorJobs/sim_cmssw_producer.sub

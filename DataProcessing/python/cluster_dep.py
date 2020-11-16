@@ -10,7 +10,7 @@ import pandas as pd
 import concurrent.futures
 import argparse
 from tqdm import tqdm
-from argparser import add_args
+from argparser import AddArgs
 from scipy.interpolate import UnivariateSpline
 import utils
 from utils import CacheManager
@@ -146,7 +146,7 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
 
     executor = concurrent.futures.ThreadPoolExecutor()
     nbins = 200 if variable == 'pos' else 100 if variable == 'spatialres_xy' else 500
-    limit_up, limit_down = 4, 2
+    limit_up, limit_down = 150, 0
     fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height}
     fig_kwargs.update(axis_kwargs)
 
@@ -166,6 +166,7 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
             nhits_selection = (df_[nn] >= nhits_min) & (df_[nn] < nhits_max)
             df_ = df_[nhits_selection]
             df_layer = df_
+            #print(df_layer)
             df_layer.to_hdf(hdf5_name, key='layer'+str(ilayer), complevel=compression_level, mode='r+' if ilayer != 1 else 'w')
             
             df_layer_out = df_[ nhits_selection & (df_[nx] < -98) & (df_[ny] < -98)]
@@ -394,8 +395,7 @@ def main():
 
 if __name__ == '__main__':
     #define parser for user input arguments
-    parser = argparse.ArgumentParser()
-    FLAGS, _ = add_args(parser, 'clusters')
+    FLAGS, _ = AddArgs().clusters()
     utils.input_sanity_checks(FLAGS, sys.argv)
 
     #define analysis constants
@@ -425,7 +425,7 @@ if __name__ == '__main__':
     cache_file_names = [os.path.join(cache_file_name_start, 'uproot_cache_clusterdep_beamen' + str(x) + '.root') for x in beam_energies]
 
     utils.print_input_data(data_paths)
-
+    
     #create output files with plots
     utils.create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag) )
     output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)

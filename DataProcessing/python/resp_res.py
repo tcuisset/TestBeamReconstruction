@@ -369,8 +369,7 @@ def main():
         final_plots()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    FLAGS, _ = argparser.add_args(parser, 'resp_res')
+    FLAGS, _ = AddArgs().resp_res()
     utils.input_sanity_checks(FLAGS, sys.argv)
 
     #beam energies used

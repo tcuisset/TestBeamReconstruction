@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 declare -a ENERGIES=("20" "30" "50" "80" "100" "120" "150" "200" "250" "300")
-declare -a DATATYPES=("data" "sim_proton" "sim_noproton")
+declare -a DATATYPES=("data" "sim_proton" "sim_noproton" "sim_cmssw")
 declare -a SHOWERTYPES=("em" "had")
 declare -a ANALYSISTYPES=("layerdep" "clusterdep")
 
@@ -93,6 +93,10 @@ if [[ -z "${SHOWERTYPE}" ]]; then
 fi  
 if [[ ( "${DATATYPE}" == "sim_noproton" ) && ( "${SHOWERTYPE}" == "had" ) ]]; then
     echo "There is no proton-free sample for hadronic showers."
+    exit 1;
+fi
+if [[ ( "${DATATYPE}" == "sim_cmssw" ) && ( "${SHOWERTYPE}" == "had" ) ]]; then
+    echo "The CMSSW sample was produced with em showers only."
     exit 1;
 fi
 if [[ -z "${ANALYSISTYPE}" ]]; then

@@ -16,6 +16,7 @@ void print_vector_elements(const std::vector<std::string>& v)
 struct DataParameters {
   std::string datatype;
   std::string showertype;
+  std::string celltype;
   bool last_step_only = false;
   std::string tag;
   std::string w0;
@@ -52,13 +53,15 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
     }
   }
   fw << "initialdir = " + base << std::endl;
-  fw << "executable = launcher.sh" << std::endl;
+  fw << "executable = $(initialdir)launcher.sh" << std::endl;
 
   fw << "should_transfer_files = YES" << std::endl;
   fw << "when_to_transfer_output = ON_EXIT" << std::endl;
   fw << "public_input_files = ../../../../TestBeamAnalysis/bin/" + std::string(getenv("SCRAM_ARCH")) + "/" + cpp_exec << std::endl;
   
   fw << "arguments = --ntupleid " + n + " --datatype " + p.datatype + " --showertype " + p.showertype + " --tag " + p.tag;
+  if(p.datatype == "sim_cmssw")
+    fw << " --celltype " + p.celltype;
   fw << " --w0 " + p.w0 + " --dpos " + p.dpos;
   fw << " --energy " + std::to_string(energy);
   fw << " --step " + mode;
@@ -67,10 +70,11 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
   fw << "universe = vanilla" << std::endl;
   fw << "requirements = (OpSysAndVer =?= \"CentOS7\")" << std::endl;
 
-  std::string outname = mode + "_" + p.datatype + "_" + p.showertype + "_" + p.tag + "." + n;
-  fw << "output = $(initialdir)out/" + outname + ".out" << std::endl;
-  fw << "error =  $(initialdir)out/" + outname + ".err" << std::endl;
-  fw << "log =    $(initialdir)log/" + outname + ".log" << std::endl;
+  std::string outname = p.celltype == "" ? "" : p.celltype + "_";
+  outname += mode + "_" + p.datatype + "_" + p.showertype + "_" + p.tag + "." + n;
+  fw << "output = out/" + outname + ".out" << std::endl;
+  fw << "error =  out/" + outname + ".err" << std::endl;
+  fw << "log =    log/" + outname + ".log" << std::endl;
 
   fw << "getenv = True" << std::endl;
   
@@ -121,7 +125,7 @@ void write_dag_repetitions(const std::string& filepath, const std::vector<std::s
   f_write << std::endl;
 }
 
-void write_v1(const std::string& submission_folder, const std::string& base, const DataParameters& p)
+std::string write_v1(const std::string& submission_folder, const std::string& base, const DataParameters& p)
 {
   std::ifstream infile(base + "ntuple_" + p.datatype + "_ids.txt");
   std::vector<int> file_id;
@@ -146,7 +150,11 @@ void write_v1(const std::string& submission_folder, const std::string& base, con
       file_id = a;
     }
 
-  std::string filepath = base + "clue_" + p.datatype + "_" + p.showertype + "_" + p.tag;
+  std::string filepath = base + "clue_" + p.datatype + "_" + p.showertype;
+  if(p.showertype == "sim_cmssw")
+    filepath += "_" + p.celltype;
+  filepath += "_" + p.tag;
+  
   std::vector<std::string> steps;
   if(p.last_step_only) {
     steps = {"analysis"};
@@ -170,7 +178,7 @@ void write_v1(const std::string& submission_folder, const std::string& base, con
 	  if(p.datatype == "data")
 	    thisJobname += "_beamen" + std::to_string(run_en_map.at(file_id[i])) + "_" + n + "_" + p.tag;
 	  else if(p.datatype == "sim_cmssw")
-	    thisJobname += "_beamen50_" + n + "_" + p.tag;
+	    thisJobname += "_" + p.celltype + "_beamen50_" + n + "_" + p.tag;
 	  
 	  jobnames[thisStep].push_back(thisJobname);
 	  jobpaths[thisStep].push_back(base + submission_folder + steps[thisStep] + "/" + thisJobname + ".sub");
@@ -197,9 +205,11 @@ void write_v1(const std::string& submission_folder, const std::string& base, con
       if(!p.last_step_only)
 	write_submission_file(thisID, jobpaths[1][i], base, steps[1], thisEnergy, p); 
     }
+
+  return filepath;
 }
 
-void write_v2(const std::string& submission_folder, const std::string& base, const DataParameters& p)
+std::string write_v2(const std::string& submission_folder, const std::string& base, const DataParameters& p)
 {
   constexpr unsigned int ntuples_per_energy = 5; //ntuples indexes with simulation data range from 0 to 4
   std::vector<unsigned int> energies = {{20, 30, 50, 80, 100, 120, 150, 200, 250, 300}};
@@ -253,17 +263,31 @@ void write_v2(const std::string& submission_folder, const std::string& base, con
 	  write_submission_file(j, jobpaths[1][j + i*ntuples_per_energy], base, steps[1], energies[i], p);
       }
   }
+
+  return filepath;
 }
 
 int main(int argc, char **argv) {
+
+  //required arguments with limited options
   std::unordered_map< std::string, std::vector<std::string> > valid_args;
   valid_args["--datatype"] = {"data", "sim_noproton", "sim_proton", "sim_cmssw"};
   valid_args["--showertype"] = {"em", "had"};
-  std::vector<std::string> free_args = {"--tag", "--w0", "--dpos"}; //any argument allowed
+
+  //conditional arguments with limited options
+  std::unordered_map< std::string, std::vector<std::string> > cond_valid_args;
+  cond_valid_args["--celltype"] = {"LD", "HD"};
+
+  //free arguments: any argument allowed
+  std::vector<std::string> free_args = {"--tag", "--w0", "--dpos"};
+
+  //optional arguments: booleans
   std::vector<std::string> optional_args = {"--last_step_only"}; //any argument allowed
-  
-  int nargsmin = (valid_args.size()+free_args.size()) * 2 + 1;
-  if(argc < nargsmin or argc > nargsmin+1) {
+
+  //check all input arguments correspond to expected parameters
+  int nargsmin = (valid_args.size()+free_args.size()) * 2 + 2;
+  int nargsmax = nargsmin + cond_valid_args.size()*2;
+  if(argc < nargsmin or argc > nargsmax) {
     std::cout << "You must specify the following:" << std::endl;
     for(auto& elem : valid_args) {
       std::string elem2 = elem.first;
@@ -282,6 +306,7 @@ int main(int argc, char **argv) {
   for(int iarg=0; iarg<argc; ++iarg) {
     if(std::string(argv[iarg]).find("--") != std::string::npos and
        valid_args.find(std::string(argv[iarg])) == valid_args.end() and
+       cond_valid_args.find(std::string(argv[iarg])) == cond_valid_args.end() and
        std::find(free_args.begin(), free_args.end(), std::string(argv[iarg])) == free_args.end() and
        std::find(optional_args.begin(), optional_args.end(), std::string(argv[iarg])) == optional_args.end())
       {
@@ -294,6 +319,7 @@ int main(int argc, char **argv) {
       }
   }
 
+  //store all input arguments except conditional ones (which depend on the result of this step)
   DataParameters pars;
   std::unordered_map<std::string, std::string> chosen_args;
   for(int iarg=0; iarg<argc; ++iarg)
@@ -302,7 +328,7 @@ int main(int argc, char **argv) {
       if( valid_args.find(argvstr) != valid_args.end() ) {
 	if( std::find(valid_args[argvstr].begin(), valid_args[argvstr].end(), std::string(argv[iarg+1])) == valid_args[argvstr].end() )
 	  {
-	    std::cout << "The data type has to be one of the following: ";
+	    std::cout << "The input argument has to be one of the following: ";
 	    print_vector_elements(valid_args[argvstr]);
 	    return 1;
 	  }
@@ -320,6 +346,38 @@ int main(int argc, char **argv) {
   pars.tag = chosen_args["--tag"];
   pars.w0 = chosen_args["--w0"];
   pars.dpos = chosen_args["--dpos"];
+
+  //store all conditional arguments according to their specific dependencies
+  for(int iarg=1; iarg<argc; ++iarg)
+    {
+      std::string argvstr = std::string(argv[iarg]);
+      if( cond_valid_args.find(argvstr) != cond_valid_args.end() ) {
+	if( std::find(cond_valid_args[argvstr].begin(), cond_valid_args[argvstr].end(), std::string(argv[iarg+1])) == cond_valid_args[argvstr].end() )
+	  {
+	    std::cout << "The conditional input argument has to be one of the following: ";
+	    print_vector_elements(cond_valid_args[argvstr]);
+	    return 1;
+	  }
+	else
+	  chosen_args[argvstr] = std::string(argv[iarg+1]);
+      }
+    }
+
+  pars.celltype = chosen_args["--celltype"];
+  if( (pars.celltype != "" and pars.datatype != "sim_cmssw") or
+      (pars.celltype == "" and pars.datatype == "sim_cmssw") )
+    {
+      std::cout << "The option '--celltype' must be specified when '--datatype sim_cmssw', and does not make sense otherwise." << std::endl;
+      return 1;
+    }
+
+  //additional sanity checks
+  if(pars.datatype == "sim_cmssw" and pars.last_step_only == false)
+    {
+      std::cout << "Please specify '--last_step_only' when using '--datatype sim_cmssw', since the pruning stage can be skipped." << std::endl;
+      return 1;
+    }
+  
   
   //define common variables
   std::string cmssw_base = std::getenv("CMSSW_BASE");
@@ -332,9 +390,13 @@ int main(int argc, char **argv) {
   system( (std::string("mkdir -p ") + condorjobs_base + std::string("selection/")).c_str() );
   system( (std::string("mkdir -p ") + condorjobs_base + std::string("analysis/")).c_str() );
 
-  //write DAG files
+  //write DAG (Direct Acyclic Graph) files
+  std::string filepath;
   if(pars.datatype == "data" or pars.datatype == "sim_cmssw")
-    write_v1(submission_folder, condorjobs_base, pars);
+    filepath = write_v1(submission_folder, condorjobs_base, pars);
   else
-    write_v2(submission_folder, condorjobs_base, pars);
+    filepath = write_v2(submission_folder, condorjobs_base, pars);
+
+  std::cout << "DAG submission file: " + filepath << std::endl;
+  std::cout << "Submission files: " + cmssw_base + condorjobs + submission_folder << std::endl;
 }

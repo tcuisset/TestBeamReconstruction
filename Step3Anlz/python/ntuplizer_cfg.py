@@ -37,6 +37,7 @@ process.source = cms.Source(
 process.ntuplizer = cms.EDAnalyzer( 'SinglePhotonSpatialResolutionNtuplizer',
                                     hgcalRecHitsEE = cms.InputTag("HGCalRecHit", "HGCEERecHits"),
                                     hgcalRecHitsFH = cms.InputTag("HGCalRecHit", "HGCHEFRecHits"),
-                                    hgcalRecHitsBH = cms.InputTag("HGCalRecHit", "HGCHEBRecHits") )
+                                    hgcalRecHitsBH = cms.InputTag("HGCalRecHit", "HGCHEBRecHits"),
+                                    simVertexes    = cms.InputTag("g4SimHits", "") )
 
 process.p = cms.Path(process.ntuplizer)

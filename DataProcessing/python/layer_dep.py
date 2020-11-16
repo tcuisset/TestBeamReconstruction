@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import UnivariateSpline
 import argparse
-from argparser import add_args
+from argparser import AddArgs
 import utils
 
 def graphs_single(df, columns_field, iframe, do_2D=False, energy_index=None):
@@ -366,8 +366,7 @@ def main():
 
 if __name__ == '__main__':
     #define parser for user input arguments
-    parser = argparse.ArgumentParser()
-    FLAGS, _ = add_args(parser, 'layers')
+    FLAGS, _ = AddArgs().layers()
     utils.input_sanity_checks(FLAGS, sys.argv)
 
     #define analysis constants
