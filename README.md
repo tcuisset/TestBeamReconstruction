@@ -13,7 +13,7 @@ Current and future milestones
 Pipeline description
 -----------------
 
-**0) Production:** if required, cred Ntuples from GEN-SIM-RECO files
+**0) Production:** if required, create Ntuples from GEN-SIM-RECO files
 
 **1) Selection:** the original NTuples are pruned, in order to keep the relevant information only
 
@@ -71,15 +71,15 @@ The macros were written having a particular user in mind, but extremely simple a
 If the input Ntuples are ready to be used, as in the ones [mentioned before](https://github.com/b-fontana/TestBeamReconstruction/tree/master#input-ntuples), ignore this step. Otherwise, in order to produce Ntuples from existing *step3* files (GEN-SIM-RECO) run the following, which will in turn run a custom ```EDAnalyzer```:
 
 ```bash
-condor_submit CondorJobs/sim_cmssw_producer.sub
+condor_submit CondorJobs/sim_cmssw_producer_LD.sub
+condor_submit CondorJobs/sim_cmssw_producer_HD.sub
 ```
-
-Remember to change the input files and possibly other parameters directly in the ```.sub``` file.
+which refer to the separately studied low and high cell densities. Remember to change the input files and possibly other parameters directly in the ```.sub``` files.
 
 - Produce DAG files
 
 ```bash
-write_dag --datatype sim_proton --showertype em --tag <anything> --w0 2.9 --dpos 1.3
+write_dag --datatype sim_proton --showertype em --celltype <LD|HD> --tag <anything> --w0 2.9 --dpos 1.3
 ```
 
 where ```--tag``` is used for identifying a particular data production step, and should ideally indicate the conditions the data was produced; the data will be stored in a folder named after the tag. Given that the selection stage is seen as something general, the ```--tag``` only affects the analysis step.

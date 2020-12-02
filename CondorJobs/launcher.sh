@@ -298,3 +298,4 @@ elif [[ "${STEP}" == "analysis" ]]; then
     ${COMMAND};
 
 fi
+echo "##########################"

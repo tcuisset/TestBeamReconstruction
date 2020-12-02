@@ -127,7 +127,12 @@ void write_dag_repetitions(const std::string& filepath, const std::vector<std::s
 
 std::string write_v1(const std::string& submission_folder, const std::string& base, const DataParameters& p)
 {
-  std::ifstream infile(base + "ntuple_" + p.datatype + "_ids.txt");
+  std::string infile_path;
+  if(p.datatype == "sim_cmssw")
+    infile_path = base + "ntuple_" + p.datatype + "_" + p.celltype + "_ids.txt";
+  else
+    infile_path = base + "ntuple_" + p.datatype + "_ids.txt";
+  std::ifstream infile(infile_path);
   std::vector<int> file_id;
   int _a;
   while (infile >> _a)

@@ -466,7 +466,6 @@ void Analyzer::save_to_file_cluster_dependent(const std::string& filename) {
 	  tmptree.Branch(bname_dx.c_str(),     &arr_dx[ilayer]);
 	  tmptree.Branch(bname_dy.c_str(),     &arr_dy[ilayer]);	 
 	}
-
       //loop over TTree and fill branches
       unsigned int nentries = this->clusterdep_.at(i).size(); // read the number of entries in the t3
       for (unsigned int ientry = 0; ientry<nentries; ++ientry) 
@@ -486,5 +485,4 @@ void Analyzer::save_to_file_cluster_dependent(const std::string& filename) {
       file.Write();
       file.Close();
     }
-
 }
