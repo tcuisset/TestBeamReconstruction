@@ -1,0 +1,14 @@
+initialdir=/afs/cern.ch/work/b/bfontana/TestBeamAnalysis/src/UserCode/CondorJobs/
+
+executable = $(initialdir)sim_cmssw_producer.sh
+arguments = --infile $(FILENAME) --celltype HD
+universe = vanilla
+requirements = (OpSysAndVer =?= "CentOS7")
+output = out/$(Row).out
+error = out/$(Row).err
+log = log/$(Row).log
+getenv = True
+RequestMemory = 70MB
++JobFlavour = "espresso"
+
+queue FILENAME matching files /eos/cms/store/group/dpg_hgcal/comm_hgcal/bfontana/spatial_res_HD_TruePointing/SinglePhoton_parallel_HD/step3_nopu_GEN-SIM-RECO-FEVTDEBUGHLT_TruePoint_HD/201201_142145/0000/out_*root
