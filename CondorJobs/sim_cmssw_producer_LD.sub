@@ -11,4 +11,4 @@ getenv = True
 RequestMemory = 70MB
 +JobFlavour = "espresso"
 
-queue FILENAME matching files /eos/cms/store/group/dpg_hgcal/comm_hgcal/bfontana/spatial_res_LD_TruePointing/SinglePhoton_parallel_LD/step3_nopu_GEN-SIM-RECO-FEVTDEBUGHLT_TruePoint_LD/201201_152005/0000/out_*root
+queue FILENAME matching files /eos/cms/store/group/dpg_hgcal/comm_hgcal/bfontana/spatial_res_LD_Final/SinglePhoton_parallel_LD/step3_nopu_GEN-SIM-RECO-FEVTDEBUGHLT_Final_LD/201203_105422/0000/out_*root

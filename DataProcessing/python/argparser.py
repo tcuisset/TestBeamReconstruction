@@ -19,7 +19,7 @@ class AddArgs():
     
     def _help_choices(self, s, choices):
         s += ' / '.join(choices)
-        return s[:-3] + '.'
+        return s + '.'
     
     def resp_res(self):
         self.parser.add_argument(

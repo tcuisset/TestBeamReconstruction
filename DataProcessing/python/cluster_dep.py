@@ -146,7 +146,6 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
 
     executor = concurrent.futures.ThreadPoolExecutor()
     nbins = 200 if variable == 'pos' else 100 if variable == 'spatialres_xy' else 500
-    limit_up, limit_down = 150, 0
     fig_kwargs = {'plot_width': plot_width, 'plot_height': plot_height}
     fig_kwargs.update(axis_kwargs)
 
@@ -206,35 +205,39 @@ def graphs_per_layer(tree, cache, axis_kwargs, iframe, variable, energy_index=2,
             if variable == 'pos':
                 if weight_by_energy:
                     bokehplot.histogram( np.histogram2d( x=df_layer_cut[nx].to_numpy(), y=df_layer_cut[ny].to_numpy(), bins=nbins,
-                                                         weights=df_layer_cut[ne].to_numpy(), range=[[-limit_up,limit_down],[-limit_down,limit_up]] ),
+                                                         weights=df_layer_cut[ne].to_numpy(),
+                                                         #range=[[97,104],[16,23]] ),
+                                                         range=[[37,46],[15,24]] ),
                                          idx=ilayer-1+thisCut*nlayers, iframe=iframe, style='quad%Cividis', fig_kwargs=tmp_fig_kwargs)
                 else:
-                    bokehplot.histogram( np.histogram2d(x=df_layer_cut[nx].to_numpy(), y=df_layer_cut[ny].to_numpy(), bins=nbins, range=[[-limit_up,limit_down],[-limit_down,limit_up]]),
+                    bokehplot.histogram( np.histogram2d(x=df_layer_cut[nx].to_numpy(), y=df_layer_cut[ny].to_numpy(), bins=nbins,
+                                                        range=[[80,130],[-50,70]]),
                                          idx=ilayer-1+thisCut*nlayers, iframe=iframe, style='quad%Cividis', fig_kwargs=tmp_fig_kwargs)
 
-            elif variable == 'spatialres_x':
-                bokehplot.histogram( np.histogram(df_layer_cut[ndx].to_numpy(), bins=nbins, range=[-1.,1.]), 
-                                     idx=ilayer-1, iframe=iframe, color='green', fig_kwargs=tmp_fig_kwargs)
+            elif variable == 'spatialres_x' or variable == 'spatialres_y':
+                if variable == 'spatialres_x': select, thiscolor = ndx, 'green'
+                else: select, thiscolor = ndy, 'blue'
+                bokehplot.histogram( np.histogram(df_layer_cut[select].to_numpy(), bins=nbins, range=[-1.,1.]), 
+                                     idx=ilayer-1, iframe=iframe, color=thiscolor, fig_kwargs=tmp_fig_kwargs)
                 common_args = {'pdf': 'gaus', 'line_width': 2.5, 'alpha': 0.8}
-                coeff, var = bokehplot.fit(p0=[2000, 0.,  .2], idx=ilayer-1, iframe=iframe, obj_idx=0, color='black', line_dash='dashed', debug=False, **common_args)
+                coeff, var = bokehplot.fit(p0=[2000, 0., .2], idx=ilayer-1, iframe=iframe, obj_idx=0, color='black', line_dash='dashed', debug=False, **common_args)
 
-            elif variable == 'spatialres_y':
-                bokehplot.histogram( np.histogram(df_layer_cut[ndy].to_numpy(), bins=nbins, range=[-1.,1.]), 
-                                     idx=ilayer-1+thisCut*nlayers, iframe=iframe, color='blue', fig_kwargs=tmp_fig_kwargs )
-                common_args = {'pdf': 'gaus', 'line_width': 2.5, 'alpha': 0.8}
-                coeff, var = bokehplot.fit(p0=[2000, 0.,  .2], idx=ilayer-1, iframe=iframe, obj_idx=0, color='black', line_dash='dashed', debug=False, **common_args)
+                label_options = dict(idx=ilayer-1, iframe=iframe, x_units='screen', y_units='screen', text_color='red')
+                err = np.sqrt(np.diag(var))
+                pm = u"\u00B1"
+                bokehplot.label(label='Mean: ' + str(round(coeff[1],3)) + pm + str(round(err[1],3)), x=375, y=290, **label_options)
+                bokehplot.label(label='Sigma: ' + str(round(coeff[2],3)) + pm + str(round(err[2],3)), x=371, y=270, **label_options)
+
+                bias.append( coeff[1] )
+                res.append( coeff[2] )
+                ebias.append( round(err[1],3) )
+                eres.append( round(err[2],3) )
+
             elif variable == 'spatialres_xy':
                 bokehplot.histogram( np.histogram2d(x=df_layer_cut[ndx].to_numpy(), y=df_layer_cut[ndy].to_numpy(), bins=nbins, range=[[-1.,1.],[-1.,1.]]), idx=ilayer-1, iframe=iframe, style='quad%CET_L17', fig_kwargs=tmp_fig_kwargs )
                 kwargs_other = {'x.axis_label': "#hits / cluster", 'y.axis_label': "hit energy [MeV]",
                                 't.text': text, 'plot_width': plot_width, 'plot_height': plot_height }
                 bokehplot.histogram( np.histogram2d(x=df_layer_cut[nn].to_numpy(), y=df_layer_cut[ne].to_numpy(), bins=(15,100), range=[[0.1,15.],[0.1,200]]), idx=ilayer-1+nlayers, iframe=iframe, style='quad%CET_L17', scale='log', fig_kwargs=kwargs_other )
-
-            if variable == 'spatialres_x' or variable == 'spatialres_y':
-                bias.append( coeff[1] )
-                res.append( coeff[2] )
-                err = np.sqrt(np.diag(var))
-                ebias.append( round(err[1],3) )
-                eres.append( round(err[2],3) )
 
         del df_layer
 
@@ -441,7 +444,7 @@ if __name__ == '__main__':
                                         'posx' + version2:     ( outlambda(version2 + '_clusters_posx.html'),   size ),
                                         'posy' + version2:     ( outlambda(version2 + '_clusters_posy.html'),   size ),
                                         'posx_posy':           ( outlambda('_plot_clusters_posx_vs_posy.html'.format(FLAGS.chosen_energy)), ncuts*nlayers + 1 ),
-                                        'dx':                  ( outlambda('_plot_clusters_dx_nowindow.html'),  nlayers),
+                                        'dx':                  ( outlambda('_plot_clusters_dx.html'),           nlayers),
                                         'dy':                  ( outlambda('_plot_clusters_dy.html'),           nlayers),
                                         'dx_dy':               ( outlambda('_plot_clusters_dxdy.html'),         2*nlayers ),
                                         'dx_2D':               ( outlambda('_plot_clusters_dx2D.html'),         size ),

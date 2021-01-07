@@ -35,7 +35,7 @@ Steps 1) and 2) were chained with a Directed Acyclic Graph (DAG) which runs with
 Input NTuples
 ------------------
 
-*Electromagnetic showers*
+**Electromagnetic showers**
 
 - **data**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/``` (HGCAL only)
 
@@ -43,7 +43,7 @@ Input NTuples
 
 - **sim_noproton**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v3/electrons/```
 
-*Hadronic showers* (there are no simulations available without proton contamination)
+**Hadronic showers** (there are no simulations available without proton contamination)
 
 - **data**: ```/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/AHCAL_ntuples/v8/``` (HGCAL+AHCAL)
 
@@ -71,12 +71,13 @@ The macros were written having a particular user in mind, but extremely simple a
 If the input Ntuples are ready to be used, as in the ones [mentioned before](https://github.com/b-fontana/TestBeamReconstruction/tree/master#input-ntuples), ignore this step. Otherwise, in order to produce Ntuples from existing *step3* files (GEN-SIM-RECO) run the following, which will in turn run a custom ```EDAnalyzer```:
 
 ```bash
-condor_submit CondorJobs/sim_cmssw_producer_LD.sub
-condor_submit CondorJobs/sim_cmssw_producer_HD.sub
+condor_submit UserCode/CondorJobs/sim_cmssw_producer.sub cell_type=<LD|HD> input_files=<full_path>/*root
 ```
-which refer to the separately studied low and high cell densities. Remember to change the input files and possibly other parameters directly in the ```.sub``` files.
+where you must define the cell density and the full path of the input files. One job will be created for each file present in ```input_files```, after wild-card expansion, and the output files will be created under ```/eos/user/b/bfontana/SinglePhoton/$(cell_type)/```.
 
 - Produce DAG files
+
+Start by running
 
 ```bash
 write_dag --datatype sim_proton --showertype em --celltype <LD|HD> --tag <anything> --w0 2.9 --dpos 1.3
@@ -85,6 +86,14 @@ write_dag --datatype sim_proton --showertype em --celltype <LD|HD> --tag <anythi
 where ```--tag``` is used for identifying a particular data production step, and should ideally indicate the conditions the data was produced; the data will be stored in a folder named after the tag. Given that the selection stage is seen as something general, the ```--tag``` only affects the analysis step.
 
 > **_WARNING:_** If the same tag is specified more than once, the files will be written in the same folder. If the ```showertype``` and ```datatype``` are also the same, the files will be rewritten, and the old ones lost.
+
+If ```datatype``` is ```data``` or ```sim_cmssw``` the above script takes as input a file containing the identification of all the *step3* files which will be used as an input. Run
+
+```bash
+bash UserCode/CondorJobs/setup.sh --celltype LD
+```
+
+for the latter case, or modify the ```UserCode/CondorJobs/setup.sh``` script otherwise. This step can also be used to run the following analysis just on a subset of the whole data.
 
 The parameters ```--w0``` and ```--dpos``` refer to the log-weighted algorithm which calculates the position of the clusters and is described [here](https://indico.cern.ch/event/776790/contributions/3230583/attachments/1761511/2865143/positionResolutionFor2DClusters_amartell_29Nov.pdf) and implemented in ```src/CLUEAnalysis.cc``` in the ```calculateClusterDepVars()``` function.
 

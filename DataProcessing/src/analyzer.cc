@@ -364,7 +364,6 @@ void Analyzer::save_to_file(const std::string& filename) {
 
 void Analyzer::save_to_file_layer_dependent(const std::string& filename) {
   std::cout << "SAVE: " << filename << std::endl;
-  std::cout << "NFILES: " << nfiles_ << std::endl;
   for(unsigned int i=0; i<nfiles_; ++i)
     {
       //create TTree
@@ -434,7 +433,6 @@ void Analyzer::save_to_file_layer_dependent(const std::string& filename) {
 }
 
 void Analyzer::save_to_file_cluster_dependent(const std::string& filename) {
-  std::cout << std::endl;
   std::cout << "SAVE: " << filename << std::endl;
   for(unsigned int i=0; i<nfiles_; ++i)
     {

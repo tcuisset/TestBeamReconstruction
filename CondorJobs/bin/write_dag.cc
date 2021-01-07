@@ -382,8 +382,7 @@ int main(int argc, char **argv) {
       std::cout << "Please specify '--last_step_only' when using '--datatype sim_cmssw', since the pruning stage can be skipped." << std::endl;
       return 1;
     }
-  
-  
+    
   //define common variables
   std::string cmssw_base = std::getenv("CMSSW_BASE");
   std::string condorjobs = "/src/UserCode/CondorJobs/";

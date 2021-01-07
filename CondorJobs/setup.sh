@@ -1,9 +1,36 @@
 #!/usr/bin/env bash
+declare -a CELLTYPES=("LD" "HD")
 
-#Generate file with the IDs of the Ntuples to be processed
-#awk #1: removes everything up to 'ntuples_'
-#awk #2: removes everything up to after the number
-#awk #3: removes all blank lines
-MAINPATH=$HOME/$CMSSW_VERSION"/src/UserCode/"
-echo "Generating new 'ntuple_ids.txt' file..."
-ls -l $MAINPATH/ntuples_in/ | awk '{print substr($9,8)}' | awk '{print substr($1,1,length($1)-5)}' | awk '/./' > $MAINPATH"/CondorJobs/"ntuple_ids.txt
+ARGS=`getopt -o "" -l ",celltype:" -n "getopts_${0}" -- "$@"`
+
+#Bad arguments
+if [ $? -ne 0 ];
+then
+  exit 1
+fi
+eval set -- "$ARGS"
+while true; do
+    case "$1" in
+	--celltype)
+	    if [ -n "$2" ]; then
+		if [[ " ${CELLTYPES[@]} " =~ " ${2} " ]]; then
+		    CELLTYPE="${2}";
+		    echo "Cell type: ${CELLTYPE}";
+		else
+		    echo "'--celltype' can be one of the following:"
+		    printf "%s " "${CELLTYPES[@]}"
+		    exit 1;
+		fi
+	    fi
+	    shift 2;;
+
+	--)
+	    shift
+	    break;;
+    esac
+done
+
+MAINPATH="${CMSSW_BASE}/src/UserCode/CondorJobs/"
+OUTFILE="${MAINPATH}ntuple_sim_cmssw_${CELLTYPE}_ids.txt"
+echo "Generating '${OUTFILE}' file..."
+ls -l /eos/user/b/bfontana/SinglePhoton/${CELLTYPE}/ | awk 'NR>1 {sub("\\.root", "", $9); sub("sim_cmssw_", "", $9); print $9}' > ${OUTFILE}
