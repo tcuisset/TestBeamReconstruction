@@ -1,6 +1,3 @@
-Goal
------------------
-
 Assess the performance of HGCAL's clustering algorithm (CLUE) with testbeam data and simulation. Working under ```CMSSW_11_1_0_pre7``` release.
 
 Current and future milestones
@@ -8,7 +5,31 @@ Current and future milestones
 
 - Electromagnetic showers' studies completed and first draft of the Detector's Note ready for submission
 - Same study near to completion for hadronic showers up to layer #40
-- Assessing potential cluster position bias in HGCAL's official reconstruction after being observed in testbeam data
+- Assessing potential cluster position bias in HGCAL's official reconstruction after being observed in testbeam data (this implied running a CMSSW simulation)
+
+Installation (```lxplus``` only)
+-----------------
+
+- Create a clean CMSSW release (tested with ```CMSSW_11_1_0_pre7```)
+
+```shell
+scram project -n <name> CMSSW_11_1_0_pre7
+cd <name>/src/
+cmsenv
+```
+
+- Clone the repository:
+
+```shell
+git clone git@github.com:b-fontana/TestBeamReconstruction.git UserCode
+```
+
+- Compilation:
+
+```shell
+scram b -j4
+```
+
 
 Pipeline description
 -----------------
