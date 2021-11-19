@@ -290,10 +290,11 @@ int main(int argc, char **argv) {
   std::vector<std::string> optional_args = {"--last_step_only"}; //any argument allowed
 
   //check all input arguments correspond to expected parameters
-  int nargsmin = (valid_args.size()+free_args.size()) * 2 + 2;
-  int nargsmax = nargsmin + cond_valid_args.size()*2;
+  int nargsmin = (valid_args.size()+free_args.size()) * 2;
+  int nargsmax = nargsmin + cond_valid_args.size()*2 + 2;
+  
   if(argc < nargsmin or argc > nargsmax) {
-    std::cout << "You must specify the following:" << std::endl;
+    std::cout << "You must specify the following input arguments:" << std::endl;
     for(auto& elem : valid_args) {
       std::string elem2 = elem.first;
       elem2.erase(0,2);
