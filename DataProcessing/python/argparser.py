@@ -48,6 +48,12 @@ class AddArgs():
             required=True,
             help=self._help_choices('Choose the showertype to run the analysis on: ', self.showertype_choices)
         )
+        requiredNamedGroup.add_argument(
+            '--tag',
+            type=str,
+            required=True,
+            help='Identify the tag used for producing the input files.'
+        )
         return self.parser.parse_known_args()
 
     def clusters(self):

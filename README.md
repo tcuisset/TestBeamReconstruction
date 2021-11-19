@@ -30,6 +30,17 @@ git clone git@github.com:b-fontana/TestBeamReconstruction.git UserCode
 scram b -j4
 ```
 
+- Install all ```python``` packages with ```conda```:
+
+```shell
+conda config --add channels conda-forge
+conda update --all
+conda create -n TestBeamReco python=3.9 
+conda install colorcet pandas h5py bokeh scipy uproot
+conda install selenium #export png pictures
+conda install firefox geckodriver #export png pictures
+conda install -c bfontana bokehplot #custom bokeh wrapper
+```
 
 Pipeline description
 -----------------
