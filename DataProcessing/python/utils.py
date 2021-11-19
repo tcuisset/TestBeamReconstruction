@@ -106,6 +106,7 @@ def height_for_plot_bins(bins, scale='linear', nlayers=28):
 def input_sanity_checks(flags, argv):
     """Checks the input arguments for obvious mistakes"""
     for elem in argv:
+        print(flags.__dict__.keys())
         if '--' in elem and elem[2:] not in flags.__dict__.keys():
             raise IOError('ERROR: You passed an undefined input argument!')
     if flags.showertype == 'had' and flags.datatype == 'sim_noproton':

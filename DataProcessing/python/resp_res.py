@@ -8,7 +8,7 @@ import argparse
 import pandas as pd
 import numpy as np
 import h5py
-import argparser
+from argparser import AddArgs
 from functools import reduce
 import bokehplot as bkp
 from bokeh.models import Range1d

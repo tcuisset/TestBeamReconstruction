@@ -46,7 +46,7 @@ class AddArgs():
             type=str,
             choices=self.showertype_choices,
             required=True,
-            help=self._help_choices('Choose the showertype to run the analysis on: ', shower_choices)
+            help=self._help_choices('Choose the showertype to run the analysis on: ', self.showertype_choices)
         )
         return self.parser.parse_known_args()
 
