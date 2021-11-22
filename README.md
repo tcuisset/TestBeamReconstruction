@@ -48,6 +48,9 @@ git clone git@bitbucket.org:bfontana/bokehplot.git <destination_name>
 export PYTHONPATH=${PYTHONPATH}:${PWD}/<destination_name>
 ```
 
+Check the package is installed by running the ```python``` REPL and executing ```import bokehplot```.
+
+
 Pipeline description
 -----------------
 
