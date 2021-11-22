@@ -39,7 +39,13 @@ conda create -n TestBeamReco python=3.9
 conda install colorcet pandas h5py bokeh scipy uproot
 conda install selenium #export png pictures
 conda install firefox geckodriver #export png pictures
-conda install -c bfontana bokehplot #custom bokeh wrapper
+```
+
+To get ```bokehplot``` clone th repository and the destination folder to your ```PYTHONPATH```:
+
+```shell
+git clone git@bitbucket.org:bfontana/bokehplot.git <destination_name>
+export PYTHONPATH=${PYTHONPATH}:<destination_folder/destination_name>
 ```
 
 Pipeline description
