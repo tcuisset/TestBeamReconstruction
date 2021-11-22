@@ -329,10 +329,10 @@ def analyze_data():
     utils.create_dir( presentation_path )
     print(save_folder)
     print(presentation_path)
-    #for i in range(len(nfigs)-1):
-    #    bokehplot.save_frame(iframe=i, plot_width=plot_width, plot_height=plot_width, show=False)
-    #    bokehplot.save_figs(iframe=i, path=save_folder, mode='png')
-    #    bokehplot.save_figs(iframe=i, path=presentation_path, mode='png')
+    for i in range(len(nfigs)-1):
+       bokehplot.save_frame(iframe=i, plot_width=plot_width, plot_height=plot_width, show=False)
+       bokehplot.save_figs(iframe=i, path=save_folder, mode='png')
+       bokehplot.save_figs(iframe=i, path=presentation_path, mode='png')
 
     #Write data in the HDF5 format
     variables_to_store = [resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2]
@@ -353,9 +353,9 @@ def final_plots():
     frameid = bokehplot.get_nframes()-1
     response_and_resolution_graphs(*variables_stored, frameid=frameid)
 
-    #bokehplot.save_frame(iframe=frameid, plot_width=plot_width, plot_height=plot_width, nrows=1, ncols=3, show=False)
-    #bokehplot.save_figs(iframe=frameid, path=save_folder, mode='png')
-    #bokehplot.save_figs(iframe=frameid, path=presentation_path, mode='png')
+    bokehplot.save_frame(iframe=frameid, plot_width=plot_width, plot_height=plot_width, nrows=1, ncols=3, show=False)
+    bokehplot.save_figs(iframe=frameid, path=save_folder, mode='png')
+    bokehplot.save_figs(iframe=frameid, path=presentation_path, mode='png')
 
     hf.close()
 

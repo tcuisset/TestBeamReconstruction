@@ -63,7 +63,7 @@ void SinglePhotonSpatialResolutionNtuplizer::analyze(const edm::Event& iEvent, c
   //rechits
   edm::ESHandle<CaloGeometry> geom; 
   iSetup.get<CaloGeometryRecord>().get(geom); 
-  recHitTools->setGeometry(*geom);
+  //recHitTools->setGeometry(*geom); UNCOMMENT!!!!!!!!!!!!
     
   //vertexes
   edm::Handle<std::vector<SimVertex>> simVertexesHandle;
@@ -89,7 +89,7 @@ void SinglePhotonSpatialResolutionNtuplizer::analyze(const edm::Event& iEvent, c
       rechit_detid_.push_back( it->detid() );
       rechit_layer_.push_back( static_cast<unsigned int>(layer) );
       
-      std::pair<float, float> xy = ddd_->locateCell(detid, false);
+      std::pair<float, float> xy = std::make_pair(0.f,0.f); //UNCOMMENT!!!!! ddd_->locateCell(detid, false);
       rechit_x_.push_back(xy.first);
       rechit_y_.push_back(xy.second);
       rechit_z_.push_back( abs(ddd_->waferZ(layer, true)) );
