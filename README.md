@@ -41,11 +41,11 @@ conda install selenium #export png pictures
 conda install firefox geckodriver #export png pictures
 ```
 
-To get ```bokehplot``` clone th repository and the destination folder to your ```PYTHONPATH```:
+To get ```bokehplot``` clone the repository and add its target location to your ```PYTHONPATH```:
 
 ```shell
 git clone git@bitbucket.org:bfontana/bokehplot.git <destination_name>
-export PYTHONPATH=${PYTHONPATH}:<destination_folder/destination_name>
+export PYTHONPATH=${PYTHONPATH}:${PWD}/<destination_name>
 ```
 
 Pipeline description
