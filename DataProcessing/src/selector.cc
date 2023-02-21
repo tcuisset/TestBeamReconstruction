@@ -241,8 +241,6 @@ void Selector::select_relevant_branches()
   t_had1->AddFriend(t_had2, "myFriend");
   d = new ROOT::RDataFrame(*t_had1);
 
-  ROOT::EnableImplicitMT( ncpus_ ); //enable parallelism
-  ROOT::Detail::RDF::ColumnNames_t clean_cols = {"rechit_energy", "rechit_layer", "rechit_chip", "rechit_channel", "rechit_module", "rechit_amplitudeHigh", "rechit_noise_flag", "st"};
   ROOT::Detail::RDF::ColumnNames_t clean_cols_detid = clean_cols; clean_cols_detid.insert( clean_cols_detid.begin(), "rechit_detid");
   ROOT::Detail::RDF::ColumnNames_t clean_cols_x = clean_cols; clean_cols_x.insert( clean_cols_x.begin(), "rechit_x");
   ROOT::Detail::RDF::ColumnNames_t clean_cols_y = clean_cols; clean_cols_y.insert( clean_cols_y.begin(), "rechit_y");

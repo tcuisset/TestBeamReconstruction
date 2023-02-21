@@ -7,6 +7,8 @@ int main(int argc, char **argv) {
   std::string showertype = std::string(argv[4]);
   int beam_energy = std::stoi( std::string(argv[5]) );
 
+  ROOT::EnableImplicitMT(4); //enable parallelism
+
   Selector selector(input_file, output_file, datatype, showertype, beam_energy);
   selector.select_relevant_branches();
   

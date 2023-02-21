@@ -162,19 +162,18 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
 			std::vector< std::vector<unsigned int> >& layer, std::vector< std::vector<float> >& weight, 
 	                std::vector< std::vector<unsigned int> >& rechits_id,
 		        std::vector< std::vector<float> >& impactX, std::vector< std::vector<float> >& impactY) {
-  //enable parallel execution
-  ROOT::EnableImplicitMT( ncpus_ );
   //creates RDataFrame object
   std::string intree = "relevant_branches";
   ROOT::RDataFrame d( intree.c_str(), infile.c_str() );
+  unsigned int ncpus = ROOT::GetThreadPoolSize();
   //declare data vectors per event to be separately filled by independent cpu threads. dimension: (ncpus, nentries)
-  std::array< std::vector< std::vector<float> >, ncpus_ > x_split;
-  std::array< std::vector< std::vector<float> >, ncpus_ > y_split;
-  std::array< std::vector< std::vector<unsigned int> >, ncpus_ > layer_split;
-  std::array< std::vector< std::vector<float> >, ncpus_ > weight_split;
-  std::array< std::vector< std::vector<unsigned int> >, ncpus_ > rechits_id_split;
-  std::array< std::vector< std::vector<float> >, ncpus_ > impactX_split;
-  std::array< std::vector< std::vector<float> >, ncpus_ > impactY_split;
+  std::vector< std::vector< std::vector<float> > > x_split(ncpus);
+  std::vector< std::vector< std::vector<float> > > y_split(ncpus);
+  std::vector< std::vector< std::vector<unsigned int> > > layer_split(ncpus);
+  std::vector< std::vector< std::vector<float> > > weight_split(ncpus);
+  std::vector< std::vector< std::vector<unsigned int> > > rechits_id_split(ncpus);
+  std::vector< std::vector< std::vector<float> > > impactX_split(ncpus);
+  std::vector< std::vector< std::vector<float> > > impactY_split(ncpus);
 
   float beam_energy = 0;
   //lambda function passed to RDataFrame.ForeachSlot(); the first parameters gives the thread number contained in [0;ncpus[
@@ -201,7 +200,7 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
 
   //calculate number of events taking into account that ncpus is just a hint to EnableImplicitMT
   std::vector<unsigned int> nevents_v;
-  for(unsigned int iThread=0; iThread<ncpus_; ++iThread) {
+  for(unsigned int iThread=0; iThread<ncpus; ++iThread) {
     nevents_v.push_back( x_split[iThread].size() ); //assumes all the sizes are the same
   }
   unsigned int nevents = std::accumulate(nevents_v.begin(), nevents_v.end(), 0);
@@ -257,8 +256,6 @@ bool Analyzer::ecut_selection(const float& energy, const unsigned int& layer)
 void Analyzer::sum_energy(const bool& with_ecut)
 {
   std::mutex mut; //anonymous function to pass to RDataFrame.ForEach()
-
-  ROOT::EnableImplicitMT( ncpus_ ); //enable parallelism
 
   for(unsigned int i=0; i<nfiles_; ++i)
     {

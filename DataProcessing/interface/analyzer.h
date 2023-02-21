@@ -50,7 +50,6 @@ class Analyzer {
   
   //data
   size_t nfiles_;
-  static const int ncpus_ = 4;
   unsigned lmax=0;
   float dc_, kappa_, ecut_;
   SHOWERTYPE st_;

@@ -33,7 +33,6 @@ class Selector {
   SHOWERTYPE showertype;
   DATATYPE datatype;
   int beam_energy;
-  static const int ncpus_ = 4;
   mapT noise_map_;
   std::vector< std::pair<float,float> > shifts_map_;
   

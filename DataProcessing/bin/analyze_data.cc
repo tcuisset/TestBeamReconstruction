@@ -45,6 +45,9 @@ int main(int argc, char **argv) {
     st = SHOWERTYPE::EM;
   else if( showertype == "had" )
     st = SHOWERTYPE::HAD;
+
+  ROOT::EnableImplicitMT(4); //enable parallelism
+  
   analysis_CLUE(in_fname, out_fname, out_fname_layer_dependent, out_fname_cluster_dependent, in_tname, st, W0, dpos);
   return 0;
 }
