@@ -8,5 +8,5 @@
 <export>
   <lib name="1"></lib>
 </export>
-<Flags CXXFLAGS="-O0"/>
-<Flags CXXFLAGS="-g"/>
+<flags CXXFLAGS="-O0"/>
+<flags CXXFLAGS="-g"/>

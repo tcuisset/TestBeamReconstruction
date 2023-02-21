@@ -12,5 +12,5 @@
   <bin name="print_data_exe" file="print_data.cc"></bin>
   <bin name="print_file_names_exe" file="print_file_names.cc"></bin>
 </environment>
-<Flags CXXFLAGS="-O0"/>
-<Flags CXXFLAGS="-g"/>
+<flags CXXFLAGS="-O0"/>
+<flags CXXFLAGS="-g"/>

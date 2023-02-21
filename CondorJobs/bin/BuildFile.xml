@@ -7,5 +7,5 @@
 <environment>
   <bin name="write_dag" file="write_dag.cc"></bin>
 </environment>
-<Flags CXXFLAGS="-O0"/>
-<Flags CXXFLAGS="-g"/>
+<flags CXXFLAGS="-O0"/>
+<flags CXXFLAGS="-g"/>

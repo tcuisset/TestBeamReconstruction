@@ -33,5 +33,5 @@
 <use name="CommonTools/UtilAlgos"/>
 <use name="FWCore/ServiceRegistry"/>
 <flags   EDM_PLUGIN="1"/>
-<Flags CXXFLAGS="-O0"/>
-<Flags CXXFLAGS="-g"/>
+<flags CXXFLAGS="-O0"/>
+<flags CXXFLAGS="-g"/>
