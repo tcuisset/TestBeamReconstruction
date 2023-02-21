@@ -50,9 +50,8 @@ Selector::~Selector()
 
 void Selector::load_noise_values()
 {
-  std::string home( getenv("HOME") );
-  std::string rel( getenv("CMSSW_VERSION") );
-  std::string filename = home + "/" + rel + "/src/UserCode/DataProcessing/Noise_Map.txt";
+  std::string rel( getenv("CMSSW_BASE") );
+  std::string filename = rel + "/src/TestBeamReconstruction/DataProcessing/Noise_Map.txt";
   std::ifstream in(filename);
   if(!in.is_open())
     throw std::invalid_argument("File " + filename + " could not be opened.");
