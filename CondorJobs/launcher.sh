@@ -18,7 +18,7 @@ varExists() {
 ##########################
 ########PARSING###########
 ##########################
-ARGS=`getopt -o "" -l ",ntupleid:,step:,datatype:,showertype:,energy:,tag:,w0:,dpos:" -n "getopts_${0}" -- "$@"`
+ARGS=`getopt -o "" -l ",ntupleid:,step:,datatype:,showertype:,energy:,tag:,w0:,dpos:,outputfolder:" -n "getopts_${0}" -- "$@"`
 
 #Bad arguments
 if [ $? -ne 0 ];
@@ -108,6 +108,13 @@ while true; do
 	    fi
 	    shift 2;;
 	
+	--outputfolder)
+		if [ -n "$2" ]; then
+		OUTPUT_FOLDER="$2"
+		echo "Output folder: ${OUTPUT_FOLDER}";
+		fi
+		shift 2;;
+	
 	--)
 	    shift
 	    break;;
@@ -177,21 +184,22 @@ fi
 export XRD_NETWORKSTACK=IPv4
 export SCRAM_ARCH="slc7_amd64_gcc820"
 
-if [ $(varExists "${INIT_FOLDER}") = true ] && [ $(varExists "${CMSSW_PATH}") = true ] &&
-    [ $(varExists "${HOME_DIR}") = true ] && [ $(varExists "${ANALYSIS_PATH}") = true ]; then
-    INIT_FOLDER=$(pwd);
-    ANALYSIS_PATH="/afs/cern.ch/user/${USER:0:1}/${USER}/TestBeamAnalysis/src/";
-else
-    echo "Use different variable names.";
-    exit 0;
-fi
+# What is this supposed to do ?
+# if [ $(varExists "${INIT_FOLDER}") = true ] && [ $(varExists "${CMSSW_PATH}") = true ] &&
+#     [ $(varExists "${HOME_DIR}") = true ] && [ $(varExists "${ANALYSIS_PATH}") = true ]; then
+    
+#     ANALYSIS_PATH="/afs/cern.ch/user/${USER:0:1}/${USER}/TestBeamAnalysis/src/";
+# else
+#     echo "Use different variable names.";
+#     exit 0;
+# fi
 
-cd "${ANALYSIS_PATH}";
-source /afs/cern.ch/cms/cmsset_default.sh
-eval `scramv1 runtime -sh` #cmsenv substitute
+# cd "${ANALYSIS_PATH}";
+# source /afs/cern.ch/cms/cmsset_default.sh
+# eval `scramv1 runtime -sh` #cmsenv substitute
 
-#back to the job folder
-cd "${INIT_FOLDER}";
+# #back to the job folder
+# cd "${INIT_FOLDER}";
 
 if [[ "${STEP}" == "selection" ]]; then
 
@@ -201,17 +209,17 @@ if [[ "${STEP}" == "selection" ]]; then
 	elif [[ "${SHOWERTYPE}" == "had" ]]; then
 	    INFILE="/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ahcal-hgcal-merged-ntuples/ahcal_v8-hgcal_v16/merged_ntuple_${NTUPLEID}.root"; #HGCAL+AHCAL
 	fi
-	OUTFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_${NTUPLEID}.root";
+	OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_${NTUPLEID}.root";
     elif [[ "${DATATYPE}" == "sim_noproton" ]]; then
 	INFILE="/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v5/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
-	OUTFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
+	OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
     elif [[ "${DATATYPE}" == "sim_proton" ]]; then
 	if [[ "${SHOWERTYPE}" == "em" ]]; then
 	    INFILE="/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v3/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
 	elif [[ "${SHOWERTYPE}" == "had" ]]; then
        	    INFILE="/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v44_VtxBeam_v3/CorrectFHLay10/pions/ntuple_sim_config22_pdgID211_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root"
 	fi
-	OUTFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
+	OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
     fi
     echo "Input file: ${INFILE}"
     echo "Output file: ${OUTFILE}"
@@ -221,14 +229,14 @@ elif [[ "${STEP}" == "analysis" ]]; then
 
     OUTNAME="outEcut"
     if [[ "${DATATYPE}" == "data" ]]; then
-	INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_${NTUPLEID}.root";
+	INFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_${NTUPLEID}.root";
     elif [[ "${DATATYPE}" == "sim_noproton" ]]; then
-	INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root"
+	INFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root"
     elif [[ "${DATATYPE}" == "sim_proton" ]]; then
-	INFILE="/eos/user/b/bfontana/TestBeamReconstruction/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root"
+	INFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root"
     fi
 
-    EOS_PATH="/eos/user/b/bfontana/TestBeamReconstruction/${TAG}/"
+    EOS_PATH="${OUTPUT_FOLDER}/${TAG}/"
     mkdir -p "${EOS_PATH}"
 
     HITFOLDER="hit_dependent/"
