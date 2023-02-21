@@ -1,6 +1,6 @@
 #include <cstdlib>
-#include "UserCode/DataProcessing/interface/analyzer.h"
-#include "UserCode/CondorJobs/interface/run_en_map.h"
+#include "TestBeamReconstruction/DataProcessing/interface/analyzer.h"
+#include "TestBeamReconstruction/CondorJobs/interface/run_en_map.h"
 
 //convenience function which prints all the elements in a vector of strings to std::cout
 void print_vector_elements(const std::vector<std::string>& v)
@@ -308,7 +308,7 @@ int main(int argc, char **argv) {
   
   //define common variables
   std::string cmssw_base = std::getenv("CMSSW_BASE");
-  std::string condorjobs = "/src/UserCode/CondorJobs/";
+  std::string condorjobs = "/src/TestBeamReconstruction/CondorJobs/";
   std::string submission_folder = "submission/";
   std::string condorjobs_base = cmssw_base + condorjobs;
 

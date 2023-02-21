@@ -220,7 +220,7 @@ def linear_fit_graph(mean, emean, idx, iframe):
 
 def analyze_data():
     #files with sum of rechit energy
-    usercode_path = 'src/UserCode/DataProcessing/job_output'
+    usercode_path = 'src/TestBeamReconstruction/DataProcessing/job_output'
 
     #difference due to historic reasons; this will have to be removed if the analysis step is rerun
     path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, FLAGS.tag,

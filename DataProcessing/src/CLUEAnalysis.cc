@@ -1,4 +1,4 @@
-#include "UserCode/DataProcessing/interface/CLUEAnalysis.h"
+#include "TestBeamReconstruction/DataProcessing/interface/CLUEAnalysis.h"
 
 CLUEAnalysis::CLUEAnalysis(const SHOWERTYPE& s, const float& W0, const float& dpos): showertype(s), W0_(W0), dpos_(dpos)
 {

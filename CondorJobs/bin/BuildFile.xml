@@ -3,7 +3,7 @@
 <use name="roofit"/>
 <use name="rootxml"/>
 <use name="rootxmlio"/>
-<use name="UserCode/CondorJobs"/>
+<use name="TestBeamReconstruction/CondorJobs"/>
 <environment>
   <bin name="write_dag" file="write_dag.cc"></bin>
 </environment>

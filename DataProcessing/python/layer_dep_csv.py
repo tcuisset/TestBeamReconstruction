@@ -81,7 +81,7 @@ def create_dir(directory):
             raise
 
 def main():
-    usercode_path = 'src/UserCode/DataProcessing/job_output/layer_dependent/'
+    usercode_path = 'src/TestBeamReconstruction/DataProcessing/job_output/layer_dependent/'
     path = os.path.join(cmssw_base, usercode_path, 'outEcut_*_layerdep.csv')
 
     data_hits = ProcessData.join(path, 'nhitsfrac_')

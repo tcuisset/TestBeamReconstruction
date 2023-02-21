@@ -1,4 +1,4 @@
-#include "UserCode/DataProcessing/interface/CLUEAlgo.h"
+#include "TestBeamReconstruction/DataProcessing/interface/CLUEAlgo.h"
 
 void CLUEAlgo::makeClusters(){
   std::array<LayerTiles, detectorConstants::totalnlayers> allLayerTiles;

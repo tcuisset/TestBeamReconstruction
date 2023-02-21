@@ -1,4 +1,4 @@
-#include "UserCode/Step3Anlz/plugins/Ntuplizer.h"
+#include "TestBeamReconstruction/Step3Anlz/plugins/Ntuplizer.h"
 
 Ntuplizer::Ntuplizer(const edm::ParameterSet& iConfig) :
   hgcalRecHitsEEToken_(consumes<HGCRecHitCollection>(iConfig.getParameter<edm::InputTag>("hgcalRecHitsEE"))),

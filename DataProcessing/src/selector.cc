@@ -1,4 +1,4 @@
-#include "UserCode/DataProcessing/interface/selector.h"
+#include "TestBeamReconstruction/DataProcessing/interface/selector.h"
 #include "TCanvas.h"
 
 Selector::Selector(const std::string& in_file_path, const std::string& out_file_path,
@@ -74,9 +74,8 @@ void Selector::load_noise_values()
 
 void Selector::load_shift_values()
 {
-  std::string home( getenv("HOME") );
-  std::string rel( getenv("CMSSW_VERSION") );
-  std::string filename = home + "/" + rel + "/src/UserCode/DataProcessing/Impact_Shifts.txt";
+  std::string rel( getenv("CMSSW_BASE") );
+  std::string filename = rel + "/src/TestBeamReconstruction/DataProcessing/Impact_Shifts.txt";
   std::ifstream in(filename);
   if(!in.is_open())
     throw std::invalid_argument("File " + filename + " could not be opened.");

@@ -3,7 +3,7 @@
 <use name="roofit"/>
 <use name="rootxml"/>
 <use name="rootxmlio"/>
-<use name="UserCode/DataProcessing"/>
+<use name="TestBeamReconstruction/DataProcessing"/>
 <lib name="ROOTDataFrame"/>
 <lib name="ROOTVecOps"/>
 <environment>

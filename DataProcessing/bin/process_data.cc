@@ -1,4 +1,4 @@
-#include "UserCode/DataProcessing/interface/selector.h"
+#include "TestBeamReconstruction/DataProcessing/interface/selector.h"
 
 int main(int argc, char **argv) {
   std::string input_file = std::string(argv[1]);
