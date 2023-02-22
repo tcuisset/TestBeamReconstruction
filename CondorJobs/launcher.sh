@@ -8,6 +8,7 @@ varExists() {
     # Checks whether a certain environment variable already exists
     # Arguments:
     # 1. Variable being checked
+	#Returns true if variable does *not* exist
     local flag=false;
     if [ -z "${1}" ]; then
 	flag=true;
