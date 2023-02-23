@@ -4,6 +4,8 @@ declare -a DATATYPES=("data" "sim_proton" "sim_noproton")
 declare -a SHOWERTYPES=("em" "had")
 declare -a STEPS=("selection" "analysis")
 
+OUTPUT_FOLDER="/home/llr/cms/cuisset/hgcal/testbeam18/data_selection/" #Default output folder
+
 varExists() { 
     # Checks whether a certain environment variable already exists
     # Arguments:
@@ -19,7 +21,7 @@ varExists() {
 ##########################
 ########PARSING###########
 ##########################
-ARGS=`getopt -o "" -l ",ntupleid:,step:,datatype:,showertype:,energy:,tag:,w0:,dpos:,outputfolder:" -n "getopts_${0}" -- "$@"`
+ARGS=`getopt -o "" -l ",ntupleid:,step:,datatype:,showertype:,energy:,tag:,w0:,dpos:,outputfolder::" -n "getopts_${0}" -- "$@"`
 
 #Bad arguments
 if [ $? -ne 0 ];
@@ -202,23 +204,26 @@ export SCRAM_ARCH="slc7_amd64_gcc820"
 # #back to the job folder
 # cd "${INIT_FOLDER}";
 
+#INPUT_FILE_FOLDER="/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/"
+INPUT_FILE_FOLDER="root://eoscms.cern.ch///eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/"
+
 if [[ "${STEP}" == "selection" ]]; then
 
     if [[ "${DATATYPE}" == "data" ]]; then
 	if [[ "${SHOWERTYPE}" == "em" ]]; then
-	    INFILE="/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/ntuple_${NTUPLEID}.root"; #HGCAL only
+	    INFILE="$INPUT_FILE_FOLDER/ntuples/v16/ntuple_${NTUPLEID}.root"; #HGCAL only
 	elif [[ "${SHOWERTYPE}" == "had" ]]; then
-	    INFILE="/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ahcal-hgcal-merged-ntuples/ahcal_v8-hgcal_v16/merged_ntuple_${NTUPLEID}.root"; #HGCAL+AHCAL
+	    INFILE="$INPUT_FILE_FOLDER/ahcal-hgcal-merged-ntuples/ahcal_v8-hgcal_v16/merged_ntuple_${NTUPLEID}.root"; #HGCAL+AHCAL
 	fi
 	OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_${NTUPLEID}.root";
     elif [[ "${DATATYPE}" == "sim_noproton" ]]; then
-	INFILE="/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v5/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
+	INFILE="$INPUT_FILE_FOLDER/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v5/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
 	OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
     elif [[ "${DATATYPE}" == "sim_proton" ]]; then
 	if [[ "${SHOWERTYPE}" == "em" ]]; then
-	    INFILE="/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v3/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
+	    INFILE="$INPUT_FILE_FOLDER/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v3/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
 	elif [[ "${SHOWERTYPE}" == "had" ]]; then
-       	    INFILE="/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v44_VtxBeam_v3/CorrectFHLay10/pions/ntuple_sim_config22_pdgID211_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root"
+       	    INFILE="$INPUT_FILE_FOLDER/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v44_VtxBeam_v3/CorrectFHLay10/pions/ntuple_sim_config22_pdgID211_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root"
 	fi
 	OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
     fi
