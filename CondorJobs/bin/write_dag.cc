@@ -13,7 +13,10 @@ void print_vector_elements(const std::vector<std::string>& v)
   }
 }
 
-struct DataParameters {
+struct DataParameters
+{
+  DataParameters() : last_step_only(false) {}
+
   std::string datatype;
   std::string showertype;
   bool last_step_only;
