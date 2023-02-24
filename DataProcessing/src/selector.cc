@@ -234,7 +234,7 @@ void Selector::select_relevant_branches()
   TTree *t_had1 = nullptr;
   TTree *t_had2 = nullptr;
 
-  f_had = new TFile(this->indata_.file_path.c_str());
+  f_had = TFile::Open(this->indata_.file_path.c_str());
   t_had1 = static_cast<TTree*>( f_had->Get(this->indata_.tree_name.c_str()) ); 
   t_had2 = static_cast<TTree*>( f_had->Get(this->indata_.tree_name_friend.c_str()) ); 
   t_had1->AddFriend(t_had2, "myFriend");
