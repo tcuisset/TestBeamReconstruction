@@ -1,4 +1,5 @@
 #include "TestBeamReconstruction/DataProcessing/interface/analyzer.h"
+#include <algorithm>
 
 Analyzer::Analyzer(const std::vector< std::string >& in_file_path, const std::string& in_tree_name, const float& dc, const float& kappa, const float& ecut, const SHOWERTYPE& st, const float& W0=2.9f, const float& dpos=1.3f): dc_(dc), kappa_(kappa), ecut_(ecut), st_(st), W0_(W0), dpos_(dpos)
 {
@@ -165,7 +166,7 @@ std::pair<unsigned int, float> Analyzer::_readTree( const std::string& infile,
   //creates RDataFrame object
   std::string intree = "relevant_branches";
   ROOT::RDataFrame d( intree.c_str(), infile.c_str() );
-  unsigned int ncpus = ROOT::GetThreadPoolSize();
+  unsigned int ncpus = std::min<unsigned>(ROOT::GetThreadPoolSize(), 1); //Note : GetThreadPoolSize can return 0 in case MT is disabled
   //declare data vectors per event to be separately filled by independent cpu threads. dimension: (ncpus, nentries)
   std::vector< std::vector< std::vector<float> > > x_split(ncpus);
   std::vector< std::vector< std::vector<float> > > y_split(ncpus);
