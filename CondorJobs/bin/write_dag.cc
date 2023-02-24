@@ -4,6 +4,8 @@
 
 #define LLR_T3
 
+// convenience function which prints all the elements in a vector of strings to std::cout
+void print_vector_elements(const std::vector<std::string> &v)
 {
   for(auto& elem : v) {
     if(elem == v.back())
