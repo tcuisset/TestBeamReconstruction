@@ -55,7 +55,7 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
 
   fw << "should_transfer_files = YES" << std::endl;
   fw << "when_to_transfer_output = ON_EXIT" << std::endl;
-  fw << "public_input_files = ../../../../TestBeamAnalysis/bin/" + std::string(getenv("SCRAM_ARCH")) + "/" + cpp_exec << std::endl;
+  fw << "public_input_files = ../../../bin/" + std::string(getenv("SCRAM_ARCH")) + "/" + cpp_exec << std::endl;
   
   fw << "arguments = --ntupleid " + n + " --datatype " + p.datatype + " --showertype " + p.showertype + " --tag " + p.tag;
   fw << " --w0 " + p.w0 + " --dpos " + p.dpos;
