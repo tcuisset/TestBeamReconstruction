@@ -2,8 +2,8 @@
 #include "TestBeamReconstruction/DataProcessing/interface/analyzer.h"
 #include "TestBeamReconstruction/CondorJobs/interface/run_en_map.h"
 
-//convenience function which prints all the elements in a vector of strings to std::cout
-void print_vector_elements(const std::vector<std::string>& v)
+#define LLR_T3
+
 {
   for(auto& elem : v) {
     if(elem == v.back())
@@ -73,6 +73,25 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
   
   fw << "RequestMemory = " + memory << std::endl;
   fw << "+JobFlavour = " + flavour << std::endl;
+
+#ifdef LLR_T3
+  fw << "T3Queue = short" << std::endl;
+  fw << "WNTag=el7" << std::endl;
+  fw << "+SingularityCmd = \"\"" << std::endl;
+  
+  //Expand directly the result of include : /opt/exp_soft/cms/t3/t3queue | as otherwise there are problems with DAGman
+  //fw << "include : /opt/exp_soft/cms/t3/t3queue |" << std::endl;
+
+  fw << "UNIX_GROUP = cms" << std::endl;
+  fw << "accounting_group = $(UNIX_GROUP)" << std::endl;
+  fw << "concurrency_limits_expr = strcat(T3Queue,\":\",RequestCpus,\" \",AcctGroupUser,\":\",RequestCpus)" << std::endl;
+  fw << "+T3Queue=\"$(T3Queue)\"" << std::endl;
+  fw << "+T3Group=\"$(UNIX_GROUP)\"" << std::endl;
+  fw << "+WNTag=\"$(WNTag)\"" << std::endl;
+  fw << "+T3Submit=true" << std::endl;
+
+#endif
+
   fw << "queue" << std::endl;
 }
 

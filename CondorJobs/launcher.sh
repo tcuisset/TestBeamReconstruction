@@ -4,7 +4,7 @@ declare -a DATATYPES=("data" "sim_proton" "sim_noproton")
 declare -a SHOWERTYPES=("em" "had")
 declare -a STEPS=("selection" "analysis")
 
-OUTPUT_FOLDER="/home/llr/cms/cuisset/hgcal/testbeam18/data_selection/" #Default output folder
+OUTPUT_FOLDER="/grid_mnt/data_cms_upgrade/cuisset/testbeam18/data_selection" #Default output folder
 
 varExists() { 
     # Checks whether a certain environment variable already exists
