@@ -170,3 +170,9 @@ Plots should be [publicly accessible](https://bfontana.web.cern.ch/bfontana/Test
 Contacts
 ----------------
 Please use CERN Phonebook's details.
+
+
+Bugs
+---------------
+Due to a bug in RDataFrame (https://github.com/root-project/root/issues/10216) using xrootd to accessinput files in combination with multithreading leads to an error on CMSSW_12_6_*
+The bug is fixed in later root versions (6.26 onwards ?)
