@@ -168,7 +168,7 @@ std::pair<unsigned int, float> Analyzer::_readTree(const std::string &infile,
   // creates RDataFrame object
   std::string intree = "relevant_branches";
   ROOT::RDataFrame d(intree.c_str(), infile.c_str());
-  unsigned int ncpus = std::min<unsigned>(ROOT::GetThreadPoolSize(), 1); // Note : GetThreadPoolSize can return 0 in case MT is disabled
+  unsigned int ncpus = std::max<unsigned>(ROOT::GetThreadPoolSize(), 1); // Note : GetThreadPoolSize can return 0 in case MT is disabled
   // declare data vectors per event to be separately filled by independent cpu threads. dimension: (ncpus, nentries)
   std::vector<std::vector<std::vector<float>>> x_split(ncpus);
   std::vector<std::vector<std::vector<float>>> y_split(ncpus);
