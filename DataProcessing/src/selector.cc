@@ -90,6 +90,9 @@ void Selector::load_shift_values()
   }
 }
 
+/**
+ * Lookup noise map and find whether we are in nsigma of noise of the chip (3 sigma for em, 4 for hadronic shower)
+*/
 bool Selector::reject_noise(const mapT& map, const unsigned& mod, const unsigned& chip, const unsigned& l, const float& amp, const bool& st)
 {
   float temp_noise = -1.0;
@@ -107,12 +110,16 @@ bool Selector::reject_noise(const mapT& map, const unsigned& mod, const unsigned
   return amp < sigma * temp_noise;
 }
 
+/**
+ * For a given rechits, whose info is given in parameters, determine whether it passes selections
+ * \param map the noiseMap (same for all hits, see \a Selector::noise_map_
+*/
 bool Selector::common_selection(const unsigned& layer, const float& energy, const unsigned& chip, const unsigned& channel, const unsigned& module, const float& amplitude, const bool& noise_flag, const mapT& map, const bool& showertype)
 {
   if(layer<1 || layer>detectorConstants::totalnlayers)
     throw std::out_of_range("Unphysical layer number: " + std::to_string(layer));
-  else if(!showertype and layer>detectorConstants::nlayers_emshowers)
-    return false;
+  else if(!showertype and layer>detectorConstants::nlayers_emshowers) 
+    return false; //If we want em showers (showertype=false) then only consider first 28 layers 
 
   if(noise_flag==1)
     return false;
@@ -130,7 +137,13 @@ bool Selector::common_selection(const unsigned& layer, const float& energy, cons
   return true;
 }
 
-//cleans hits in CE-E and CE-H
+/**
+ * cleans hits in CE-E and CE-H
+ * The params are : first var is variable of interest
+ * Then all columns of clean_cols ("rechit_energy", "rechit_layer", "rechit_chip", "rechit_channel", "rechit_module", "rechit_amplitudeHigh", "rechit_noise_flag", "st")
+ *  with the noise map added before "st"
+ * This will select from param var only the entries which passes selections, and return the subset of values
+ */
 template<typename T>
 std::vector<T> Selector::clean_ce(const std::vector<T>& var, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const mapT& map, const bool& st)
 {
@@ -170,7 +183,12 @@ float Selector::ahc_energy_sum(const std::vector<float>& ahc_en)
   return std::accumulate(ahc_en.begin(), ahc_en.end(), 0.f);
 }
 
-//weights the energy of the CE-E and CE-H hits
+/** 
+ * weights the energy of the CE-E and CE-H hits for a single event
+ * \param en vector of ce_clean_energy for all rechits that pass selections (in MIP)
+ * \param l same but layer
+ * \param st showertype (false= em shower, true = hadronic shower)
+ */
 std::vector<float> Selector::weight_energy_ce(const std::vector<float>& en, const std::vector<unsigned>& l, const bool& st) 
 {
   unsigned layer = 0;
@@ -185,16 +203,16 @@ std::vector<float> Selector::weight_energy_ce(const std::vector<float>& en, cons
       energy = en[i];
       layer = l[i];
 
-      if( (!st and layer>0 and layer<=detectorConstants::nlayers_emshowers)
-	  or (st and layer>0 and layer<=detectorConstants::totalnlayers) )
-	{
-	  if(st and layer>detectorConstants::nlayers_emshowers)
-	    weight = detectorConstants::globalWeightCEH;
-	  else
-	    weight = detectorConstants::dEdX.at(layer-1);
-	}
+      if( (!st and layer>0 and layer<=detectorConstants::nlayers_emshowers) //em shower case
+        or (st and layer>0 and layer<=detectorConstants::totalnlayers) ) //had case
+      {
+        if(st and layer>detectorConstants::nlayers_emshowers) //had
+          weight = detectorConstants::globalWeightCEH;
+        else //em shower or had shower in CE-E
+          weight = detectorConstants::dEdX.at(layer-1);
+      }
       else
-	continue;
+        continue;
 
       en_weighted.push_back( weight * energy ); 
     }
@@ -209,7 +227,7 @@ std::vector<float> Selector::weight_energy_ahc(const std::vector<float>& en, con
   std::vector<float> en_weighted;
   en_weighted.reserve(nhits); //maximum possible size
 
-  if(!st)
+  if(!st) // em shower
     weight = 0.f;
 
   for(unsigned i=0; i<nhits; ++i)
@@ -218,6 +236,9 @@ std::vector<float> Selector::weight_energy_ahc(const std::vector<float>& en, con
   return en_weighted;  
 }
 
+/**
+ * \param v vector of values of columns :impactX_HGCal_layer_i, impactY_HGCal_layer_i for i in all layers
+*/
 bool Selector::remove_missing_dwc(const std::vector<float>& v)
 {
   for(auto& x : v) {
@@ -235,8 +256,8 @@ void Selector::select_relevant_branches()
   TTree *t_had2 = nullptr;
 
   f_had = TFile::Open(this->indata_.file_path.c_str());
-  t_had1 = static_cast<TTree*>( f_had->Get(this->indata_.tree_name.c_str()) ); 
-  t_had2 = static_cast<TTree*>( f_had->Get(this->indata_.tree_name_friend.c_str()) ); 
+  t_had1 = static_cast<TTree*>( f_had->Get(this->indata_.tree_name.c_str()) ); ///< rechitntupler/hits TTree
+  t_had2 = static_cast<TTree*>( f_had->Get(this->indata_.tree_name_friend.c_str()) ); ///< trackimpactntupler/impactPoints TTree
   t_had1->AddFriend(t_had2, "myFriend");
   d = new ROOT::RDataFrame(*t_had1);
 
@@ -248,7 +269,10 @@ void Selector::select_relevant_branches()
   ROOT::Detail::RDF::ColumnNames_t clean_cols_layer = clean_cols; clean_cols_layer.insert( clean_cols_layer.begin(), "rechit_layer");
   ROOT::Detail::RDF::ColumnNames_t clean_cols_en = clean_cols; clean_cols_en.insert( clean_cols_en.begin(), "rechit_energy");
   
-  //wrappers required to circumvent the static-ness of the wrapped methods (required by RDataFrame) while passing a class variable (this->noise_map_)
+  /** wrappers required to circumvent the static-ness of the wrapped methods (required by RDataFrame) while passing a class variable (this->noise_map_)
+   * \param var the variable
+   * \param allOthers columns from clean_cols
+  */
   auto wrapper_float = [this](const std::vector<float>& var, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const bool& st)
 			{
 			  std::vector<float> v = clean_ce<float>(var, en, l, chip, channel, module, amplitude, noise_flag, this->noise_map_, st);
@@ -260,6 +284,10 @@ void Selector::select_relevant_branches()
 			  return v;
 			};
 
+  /**
+   * Makes new column impactX_shifted : vector<float> = { -1 * impactX_HGCal_layer_i + shift[layer i] }
+   * \param v list of values of columns impactX_HGCal_layer_i for i in all layer numbers
+  */
   auto shift_impactX = [this](const std::vector<float>& v) {
     std::vector<float> newv(v.size());
     for(unsigned i=0; i<v.size(); ++i)
@@ -280,19 +308,34 @@ void Selector::select_relevant_branches()
     define_str = "return true;";
   }
 
+  /* From ROOT documentation :
+  PassAsVec is a callable generator that allows passing N variables of type T to a function as a single collection.
+  PassAsVec<N, T>(func) returns a callable that takes N arguments of type T, passes them down to function func as an initializer list {t1, t2, t3,..., tN} and returns whatever f({t1, t2, t3, ..., tN}) returns.
+  Note that for this to work with RDataFrame the type of all columns that the callable is applied to must be exactly T. Example usage together with RDataFrame ("varX" columns must all be float variables):
+  bool myVecFunc(std::vector<float> args);
+  df.Filter(PassAsVec<3, float>(myVecFunc), {"var1", "var2", "var3"});
+  */
   auto partial_process = d->Filter(filter_str.c_str())
+    // Remove events with missing DWC info (if any column impactX_HGCal_layer_i or  impactY_HGCal_layer_i is unset)
     .Filter(ROOT::RDF::PassAsVec<static_cast<unsigned>(2*detectorConstants::totalnlayers), float>(remove_missing_dwc),
 	    impactcols_)
+    // Define columns impactX_shifted, impactY_shifted
     .Define(new_impX_, ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>(shift_impactX), impactXcols_)
     .Define(new_impY_, ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>(shift_impactY), impactYcols_)
-    .Define(clean_cols.back(), define_str) //showertype: em or had
-    .Define(new_detid_,   wrapper_uint,  clean_cols_detid)
-    .Define(new_x_,       wrapper_float, clean_cols_x)
+    
+    // clean_cols.back() is "st" ie showertype. false -> em shower, true -> hadronic shower (initialized depending on command line argument)
+    .Define(clean_cols.back(), define_str)
+
+    //Define new columns as vector for each event, selecting only in each event rechits that pass selections
+    .Define(new_detid_,   wrapper_uint,  clean_cols_detid) // ce_clean_detid
+    .Define(new_x_,       wrapper_float, clean_cols_x)     // ce_clean_x
     .Define(new_y_,       wrapper_float, clean_cols_y)
     .Define(new_z_,       wrapper_float, clean_cols_z)
-    .Define(new_layer_,   wrapper_uint,  clean_cols_layer)
-    .Define(new_en_,      wrapper_float, clean_cols_en)
-    .Define(new_en_MeV_, weight_energy_ce, {new_en_, new_layer_, clean_cols.back()});
+    .Define(new_layer_,   wrapper_uint,  clean_cols_layer) // ce_clean_layer
+    .Define(new_en_,      wrapper_float, clean_cols_en)    // ce_clean_energy
+
+    // Define ce_clean_energy_MeV column
+    .Define(new_en_MeV_, weight_energy_ce, {new_en_, new_layer_, clean_cols.back()}); //clean_cols.back() is "st" ie showertype
 
   if(this->showertype == SHOWERTYPE::HAD) {
     partial_process = partial_process.Define(new_ahc_en_,  clean_ahc<float>, {"ahc_hitEnergy", "ahc_hitEnergy", "ahc_hitK", clean_cols.back()})

@@ -43,7 +43,14 @@ class Analyzer {
   
  private:
   //methods 
-  std::pair<unsigned int, float> _readTree( const std::string&, std::vector< std::vector<float> >& x, std::vector< std::vector<float> >&, std::vector< std::vector<unsigned int> >&, std::vector< std::vector<float> >&, std::vector< std::vector<unsigned int> >&, std::vector< std::vector<float> >&, std::vector< std::vector<float> >&);
+  /**
+   * Fills the vectors in parameters from the input tree of file infile
+  */
+  std::pair<unsigned int, float> _readTree( const std::string &infile,
+                                                   std::vector<std::vector<float>> &x, std::vector<std::vector<float>> &y,
+                                                   std::vector<std::vector<unsigned int>> &layer, std::vector<std::vector<float>> &weight,
+                                                   std::vector<std::vector<unsigned int>> &rechits_id,
+                                                   std::vector<std::vector<float>> &impactX, std::vector<std::vector<float>> &impactY);
   int sanity_checks(const std::string&);
   bool ecut_selection(const float&, const unsigned int&);
   void resize_vectors();

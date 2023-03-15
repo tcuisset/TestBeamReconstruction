@@ -34,8 +34,8 @@ class Selector {
   SHOWERTYPE showertype;
   DATATYPE datatype;
   int beam_energy;
-  mapT noise_map_;
-  std::vector< std::pair<float,float> > shifts_map_;
+  mapT noise_map_; ///< Map pair(module_id, chip) -> 1sigma noise[HG ADC counts], loaded from file Noise_Map.txt
+  std::vector< std::pair<float,float> > shifts_map_; ///< Vector of pair(shiftX, shiftY). Element shifts_map_[0] corresponds to layer nb 1, until shifts_map_[detectorConstants::totalnlayers-1]
   
   std::string new_detid_    = "ce_clean_detid";
   std::string new_x_        = "ce_clean_x";
@@ -51,7 +51,11 @@ class Selector {
   std::string new_ahc_en_MeV_ = "ahc_clean_energy_MeV";
   //columns to save
   ROOT::Detail::RDF::ColumnNames_t savedcols_;
-  ROOT::Detail::RDF::ColumnNames_t impactcols_, impactXcols_, impactYcols_;
+  /**
+   * List of column names : myFriend.impactX_HGCal_layer_i for i in all layer numbers
+   * (impactcols_ has X and Y)
+  */
+  ROOT::Detail::RDF::ColumnNames_t impactcols_, impactXcols_, impactYcols_; 
 
   struct indata {
     std::string file_path = "/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/ntuples/v16/ntuple_1000.root";
