@@ -3,6 +3,7 @@ declare -a ENERGIES=("20" "30" "50" "80" "100" "120" "150" "200" "250" "300")
 declare -a DATATYPES=("data" "sim_proton" "sim_noproton")
 declare -a SHOWERTYPES=("em" "had")
 declare -a ANALYSISTYPES=("layerdep" "clusterdep")
+OUTPUT_FOLDER="/grid_mnt/data_cms_upgrade/cuisset/testbeam18/data_selection/" #Default output folder
 
 ##########################
 ########PARSING###########
@@ -103,7 +104,7 @@ if [[ -z "${ANALYSISTYPE}" ]]; then
     exit 1;
 fi
 
-BASEFOLDER="/eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/${TAG}/"
+BASEFOLDER="${OUTPUT_FOLDER}/${TAG}/"
 if [[ ( -z "${TAG}" ) || ( ! -d "${BASEFOLDER}" ) ]]; then
     echo "Make sure the tag you specify corresponds to an existing data directory."
     exit 1;
@@ -120,8 +121,8 @@ elif [[ "${ANALYSISTYPE}" == "clusterdep" ]]; then
 fi
 len="${#ENERGIES[@]}"
 for(( j=0; j<${len}; j++ )); do
-    IN="${BASEFOLDER}${JOBSFOLDER}/outEcut_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGIES[j]}_";
+    IN="${BASEFOLDER}/${JOBSFOLDER}/outEcut_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGIES[j]}_";
     if [[ $(ls "${IN}"*root -A) ]]; then #in case the input files do exist
-	hadd -f -k /eos/user/${USER:0:1}/${USER}/TestBeamReconstruction/"${TAG}"/"${JOBSFOLDER}"/hadd_"${ANALYSISTYPE}"_"${DATATYPE}"_"${SHOWERTYPE}"_beamen${ENERGIES[j]}.root "${IN}"*root;
+	hadd -f -k "${BASEFOLDER}"/"${JOBSFOLDER}"/hadd_"${ANALYSISTYPE}"_"${DATATYPE}"_"${SHOWERTYPE}"_beamen${ENERGIES[j]}.root "${IN}"*root;
     fi
 done

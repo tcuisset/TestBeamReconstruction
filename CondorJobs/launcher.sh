@@ -3,8 +3,8 @@ declare -a ENERGIES=("20" "30" "50" "80" "100" "120" "150" "200" "250" "300")
 declare -a DATATYPES=("data" "sim_proton" "sim_noproton")
 declare -a SHOWERTYPES=("em" "had")
 declare -a STEPS=("selection" "analysis")
-
-OUTPUT_FOLDER="/grid_mnt/data_cms_upgrade/cuisset/testbeam18/data_selection" #Default output folder
+export X509_USER_PROXY=/home/llr/cms/cuisset/.t3/proxy.cert
+OUTPUT_FOLDER="/grid_mnt/data_cms_upgrade/cuisset/testbeam18/data_selection/" #Default output folder
 
 varExists() { 
     # Checks whether a certain environment variable already exists
@@ -185,7 +185,7 @@ fi
 ##########################
 ##########################
 export XRD_NETWORKSTACK=IPv4
-export SCRAM_ARCH="slc7_amd64_gcc820"
+export q="slc7_amd64_gcc820"
 
 # What is this supposed to do ?
 # if [ $(varExists "${INIT_FOLDER}") = true ] && [ $(varExists "${CMSSW_PATH}") = true ] &&
@@ -204,7 +204,9 @@ export SCRAM_ARCH="slc7_amd64_gcc820"
 # #back to the job folder
 # cd "${INIT_FOLDER}";
 
+#Either use eos mounted on /eos (need kerberos ticket on LLR T3)
 #INPUT_FILE_FOLDER="/eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/"
+#Or use xrootd (need grid certificate on the node)
 INPUT_FILE_FOLDER="root://eoscms.cern.ch///eos/cms/store/group/dpg_hgcal/tb_hgcal/2018/cern_h2_october/offline_analysis/"
 
 if [[ "${STEP}" == "selection" ]]; then
