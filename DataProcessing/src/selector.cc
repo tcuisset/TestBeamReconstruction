@@ -341,6 +341,11 @@ void Selector::select_relevant_branches()
     partial_process = partial_process.Define(new_ahc_en_,  clean_ahc<float>, {"ahc_hitEnergy", "ahc_hitEnergy", "ahc_hitK", clean_cols.back()})
     .Define(new_ahc_en_MeV_, weight_energy_ahc, {new_ahc_en_, clean_cols.back()});
   }
+
+  if (this->datatype == DATATYPE::MC) {
+    // Save gun energy
+    savedcols_.emplace_back("trueBeamEnergy");
+  }
     
   if(this->datatype == DATATYPE::MC and this->showertype == SHOWERTYPE::HAD) {
     partial_process.Filter("ahc_energySum == 0").Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), savedcols_);
