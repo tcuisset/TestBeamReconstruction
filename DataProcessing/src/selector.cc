@@ -30,7 +30,7 @@ Selector::Selector(const std::string& in_file_path, const std::string& out_file_
     this->indata_.tree_name = out_tree_name.value();
 
   //establish which data columns will be saved
-  this->savedcols_ = {"event", "run", "NRechits", new_detid_, new_x_, new_y_, new_z_, new_layer_, new_en_MeV_, new_ahc_en_MeV_, "beamEnergy", new_impX_, new_impY_};
+  this->savedcols_ = {"event", "run", "NRechits", new_detid_, new_x_, new_y_, new_z_, new_layer_, new_en_, new_en_MeV_, new_ahc_en_MeV_, "beamEnergy", new_impX_, new_impY_};
   for(unsigned i=1; i<=detectorConstants::totalnlayers; ++i) {
     impactXcols_.push_back("myFriend.impactX_HGCal_layer_" + std::to_string(i));
     impactcols_.push_back("myFriend.impactX_HGCal_layer_" + std::to_string(i));
