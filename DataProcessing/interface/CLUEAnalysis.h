@@ -29,7 +29,20 @@ namespace detectorConstants {
   constexpr unsigned int nlayers_emshowers = 28;
   constexpr unsigned int totalnlayers = 40;
   constexpr unsigned int layerBoundary = 26;
-  constexpr std::array<float, nlayers_emshowers> dEdX = {{11.289,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,11.360,11.360,11.360,11.360,10.995,10.995,11.153,7.470}}; //values in DN-19-019 [MeV/MIP]
+
+  /*
+  dEdX in MeV/MIP
+  Note by Theo Cuisset : there are several values for dEdX depending on the source. Bruno's code had originally : 
+  11.289,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,11.360,11.360,11.360,11.360,10.995,10.995,11.153,7.470
+
+  Then the detector note CMS DN-2019/019 *version 2* (table 3, p15) has a different value for the last 4 layers :
+  11.289,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,11.360,11.360,11.360,11.360,9.851,9.851,9.851,9.851
+  
+  Then the same DN but version 5 (final) (table 2, p 6) has a truncated table with different values for the last 4 layers : 
+                                                                                                                                                       9.85, 9.85 ,9.85 , 6,17
+  I have thus changed to use values from DN version 5 (changing layer 28 from 7.470 to 6.17)
+  */
+  constexpr std::array<float, nlayers_emshowers> dEdX = {{11.289,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,9.851,11.360,11.360,11.360,11.360,10.995,10.995,11.153,6.17}}; 
 
   //Shubham: https://indico.cern.ch/event/923102/contributions/3878372/attachments/2069945/3474694/PionAnalysis_EE_FH_AHCAL_energyScale_short_07072020.pdf (slide #5)
   constexpr float globalWeightCEE = 10.6; // [MeV/MIP]
