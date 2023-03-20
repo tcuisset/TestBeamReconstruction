@@ -3,6 +3,10 @@ import errno
 import numpy as np
 import uproot as up
 
+data_path = '/grid_mnt/data_cms_upgrade/cuisset/testbeam18/data_selection'
+plot_html_path = '/eos/user/t/tcuisset/www/testbeam18'
+plot_home_path = '/home/llr/cms/cuisset/hgcal/testbeam18/job-submission'
+
 class CacheManager:
     def __init__(self, name):
         self.name_ = name

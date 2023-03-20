@@ -223,7 +223,7 @@ def analyze_data():
     usercode_path = 'src/TestBeamReconstruction/DataProcessing/job_output'
 
     #difference due to historic reasons; this will have to be removed if the analysis step is rerun
-    path = os.path.join(eos_base, cms_user[0], cms_user, data_directory, FLAGS.tag,
+    path = os.path.join(utils.data_path, FLAGS.tag,
                         'hit_dependent/outEcut_' + FLAGS.datatype + "_" + FLAGS.showertype)
 
     if FLAGS.showertype == 'em':
@@ -322,17 +322,17 @@ def analyze_data():
     histo_ranges2_corrected2 = tuple(Range1d(x.start/calibration_slope2, x.end/calibration_slope2) for x in histo_ranges2)
     _, _, _, _, res2, eres2 = HandleHistograms.fit(hist2_corrected2, pars2_corrected2, histo_ranges2_corrected2, iframe=4)
 
-    save_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
+    save_folder = os.path.join(utils.plot_html_path, 'resp_res', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
     utils.create_dir( save_folder )
-    presentation_path = os.path.join(home, release, 'DN/figs', 'resp_res', FLAGS.datatype)
+    presentation_path = os.path.join(utils.plot_home_path, 'DN/figs', 'resp_res', FLAGS.datatype)
     print(presentation_path)
     utils.create_dir( presentation_path )
     print(save_folder)
     print(presentation_path)
     for i in range(len(nfigs)-1):
-        #bokehplot.save_frame(iframe=i, plot_width=plot_width, plot_height=plot_width, show=False)
-        bokehplot.save_figs(iframe=i, path=save_folder, mode='png')
-        bokehplot.save_figs(iframe=i, path=presentation_path, mode='png')
+        bokehplot.save_frame(iframe=i, plot_width=plot_width, plot_height=plot_width, show=False)
+        #bokehplot.save_figs(iframe=i, path=save_folder, mode='png')
+        #bokehplot.save_figs(iframe=i, path=presentation_path, mode='png')
 
     #Write data in the HDF5 format
     variables_to_store = [resp1, eresp1, res1, eres1, resp2, eresp2, res2, eres2]
@@ -346,16 +346,16 @@ def final_plots():
     for name in variables_created:
         variables_stored.append( hf.get(name) )
 
-    save_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype, FLAGS.tag)
+    save_folder = os.path.join(utils.plot_html_path, 'resp_res', FLAGS.datatype, FLAGS.tag)
     utils.create_dir( save_folder )
-    presentation_path = os.path.join(home, release, 'DN/figs', 'resp_res', FLAGS.datatype)
+    presentation_path = os.path.join(utils.plot_home_path, 'DN/figs', 'resp_res', FLAGS.datatype)
     utils.create_dir( presentation_path )
     frameid = bokehplot.get_nframes()-1
     response_and_resolution_graphs(*variables_stored, frameid=frameid)
 
-    #bokehplot.save_frame(iframe=frameid, plot_width=plot_width, plot_height=plot_width, nrows=1, ncols=3, show=False)
-    bokehplot.save_figs(iframe=frameid, path=save_folder, mode='png')
-    bokehplot.save_figs(iframe=frameid, path=presentation_path, mode='png')
+    bokehplot.save_frame(iframe=frameid, plot_width=plot_width, plot_height=plot_width, nrows=1, ncols=3, show=False)
+    #bokehplot.save_figs(iframe=frameid, path=save_folder, mode='png')
+    #bokehplot.save_figs(iframe=frameid, path=presentation_path, mode='png')
 
     hf.close()
 
@@ -388,7 +388,7 @@ if __name__ == '__main__':
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
 
-    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'resp_res', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
+    output_html_dir = os.path.join(utils.plot_html_path, 'resp_res', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
     outlambda = lambda x: os.path.join(output_html_dir, FLAGS.datatype + '_' + FLAGS.showertype + '_' + x)
     output_html_files = ( outlambda('pure_rechit_energy_Ecut.html'),
                           outlambda('pure_rechit_energy_Ecut_scaled.html'),
@@ -399,11 +399,12 @@ if __name__ == '__main__':
                           outlambda('responses_and_resolutions.html') 
     )
     nfigs = (size, size, size, size, size, 2, 3)
-    bokehplot = bkp.BokehPlot(filenames=output_html_files, nframes=len(nfigs), nfigs=nfigs)
+    nwidgets = (0, 0, 0, 0, 0, 0, 0)
+    bokehplot = bkp.BokehPlot(filenames=output_html_files, nframes=len(nfigs), nfigs=nfigs, nwidgets=nwidgets)
     line_colors = ['black', 'blue', 'green', 'red', 'orange', 'purple', 'greenyellow', 'brown', 'pink', 'grey']
 
     #HDF5 data file related variables
-    h5filename = os.path.join( eos_base, cms_user[0], cms_user, data_directory, FLAGS.tag, FLAGS.datatype + "_" + FLAGS.showertype + '_' + os.path.splitext( os.path.basename(__file__) )[0] + '.h5')
+    h5filename = os.path.join(utils.data_path, FLAGS.tag, FLAGS.datatype + "_" + FLAGS.showertype + '_' + os.path.splitext( os.path.basename(__file__) )[0] + '.h5')
     variables_created = ('resp1', 'eresp1', 'res1', 'eres1', 'resp2', 'eresp2', 'res2', 'eres2')
 
     main()

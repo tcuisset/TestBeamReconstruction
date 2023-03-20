@@ -417,18 +417,18 @@ if __name__ == '__main__':
     release = 'CMSSW_11_1_0_pre2/src/' #subprocess.check_output(b'echo $CMSSW_VERSION', shell=True, encoding='utf-8').split('\n')[0] + '/src/'
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     data_directory = 'TestBeamReconstruction'
-    data_path_start = os.path.join(eos_base, cms_user[0], cms_user, data_directory, FLAGS.tag, 'cluster_dependent')
+    data_path_start = os.path.join(utils.data_path, FLAGS.tag, 'cluster_dependent')
     data_paths = [os.path.join(data_path_start, 'hadd_clusterdep_' + FLAGS.datatype + '_' + FLAGS.showertype + '_beamen' + str(x) + '.root') for x in beam_energies]
         
     #define cache names and paths
-    cache_file_name_start = os.path.join(eos_base, cms_user[0], cms_user, data_directory)
+    cache_file_name_start = utils.data_path
     cache_file_names = [os.path.join(cache_file_name_start, 'uproot_cache_clusterdep_beamen' + str(x) + '.root') for x in beam_energies]
 
     utils.print_input_data(data_paths)
 
     #create output files with plots
-    utils.create_dir( os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag) )
-    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
+    utils.create_dir( os.path.join(utils.plot_html_path, 'cluster_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag) )
+    output_html_dir = os.path.join(utils.plot_html_path, 'cluster_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
     outlambda = lambda x: os.path.join(output_html_dir, FLAGS.datatype + '_' + FLAGS.showertype + '_' + str(FLAGS.chosen_energy) + x)
     output_html_files_potential_map = { 'hits':                ( outlambda('_plot_clusters_hits.html'),         size ),
                                         'energies':            ( outlambda('_plot_clusters_energy.html'),       size ),
@@ -465,7 +465,7 @@ if __name__ == '__main__':
     
     bokehplot = bkp.BokehPlot(filenames=output_html_files_list, nfigs=nfigs, nframes=nframes)
     plot_width, plot_height = 600, 400
-    cluster_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', data_directory, 'cluster_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
+    cluster_dep_folder = os.path.join(utils.plot_html_path, 'cluster_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
     utils.create_dir( cluster_dep_folder )
 
     main()

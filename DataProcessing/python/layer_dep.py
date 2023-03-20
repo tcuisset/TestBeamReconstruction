@@ -295,7 +295,7 @@ def main():
         if FLAGS.densities_distances:
             if thisEn == chosen_energy:
                 print('Loading density and distance data for {}GeV...'.format(beam_energies[iEn]))
-                df = tree.arrays(['Distances*', 'Densities*', 'isSeed*', 'Energies*'], outputtype=pd.DataFrame, cache=up_cache)
+                df = tree.arrays(filter_name=['Distances*', 'Densities*', 'isSeed*', 'Energies*'], library="pd", array_cache=up_cache)
                 index = beam_energies.index(chosen_energy)
                 graphs_double(df, mode='dens_dist', iframe=output_html_files_map['densities_distances'][1], energy_index=index )
 
@@ -303,14 +303,14 @@ def main():
             if thisEn == chosen_energy:
                 if not FLAGS.densities_distances:
                     print('Loading density data for {}GeV...'.format(beam_energies[iEn]))
-                    df = tree.arrays(['Densities*', 'Energies*', 'isSeed*', 'ClustSize*'], outputtype=pd.DataFrame, cache=up_cache)
+                    df = tree.arrays(filter_name=['Densities*', 'Energies*', 'isSeed*', 'ClustSize*'], library="pd", array_cache=up_cache)
                 index = beam_energies.index(chosen_energy)
                 if FLAGS.densities:
                     graphs_single(df, columns_field='Densities', energy_index=index, iframe=output_html_files_map['densities'][1], do_2D=False)
             if FLAGS.densities_2D:
                 if not FLAGS.densities_distances and thisEn != chosen_energy:
                     print('Loading density data for {}GeV...'.format(beam_energies[iEn]))
-                    df = tree.arrays(['Densities*', 'Energies*', 'isSeed*', 'ClustSize*'], outputtype=pd.DataFrame, cache=up_cache)
+                    df = tree.arrays(filter_name=['Densities*', 'Energies*', 'isSeed*', 'ClustSize*'], library="pd", array_cache=up_cache)
                 index = beam_energies.index(thisEn)
                 graphs_single(df, columns_field='Densities', energy_index=index, iframe=output_html_files_map['densities_2D'][1], do_2D=True)
                         
@@ -318,14 +318,14 @@ def main():
             if thisEn == chosen_energy:
                 if not FLAGS.densities_distances:
                     print('Loading distance data for {}GeV...'.format(beam_energies[iEn]))
-                    df = tree.arrays(['Distances*', 'isSeed*'], outputtype=pd.DataFrame, cache=up_cache)
+                    df = tree.arrays(filter_name=['Distances*', 'isSeed*'], library="pd", array_cache=up_cache)
                 index = beam_energies.index(chosen_energy)
                 if FLAGS.distances:
                     graphs_single(df, columns_field='Distances', energy_index=index, iframe=output_html_files_map['distances'][1], do_2D=False)
             if FLAGS.distances_2D:
                 if not FLAGS.densities_distances and thisEn != chosen_energy:
                     print('Loading distance data for {}GeV...'.format(beam_energies[iEn]))
-                    df = tree.arrays(['Distances*', 'isSeed*'], outputtype=pd.DataFrame, cache=up_cache)
+                    df = tree.arrays(filter_name=['Distances*', 'isSeed*'], library="pd", array_cache=up_cache)
                 index = beam_energies.index(thisEn)
                 graphs_single(df, columns_field='Distances', energy_index=index, iframe=output_html_files_map['distances_2D'][1], do_2D=True)
                 
@@ -335,18 +335,18 @@ def main():
 
         if FLAGS.hits_fraction:
             print('Loading hits fraction data for {}GeV...'.format(beam_energies[iEn]))
-            df = tree.arrays(['Nhits*'], outputtype=pd.DataFrame, cache=up_cache)
+            df = tree.arrays(filter_name='Nhits*', library="pd", array_cache=up_cache)
             graphs_single(df, columns_field='Nhits', iframe=output_html_files_map['hits_fraction'][1], energy_index=iEn, do_2D=True)
 
         if FLAGS.energy_fraction:
             print('Loading energy fraction data for {}GeV...'.format(beam_energies[iEn]))
-            df = tree.arrays(['EnergyFrac*'], outputtype=pd.DataFrame, cache=up_cache)
+            df = tree.arrays(filter_name='EnergyFrac*', library="pd", array_cache=up_cache)
             graphs_single(df, columns_field='Energy', iframe=output_html_files_map['energy_fraction'][1], energy_index=iEn, do_2D=True)
 
         if FLAGS.posx_posy:
             if thisEn == chosen_energy:
                 print('Loading X and Y position data for {}GeV...'.format(beam_energies[iEn]))
-                df = tree.arrays(['Densities*', 'PosX*', 'PosY*'], outputtype=pd.DataFrame, cache=up_cache)
+                df = tree.arrays(filter_name=['Densities*', 'PosX*', 'PosY*'], library="pd", array_cache=up_cache)
                 index = beam_energies.index(chosen_energy)
                 graphs_double(df, mode='pos', iframe=output_html_files_map['posx_posy'][1], energy_index=index )
 
@@ -354,9 +354,9 @@ def main():
         cacheobj.dump() #dump cache for specific energy
     
     print('Saving BokehPlot frames...')
-    layer_dep_folder = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
+    layer_dep_folder = os.path.join(utils.plot_html_path, 'layer_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
     utils.create_dir( layer_dep_folder )
-    presentation_path = os.path.join(home, release, 'DN/figs', 'layer_dep', FLAGS.datatype, FLAGS.showertype)
+    presentation_path = os.path.join(utils.plot_home_path, 'DN/figs', 'layer_dep', FLAGS.datatype, FLAGS.showertype)
     utils.create_dir( presentation_path )
     #bokehplot.save_frames(plot_width=plot_width, plot_height=plot_height, show=False)
     for iframe in range(nframes):
@@ -387,17 +387,17 @@ if __name__ == '__main__':
     home = subprocess.check_output(b'echo $HOME', shell=True, encoding='utf-8').split('\n')[0]
     analysis_directory = 'TestBeamReconstruction/'
     data_directory = 'layer_dependent/'
-    data_path_start = os.path.join(eos_base, cms_user[0], cms_user, analysis_directory, FLAGS.tag, data_directory)
+    data_path_start = os.path.join(utils.data_path, FLAGS.tag, data_directory)
     data_paths = [os.path.join(data_path_start, 'hadd_layerdep_' + FLAGS.datatype + '_' + FLAGS.showertype + '_beamen' + str(x) + '.root') for x in beam_energies]
 
     #define cache names and paths
-    cache_file_name_start = os.path.join(eos_base, cms_user[0], cms_user, analysis_directory)
+    cache_file_name_start = utils.data_path
     cache_file_names = [os.path.join(cache_file_name_start, 'uproot_cache_layerdep_beamen' + str(x) + '.root') for x in beam_energies]
 
     utils.print_input_data(data_paths)
     
     #create output files with plots
-    output_html_dir = os.path.join(eos_base, cms_user[0], cms_user, 'www', analysis_directory, 'layer_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
+    output_html_dir = os.path.join(utils.plot_html_path, 'layer_dep', FLAGS.datatype, FLAGS.showertype, FLAGS.tag)
     utils.create_dir( output_html_dir )
     plot_width, plot_height = 600, 400
     
@@ -425,6 +425,7 @@ if __name__ == '__main__':
 
     output_html_files_list = [tup[0] for k,tup in output_html_files_map.items()]
     nfigs = [tup[2] for k,tup in output_html_files_map.items()]
+    nwidgets = [0 for k,tup in output_html_files_map.items()]
     nframes = len(output_html_files_list)
-    bokehplot = bkp.BokehPlot(filenames=output_html_files_list, nfigs=nfigs, nframes=nframes)
+    bokehplot = bkp.BokehPlot(filenames=output_html_files_list, nfigs=nfigs, nframes=nframes, nwidgets=nwidgets)
     main()

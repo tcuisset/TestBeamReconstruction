@@ -39,6 +39,12 @@ def add_args(parser, mode):
             required=True,
             help='Choose the showertype to run the analysis on: "em" OR "had"'
         )
+        requiredNamedGroup.add_argument(
+            '--tag',
+            type=str,
+            required=True,
+            help='Identify the tag used for producing the input files.'
+        )
         return parser.parse_known_args()
 
     def clusters():
