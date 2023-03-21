@@ -77,7 +77,7 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
   fw << "+JobFlavour = " + flavour << std::endl;
 
 #ifdef LLR_T3
-  fw << "T3Queue = short" << std::endl;
+  fw << "T3Queue = long" << std::endl;
   fw << "WNTag=el7" << std::endl;
   fw << "+SingularityCmd = \"\"" << std::endl;
   
@@ -266,7 +266,7 @@ void write_simulation(const std::string& submission_folder, const std::string& b
 
 int main(int argc, char **argv) {
   std::unordered_map< std::string, std::vector<std::string> > valid_args;
-  valid_args["--datatype"] = {"data", "sim_noproton", "sim_proton"};
+  valid_args["--datatype"] = {"data", "sim_proton_v3", "sim_proton_v7", "sim_noproton_v5", "sim_noproton_v6"};
   valid_args["--showertype"] = {"em", "had"};
   std::vector<std::string> free_args = {"--tag", "--w0", "--dpos"}; //any argument allowed
   std::vector<std::string> optional_args = {"--last_step_only"}; //any argument allowed
