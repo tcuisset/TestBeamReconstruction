@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 declare -a ENERGIES=("20" "30" "50" "80" "100" "120" "150" "200" "250" "300")
-declare -a DATATYPES=("data" "sim_proton" "sim_noproton")
+declare -a DATATYPES=("data" "sim_proton_v3" "sim_proton_v7" "sim_noproton_v5" "sim_noproton_v6")
 declare -a SHOWERTYPES=("em" "had")
 declare -a STEPS=("selection" "analysis")
 export X509_USER_PROXY=/home/llr/cms/cuisset/.t3/proxy.cert
-OUTPUT_FOLDER="/grid_mnt/data_cms_upgrade/cuisset/testbeam18/data_selection/" #Default output folder
+OUTPUT_FOLDER="/grid_mnt/data_cms_upgrade/cuisset/testbeam18/ntuple-selection/test" #Default output folder
 
 varExists() { 
     # Checks whether a certain environment variable already exists
@@ -157,7 +157,7 @@ if [[ -z "${SHOWERTYPE}" ]]; then
     printf "\n"
     exit 1;
 fi
-if [[ ( "${DATATYPE}" == "sim_noproton" ) && ( "${SHOWERTYPE}" == "had" ) ]]; then
+if [[ (( "${DATATYPE}" == "sim_noproton_v5" ) || ( "${DATATYPE}" == "sim_noproton_v6" ) ) && ( "${SHOWERTYPE}" == "had" ) ]]; then
     echo "There is no proton-free sample for hadronic showers."
     exit 1;
 fi
@@ -212,23 +212,34 @@ INPUT_FILE_FOLDER="root://eoscms.cern.ch///eos/cms/store/group/dpg_hgcal/tb_hgca
 if [[ "${STEP}" == "selection" ]]; then
 
     if [[ "${DATATYPE}" == "data" ]]; then
-	if [[ "${SHOWERTYPE}" == "em" ]]; then
-	    INFILE="$INPUT_FILE_FOLDER/ntuples/v16/ntuple_${NTUPLEID}.root"; #HGCAL only
-	elif [[ "${SHOWERTYPE}" == "had" ]]; then
-	    INFILE="$INPUT_FILE_FOLDER/ahcal-hgcal-merged-ntuples/ahcal_v8-hgcal_v16/merged_ntuple_${NTUPLEID}.root"; #HGCAL+AHCAL
+		if [[ "${SHOWERTYPE}" == "em" ]]; then
+			INFILE="$INPUT_FILE_FOLDER/ntuples/v16/ntuple_${NTUPLEID}.root"; #HGCAL only
+		elif [[ "${SHOWERTYPE}" == "had" ]]; then
+			INFILE="$INPUT_FILE_FOLDER/ahcal-hgcal-merged-ntuples/ahcal_v8-hgcal_v16/merged_ntuple_${NTUPLEID}.root"; #HGCAL+AHCAL
+		fi
+		OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_${NTUPLEID}.root";
+	elif [[ "${DATATYPE}" == "sim_noproton_v5" ]]; then
+		INFILE="$INPUT_FILE_FOLDER/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v5/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
+		OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
+	elif [[ "${DATATYPE}" == "sim_noproton_v6" ]]; then
+		INFILE="$INPUT_FILE_FOLDER/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v6_33m/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
+		OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
+	elif [[ "${DATATYPE}" == "sim_proton_v3" ]]; then
+		if [[ "${SHOWERTYPE}" == "em" ]]; then
+			INFILE="$INPUT_FILE_FOLDER/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v3/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
+		elif [[ "${SHOWERTYPE}" == "had" ]]; then
+			INFILE="$INPUT_FILE_FOLDER/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v44_VtxBeam_v3/CorrectFHLay10/pions/ntuple_sim_config22_pdgID211_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root"
+		fi
+		OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
+    elif [[ "${DATATYPE}" == "sim_proton_v7" ]]; then
+		if [[ "${SHOWERTYPE}" == "em" ]]; then
+			INFILE="$INPUT_FILE_FOLDER/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v7_33m/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
+		elif [[ "${SHOWERTYPE}" == "had" ]]; then
+			echo "sim_proton_v7 and hadronic showers : I do not know which simulation to use"
+			exit 1
+		fi
+		OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
 	fi
-	OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_${NTUPLEID}.root";
-    elif [[ "${DATATYPE}" == "sim_noproton" ]]; then
-	INFILE="$INPUT_FILE_FOLDER/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v5/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
-	OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
-    elif [[ "${DATATYPE}" == "sim_proton" ]]; then
-	if [[ "${SHOWERTYPE}" == "em" ]]; then
-	    INFILE="$INPUT_FILE_FOLDER/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v3/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
-	elif [[ "${SHOWERTYPE}" == "had" ]]; then
-       	    INFILE="$INPUT_FILE_FOLDER/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v44_VtxBeam_v3/CorrectFHLay10/pions/ntuple_sim_config22_pdgID211_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root"
-	fi
-	OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
-    fi
     echo "Input file: ${INFILE}"
     echo "Output file: ${OUTFILE}"
     process_data_exe "${INFILE}" "${OUTFILE}" "${DATATYPE}" "${SHOWERTYPE}" "${ENERGY}";
@@ -237,11 +248,9 @@ elif [[ "${STEP}" == "analysis" ]]; then
 
     OUTNAME="outEcut"
     if [[ "${DATATYPE}" == "data" ]]; then
-	INFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_${NTUPLEID}.root";
-    elif [[ "${DATATYPE}" == "sim_noproton" ]]; then
-	INFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root"
-    elif [[ "${DATATYPE}" == "sim_proton" ]]; then
-	INFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root"
+		INFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_${NTUPLEID}.root";
+    else
+		INFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root"
     fi
 
     EOS_PATH="${OUTPUT_FOLDER}/${TAG}/"
