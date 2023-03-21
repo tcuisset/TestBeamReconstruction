@@ -31,7 +31,7 @@ Selector::Selector(const std::string& in_file_path, const std::string& out_file_
 
   //establish which data columns will be saved
   this->savedcols_ = {"event", "run", "NRechits", new_detid_, new_x_, new_y_, new_z_, new_layer_, new_en_, new_en_MeV_, new_ahc_en_MeV_, "beamEnergy",
-    "impactX", "impactY", new_impX_, new_impY_};
+    "impactX", "impactY", new_impX_, new_impY_, "DWC_b_x", "DWC_b_y", "DWC_trackChi2_X", "DWC_trackChi2_Y"};
   for(unsigned i=1; i<=detectorConstants::totalnlayers; ++i) {
     impactXcols_.push_back("myFriend.impactX_HGCal_layer_" + std::to_string(i));
     impactcols_.push_back("myFriend.impactX_HGCal_layer_" + std::to_string(i));
@@ -359,6 +359,11 @@ void Selector::select_relevant_branches()
     .Define(new_impX_, ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>(shift_impactX), impactXcols_)
     .Define(new_impY_, ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>(shift_impactY), impactYcols_)
     
+    .Alias("DWC_b_x", "myFriend.b_x") //Track offsets from Delay Wire Chambers : impact on EE
+    .Alias("DWC_b_y", "myFriend.b_y")
+    .Alias("DWC_trackChi2_X", "myFriend.trackChi2_X") //Track chisquare from DWC
+    .Alias("DWC_trackChi2_Y", "myFriend.trackChi2_Y")
+
     // clean_cols.back() is "st" ie showertype. false -> em shower, true -> hadronic shower (initialized depending on command line argument)
     .Define(clean_cols.back(), define_str)
 
