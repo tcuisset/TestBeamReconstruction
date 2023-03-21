@@ -31,7 +31,7 @@ Selector::Selector(const std::string& in_file_path, const std::string& out_file_
 
   //establish which data columns will be saved
   this->savedcols_ = {"event", "run", "NRechits", new_detid_, new_x_, new_y_, new_z_, new_layer_, new_en_, new_en_MeV_, new_ahc_en_MeV_, "beamEnergy",
-    "impactX", "impactY", new_impX_, new_impY_, "DWC_b_x", "DWC_b_y", "DWC_trackChi2_X", "DWC_trackChi2_Y"};
+    "impactX_shifted", "impactY_shifted", "DWC_b_x", "DWC_b_y", "DWC_trackChi2_X", "DWC_trackChi2_Y"};
   for(unsigned i=1; i<=detectorConstants::totalnlayers; ++i) {
     impactXcols_.push_back("myFriend.impactX_HGCal_layer_" + std::to_string(i));
     impactcols_.push_back("myFriend.impactX_HGCal_layer_" + std::to_string(i));
@@ -285,43 +285,6 @@ void Selector::select_relevant_branches()
 			  return v;
 			};
 
-  /**
-   * Makes new column impactX_shifted : vector<float> = { -1 * impactX_HGCal_layer_i + shift[layer i] }
-   * \param v list of values of columns impactX_HGCal_layer_i for i in all layer numbers
-  */
-  auto shift_impactX = [this](const std::vector<float>& v) {
-    std::vector<float> newv(v.size());
-    for(unsigned i=0; i<v.size(); ++i)
-      newv[i] = (-1.f * v[i]) + this->shifts_map_[i].first;
-    return newv;
-  };
-
-  auto shift_impactY = [this](const std::vector<float>& v) {
-    std::vector<float> newv(v.size());
-    for(unsigned i=0; i<v.size(); ++i)
-      newv[i] = (-1.f * v[i]) + this->shifts_map_[i].second;
-    return newv;
-  };
-
-  /*
-  Make new column ce_clean_x_shifted which holds rechit x position shifted by shifts in Impact_Shifts.txt 
-  Note : this column should be compared against -1*impactX when considering spatial resolution
-  Why exactly is a mystery, but see the notebook https://github.com/tcuisset/HgcalClue3DClusteringPlotting/tree/main/notebooks/impact-shift-rechits.ipynb 
-  */
-  auto shift_rechitX = [this](const std::vector<float>& rechit_x, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const bool& st)
-  {
-    std::vector<float> rechit_x_cleaned = clean_ce<float>(rechit_x, en, l, chip, channel, module, amplitude, noise_flag, this->noise_map_, st);
-    for(unsigned i = 0; i < rechit_x_cleaned.size(); ++i)
-      rechit_x_cleaned[i] -= this->shifts_map_[l[i]].first;
-    return rechit_x_cleaned;
-  };
-  auto shift_rechitY = [this](const std::vector<float>& rechit_y, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const bool& st)
-  {
-    std::vector<float> rechit_y_cleaned = clean_ce<float>(rechit_y, en, l, chip, channel, module, amplitude, noise_flag, this->noise_map_, st);
-    for(unsigned i = 0; i < rechit_y_cleaned.size(); ++i)
-      rechit_y_cleaned[i] -= this->shifts_map_[l[i]].second;
-    return rechit_y_cleaned;
-  };
 
   std::string filter_str = "true", define_str = "return false;";
   if(this->showertype == SHOWERTYPE::HAD) {
@@ -341,24 +304,6 @@ void Selector::select_relevant_branches()
     .Filter(ROOT::RDF::PassAsVec<static_cast<unsigned>(2*detectorConstants::totalnlayers), float>(remove_missing_dwc),
 	    impactcols_)
 
-    /* Create new columns impactX and impactY, of type std::vector<float>, holding extrapolated DWC impact positions per layer
-    (not shifted). This just packs all the myFriend.impactX_HGCal_layer_i into a vector and then multiplies it by -1
-    The reason for this -1 is unknown (see higher, at auto shift_rechitX = ... for more explanation)
-    */
-    .Define("impactX", ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>([](std::vector<float> v){
-      for (float& impact : v)
-        impact *= -1.;
-      return v;
-    }), impactXcols_)
-    .Define("impactY", ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>([](std::vector<float> v){
-      for (float& impact : v)
-        impact *= -1.;
-      return v;
-    }), impactYcols_)
-    // Define columns impactX_shifted, impactY_shifted : same as before but applying a shift
-    .Define(new_impX_, ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>(shift_impactX), impactXcols_)
-    .Define(new_impY_, ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>(shift_impactY), impactYcols_)
-    
     .Alias("DWC_b_x", "myFriend.b_x") //Track offsets from Delay Wire Chambers : impact on EE
     .Alias("DWC_b_y", "myFriend.b_y")
     .Alias("DWC_trackChi2_X", "myFriend.trackChi2_X") //Track chisquare from DWC
@@ -370,9 +315,7 @@ void Selector::select_relevant_branches()
     //Define new columns as vector for each event, selecting only in each event rechits that pass selections
     .Define(new_detid_,   wrapper_uint,  clean_cols_detid) // ce_clean_detid
     .Define(new_x_,       wrapper_float, clean_cols_x)     // ce_clean_x
-    .Define("ce_clean_x_shifted", shift_rechitX, clean_cols_x)
     .Define(new_y_,       wrapper_float, clean_cols_y)
-    .Define("ce_clean_y_shifted", shift_rechitY, clean_cols_y)
     .Define(new_z_,       wrapper_float, clean_cols_z)
     .Define(new_layer_,   wrapper_uint,  clean_cols_layer) // ce_clean_layer
     .Define(new_en_,      wrapper_float, clean_cols_en)    // ce_clean_energy
@@ -385,18 +328,124 @@ void Selector::select_relevant_branches()
     .Define(new_ahc_en_MeV_, weight_energy_ahc, {new_ahc_en_, clean_cols.back()});
   }
 
+
+  ROOT::RDF::RNode partial_process_next = partial_process;
+
+  /*
+  The following code deals with impact and shifts.
+  see the notebook https://github.com/tcuisset/HgcalClue3DClusteringPlotting/tree/main/notebooks/impact-shift-rechits.ipynb 
+  for a study of all this
+
+  Shifting positions : see https://gitlab.cern.ch/cms-hgcal-tb/TestBeam/-/issues/17
+  - in data : everything is more or less misaligned (DWC, beam, detector as a whole, individual layers...)
+  DWC coordinates are mirrored compared to HGCAL coordinates
+  There is an Impact_Shifts.txt file (computed using muon runs) that makes the mapping between DWC coordinates and real HGCAL layer positions
+
+  - in simulation : everything seems to be perfectly aligned
+  DWC coordinates are the right way around (so different than data...)
+  No need to apply Impact_Shifts.txt (everything is already centered at 0)
+
+  The output tree has :
+  - for data : you have two choices
+       - either use impactX_shifted and ce_clean_x. These two branches can be directly compared (impactX was shifted so it matches ce_clean_x)
+         It does not reproduce in ce_clean_x the misalignment of the different layers, but it can directly be compared to simulation
+       - either use impactX_unshifted and ce_clean_x_shifted. These 2 branches can be compared (in this case rechits positions were shifted to match extrapolated DWC tracks)
+         The misalignment of layers is reproduced in hits position.
+         Cannot really be compared with simulation as no simulation with misaligned layers seems to exist
+  - for simulation, only one choice:
+       - use impactX_shifted and ce_clean_x. All layers are aligned, and no shift is applied (it is called impactX_shifted only to match the equivalent branch in data)
+  */
+  if (this->datatype == DATATYPE::DATA) {
+    partial_process_next = partial_process
+      /* Create new columns impactX and impactY, of type std::vector<float>, holding extrapolated DWC impact positions per layer
+      (not shifted). This just packs all the myFriend.impactX_HGCal_layer_i into a vector and then multiplies it by -1
+      The -1 is due to the mirrored DWC coordinates in data only (see https://gitlab.cern.ch/cms-hgcal-tb/TestBeam/-/issues/17 comment by Artur Lobanov)
+      */
+      .Define("impactX_unshifted", ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>([](std::vector<float> v){
+        for (float& impact : v)
+          impact *= -1.;
+        return v;
+      }), impactXcols_)
+      .Define("impactY_unshifted", ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>([](std::vector<float> v){
+        for (float& impact : v)
+          impact *= -1.;
+        return v;
+      }), impactYcols_);
+    savedcols_.push_back("impactX_unshifted");
+    savedcols_.push_back("impactY_unshifted");
+
+    /**
+     * DATA ONLY (no shift in simulation)
+     * Makes new column impactX_shifted : vector<float> = { -1 * impactX_HGCal_layer_i + shift[layer i] }
+     * \param v branch impactX_unshifted
+    */
+    auto shift_impactX = [this](const std::vector<float>& v) {
+      std::vector<float> newv(v.size());
+      for(unsigned i=0; i<v.size(); ++i)
+        newv[i] = v[i] + this->shifts_map_[i].first;
+      return newv;
+    };
+
+    auto shift_impactY = [this](const std::vector<float>& v) {
+      std::vector<float> newv(v.size());
+      for(unsigned i=0; i<v.size(); ++i)
+        newv[i] = v[i] + this->shifts_map_[i].second;
+      return newv;
+    };
+    partial_process_next = partial_process_next
+      .Define("impactX_shifted", shift_impactX, {"impactX_unshifted"})
+      .Define("impactY_shifted", shift_impactY, {"impactY_unshifted"});
+
+    /*
+    DATA ONLY
+    Make new column ce_clean_x_shifted which holds rechit x position shifted by shifts in Impact_Shifts.txt 
+    */
+    auto shift_rechitX = [this](const std::vector<float>& rechit_x, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const bool& st)
+    {
+      std::vector<float> rechit_x_cleaned = clean_ce<float>(rechit_x, en, l, chip, channel, module, amplitude, noise_flag, this->noise_map_, st);
+      for(unsigned i = 0; i < rechit_x_cleaned.size(); ++i)
+        rechit_x_cleaned[i] -= this->shifts_map_[l[i]].first;
+      return rechit_x_cleaned;
+    };
+    auto shift_rechitY = [this](const std::vector<float>& rechit_y, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const bool& st)
+    {
+      std::vector<float> rechit_y_cleaned = clean_ce<float>(rechit_y, en, l, chip, channel, module, amplitude, noise_flag, this->noise_map_, st);
+      for(unsigned i = 0; i < rechit_y_cleaned.size(); ++i)
+        rechit_y_cleaned[i] -= this->shifts_map_[l[i]].second;
+      return rechit_y_cleaned;
+    };
+
+    partial_process_next = partial_process_next
+      /* Make new columns with rechits x and y positions shifted by the Shift_Impacts.txt file*/
+      .Define("ce_clean_x_shifted", shift_rechitX, clean_cols_x)
+      .Define("ce_clean_y_shifted", shift_rechitY, clean_cols_y);
+    savedcols_.push_back("ce_clean_x_shifted");
+    savedcols_.push_back("ce_clean_y_shifted");
+
+  } else { //Monte Carlo
+    /* In case of MC the impact branches are the right way around so just do nothing on the values
+    */
+    partial_process_next = partial_process
+      .Define("impactX_shifted", ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>([](std::vector<float> v){
+        return v;
+      }), impactXcols_)
+      .Define("impactY_shifted", ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>([](std::vector<float> v){
+        return v;
+      }), impactYcols_);
+  }
+
   if (this->datatype == DATATYPE::MC) {
     // Save gun energy
     savedcols_.emplace_back("trueBeamEnergy");
   }
     
   if(this->datatype == DATATYPE::MC and this->showertype == SHOWERTYPE::HAD) {
-    partial_process.Filter("ahc_energySum == 0").Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), savedcols_);
+    partial_process_next.Filter("ahc_energySum == 0").Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), savedcols_);
   }
   else if(this->datatype == DATATYPE::DATA or this->showertype == SHOWERTYPE::EM) {
     if(this->showertype == SHOWERTYPE::EM)
       savedcols_.erase(std::remove(savedcols_.begin(), savedcols_.end(), new_ahc_en_MeV_), savedcols_.end()); //erase-remove idiom
-    partial_process.Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), savedcols_);
+    partial_process_next.Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), savedcols_);
   }
 }
 

@@ -44,8 +44,6 @@ class Selector {
   std::string new_layer_    = "ce_clean_layer";
   std::string new_en_       = "ce_clean_energy";
   std::string new_en_MeV_   = "ce_clean_energy_MeV";
-  std::string new_impX_     = "impactX_shifted";
-  std::string new_impY_     = "impactY_shifted";
   //had showers only
   std::string new_ahc_en_     = "ahc_clean_energy";
   std::string new_ahc_en_MeV_ = "ahc_clean_energy_MeV";
