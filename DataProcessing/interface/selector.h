@@ -38,8 +38,6 @@ class Selector {
   std::vector< std::pair<float,float> > shifts_map_; ///< Vector of pair(shiftX, shiftY). Element shifts_map_[0] corresponds to layer nb 1, until shifts_map_[detectorConstants::totalnlayers-1]
   
   std::string new_detid_    = "ce_clean_detid";
-  std::string new_x_        = "ce_clean_x";
-  std::string new_y_        = "ce_clean_y";
   std::string new_z_        = "ce_clean_z";
   std::string new_layer_    = "ce_clean_layer";
   std::string new_en_       = "ce_clean_energy";

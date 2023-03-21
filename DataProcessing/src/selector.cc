@@ -30,8 +30,9 @@ Selector::Selector(const std::string& in_file_path, const std::string& out_file_
     this->indata_.tree_name = out_tree_name.value();
 
   //establish which data columns will be saved
-  this->savedcols_ = {"event", "run", "NRechits", new_detid_, new_x_, new_y_, new_z_, new_layer_, new_en_, new_en_MeV_, new_ahc_en_MeV_, "beamEnergy",
-    "impactX_shifted", "impactY_shifted", "DWC_b_x", "DWC_b_y", "DWC_trackChi2_X", "DWC_trackChi2_Y"};
+  this->savedcols_ = {"event", "run", "NRechits", new_detid_, "ce_clean_x_unshifted", "ce_clean_y_unshifted", new_z_, new_layer_, 
+    new_en_, new_en_MeV_, new_ahc_en_MeV_, "beamEnergy",
+    "impactX_unshifted", "impactY_unshifted", "DWC_b_x", "DWC_b_y", "DWC_trackChi2_X", "DWC_trackChi2_Y"};
   for(unsigned i=1; i<=detectorConstants::totalnlayers; ++i) {
     impactXcols_.push_back("myFriend.impactX_HGCal_layer_" + std::to_string(i));
     impactcols_.push_back("myFriend.impactX_HGCal_layer_" + std::to_string(i));
@@ -314,8 +315,8 @@ void Selector::select_relevant_branches()
 
     //Define new columns as vector for each event, selecting only in each event rechits that pass selections
     .Define(new_detid_,   wrapper_uint,  clean_cols_detid) // ce_clean_detid
-    .Define(new_x_,       wrapper_float, clean_cols_x)     // ce_clean_x
-    .Define(new_y_,       wrapper_float, clean_cols_y)
+    .Define("ce_clean_x_unshifted",       wrapper_float, clean_cols_x)
+    .Define("ce_clean_y_unshifted",       wrapper_float, clean_cols_y)
     .Define(new_z_,       wrapper_float, clean_cols_z)
     .Define(new_layer_,   wrapper_uint,  clean_cols_layer) // ce_clean_layer
     .Define(new_en_,      wrapper_float, clean_cols_en)    // ce_clean_energy
@@ -347,13 +348,13 @@ void Selector::select_relevant_branches()
 
   The output tree has :
   - for data : you have two choices
-       - either use impactX_shifted and ce_clean_x. These two branches can be directly compared (impactX was shifted so it matches ce_clean_x)
+       - either use impactX_shifted and ce_clean_x_unshifted. These two branches can be directly compared (impactX was shifted so it matches ce_clean_x)
          It does not reproduce in ce_clean_x the misalignment of the different layers, but it can directly be compared to simulation
        - either use impactX_unshifted and ce_clean_x_shifted. These 2 branches can be compared (in this case rechits positions were shifted to match extrapolated DWC tracks)
          The misalignment of layers is reproduced in hits position.
          Cannot really be compared with simulation as no simulation with misaligned layers seems to exist
   - for simulation, only one choice:
-       - use impactX_shifted and ce_clean_x. All layers are aligned, and no shift is applied (it is called impactX_shifted only to match the equivalent branch in data)
+       - use impactX_unshifted and ce_clean_x_unshifted. All layers are aligned, and no shift needs to be applied
   */
   if (this->datatype == DATATYPE::DATA) {
     partial_process_next = partial_process
@@ -371,8 +372,6 @@ void Selector::select_relevant_branches()
           impact *= -1.;
         return v;
       }), impactYcols_);
-    savedcols_.push_back("impactX_unshifted");
-    savedcols_.push_back("impactY_unshifted");
 
     /**
      * DATA ONLY (no shift in simulation)
@@ -395,6 +394,10 @@ void Selector::select_relevant_branches()
     partial_process_next = partial_process_next
       .Define("impactX_shifted", shift_impactX, {"impactX_unshifted"})
       .Define("impactY_shifted", shift_impactY, {"impactY_unshifted"});
+
+    savedcols_.push_back("impactX_shifted");
+    savedcols_.push_back("impactY_shifted");
+
 
     /*
     DATA ONLY
@@ -426,10 +429,10 @@ void Selector::select_relevant_branches()
     /* In case of MC the impact branches are the right way around so just do nothing on the values
     */
     partial_process_next = partial_process
-      .Define("impactX_shifted", ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>([](std::vector<float> v){
+      .Define("impactX_unshifted", ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>([](std::vector<float> v){
         return v;
       }), impactXcols_)
-      .Define("impactY_shifted", ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>([](std::vector<float> v){
+      .Define("impactY_unshifted", ROOT::RDF::PassAsVec<static_cast<unsigned>(detectorConstants::totalnlayers), float>([](std::vector<float> v){
         return v;
       }), impactYcols_);
   }
