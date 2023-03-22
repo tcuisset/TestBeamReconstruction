@@ -1,0 +1,25 @@
+indir = /grid_mnt/vol_home/llr/cms/cuisset/hgcal/testbeam18/job-submission/src/TestBeamReconstruction/CondorJobs/
+executable = launcher.sh
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+public_input_files = ../../../bin/slc7_amd64_gcc11/process_data_exe
+arguments = --ntupleid 645 --datatype data --showertype em --tag ntuples-v2 --w0 2.9 --dpos 1.3 --energy 250 --step selection
+universe = vanilla
+requirements = (OpSysAndVer =?= "CentOS7")
+output = out/selection_data_em_ntuples-v2.645.out
+error =  out/selection_data_em_ntuples-v2.645.err
+log =    log/selection_data_em_ntuples-v2.645.log
+getenv = True
+RequestMemory = 1.3GB
++JobFlavour = "workday"
+T3Queue = long
+WNTag=el7
++SingularityCmd = ""
+UNIX_GROUP = cms
+accounting_group = $(UNIX_GROUP)
+concurrency_limits_expr = strcat(T3Queue,":",RequestCpus," ",AcctGroupUser,":",RequestCpus)
++T3Queue="$(T3Queue)"
++T3Group="$(UNIX_GROUP)"
++WNTag="$(WNTag)"
++T3Submit=true
+queue
