@@ -5,7 +5,7 @@ declare -a SHOWERTYPES=("em" "had")
 declare -a STEPS=("selection" "analysis")
 #Note : putting /grid_mnt/.... is necessary, just using /home/llr leads to failures
 export X509_USER_PROXY=/grid_mnt/vol_home/llr/cms/cuisset/.t3/proxy.cert
-OUTPUT_FOLDER="/grid_mnt/data_cms_upgrade/cuisset/testbeam18/ntuple-selection/v2-pilot" #Default output folder
+OUTPUT_FOLDER="/grid_mnt/data_cms_upgrade/cuisset/testbeam18/ntuple-selection/v3q" #Default output folder
 
 varExists() { 
     # Checks whether a certain environment variable already exists
