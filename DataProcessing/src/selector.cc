@@ -44,6 +44,8 @@ Selector::Selector(const std::string& in_file_path, const std::string& out_file_
   //load external data
   this->load_noise_values();
   this->load_shift_values();
+
+  this->load_calibration_values();
 }
 
 Selector::~Selector()
@@ -90,6 +92,20 @@ void Selector::load_shift_values()
     assert(layer == i+1);
     this->shifts_map_.emplace_back( shiftx, shifty );
   }
+}
+
+void Selector::load_calibration_values()
+{
+  /*
+  These values were computed using a notebbok in Plotting/notebooks/calibration/fitRechitEnergies.ipynb
+  Computed by fitting the mean of rechit energies for each incident beam energy.
+  Then doing a linear fit (slope only, intercept=0) of total rechit energy gaussian mean vs beam energy
+  (beam energy taking into account synchrotron losses)
+  */
+  if (this->datatype == DATATYPE::DATA)
+    rechitEnergyCalibration_slope = 1./(1-0.0514);
+  else
+    rechitEnergyCalibration_slope = 1./(1+0.0142);
 }
 
 /**
@@ -216,7 +232,7 @@ std::vector<float> Selector::weight_energy_ce(const std::vector<float>& en, cons
       else
         continue;
 
-      en_weighted.push_back( weight * energy ); 
+      en_weighted.push_back( weight * energy * rechitEnergyCalibration_slope); 
     }
   return en_weighted;  
 }
@@ -322,7 +338,9 @@ void Selector::select_relevant_branches()
     .Define(new_en_,      wrapper_float, clean_cols_en)    // ce_clean_energy
 
     // Define ce_clean_energy_MeV column
-    .Define(new_en_MeV_, weight_energy_ce, {new_en_, new_layer_, clean_cols.back()}); //clean_cols.back() is "st" ie showertype
+    .Define(new_en_MeV_, [this](const std::vector<float>& en, const std::vector<unsigned>& l, const bool& st){ 
+      return this->weight_energy_ce(en, l, st);
+    }, {new_en_, new_layer_, clean_cols.back()}); //clean_cols.back() is "st" ie showertype
 
   if(this->showertype == SHOWERTYPE::HAD) {
     partial_process = partial_process.Define(new_ahc_en_,  clean_ahc<float>, {"ahc_hitEnergy", "ahc_hitEnergy", "ahc_hitK", clean_cols.back()})

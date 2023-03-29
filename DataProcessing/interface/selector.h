@@ -23,10 +23,11 @@ class Selector {
   static bool common_selection(const unsigned& layer, const float& energy, const unsigned& chip, const unsigned& channel, const unsigned& module, const float& amplitude, const bool& noise_flag, const mapT& map, const bool& showertype);
   template<typename T> static std::vector<T> clean_ce(const std::vector<T>&, const std::vector<float>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<unsigned>&, const std::vector<float>&, const std::vector<bool>&, const mapT&, const bool&);
   template<typename T> static std::vector<T> clean_ahc(const std::vector<T>&, const std::vector<float>&, const std::vector<int>&, const bool&);
-  static std::vector<float> weight_energy_ce(const std::vector<float>&, const std::vector<unsigned>&, const bool&);
+  std::vector<float> weight_energy_ce(const std::vector<float>&, const std::vector<unsigned>&, const bool&);
   static std::vector<float> weight_energy_ahc(const std::vector<float>&, const bool&);
   void load_noise_values();
   void load_shift_values();
+  void  load_calibration_values();
   static bool reject_noise(const mapT& map, const unsigned& mod, const unsigned& chip, const unsigned& l, const float& amp, const bool& st);
   static float ahc_energy_sum(const std::vector<float>&);
   static bool remove_missing_dwc(const std::vector<float>&);
@@ -36,7 +37,8 @@ class Selector {
   int beam_energy;
   mapT noise_map_; ///< Map pair(module_id, chip) -> 1sigma noise[HG ADC counts], loaded from file Noise_Map.txt
   std::vector< std::pair<float,float> > shifts_map_; ///< Vector of pair(shiftX, shiftY). Element shifts_map_[0] corresponds to layer nb 1, until shifts_map_[detectorConstants::totalnlayers-1]
-  
+  float rechitEnergyCalibration_slope; ///< Apply calibration to rechits energies
+
   std::string new_detid_    = "ce_clean_detid";
   std::string new_z_        = "ce_clean_z";
   std::string new_layer_    = "ce_clean_layer";
