@@ -66,7 +66,7 @@ void write_submission_file(const int& id, const std::string& jobpath, const std:
   fw << "universe = vanilla" << std::endl;
   fw << "requirements = (OpSysAndVer =?= \"CentOS7\")" << std::endl;
 
-  std::string outname = mode + "_" + p.datatype + "_" + p.showertype + "_" + p.tag + "." + n;
+  std::string outname = mode + "_" + p.datatype + "_" + p.showertype + "_beamen" + std::to_string(energy) + "_" + p.tag + "." + n;
   fw << "output = out/" + outname + ".out" << std::endl;
   fw << "error =  out/" + outname + ".err" << std::endl;
   fw << "log =    log/" + outname + ".log" << std::endl;
