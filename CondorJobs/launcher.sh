@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 declare -a ENERGIES=("20" "30" "50" "80" "100" "120" "150" "200" "250" "300")
-declare -a DATATYPES=("data" "sim_proton_v3" "sim_proton_v7" "sim_noproton_v5" "sim_noproton_v6")
+declare -a DATATYPES=("data" "sim_proton_v3" "sim_proton_v7" "sim_noproton_v5" "sim_noproton_v6" "sim_proton_v46_patchMIP")
 declare -a SHOWERTYPES=("em" "had")
 declare -a STEPS=("selection" "analysis")
 export X509_USER_PROXY=/home/llr/cms/cuisset/.t3/proxy.cert
@@ -236,6 +236,14 @@ if [[ "${STEP}" == "selection" ]]; then
 			INFILE="$INPUT_FILE_FOLDER/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v7_33m/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
 		elif [[ "${SHOWERTYPE}" == "had" ]]; then
 			echo "sim_proton_v7 and hadronic showers : I do not know which simulation to use"
+			exit 1
+		fi
+		OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
+	elif [[ "${DATATYPE}" == "sim_proton_v46_patchMIP" ]]; then 
+		if [[ "${SHOWERTYPE}" == "em" ]]; then
+			INFILE="$INPUT_FILE_FOLDER/sim_ntuples/CMSSW11_0_withAHCAL_newBeamline/FTFP_BERT_EMN/v46_patchMIP/electrons/ntuple_sim_config22_pdgID11_beamMomentum${ENERGY}_listFTFP_BERT_EMN_0000_${NTUPLEID}.root";
+		elif [[ "${SHOWERTYPE}" == "had" ]]; then
+			echo "sim_proton_v46_patchMIP and hadronic showers : I do not know which simulation to use"
 			exit 1
 		fi
 		OUTFILE="${OUTPUT_FOLDER}/ntuple_selection_${DATATYPE}_${SHOWERTYPE}_beamen${ENERGY}_${NTUPLEID}.root";
