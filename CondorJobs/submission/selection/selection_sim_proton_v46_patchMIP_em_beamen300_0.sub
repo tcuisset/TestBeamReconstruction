@@ -6,9 +6,9 @@ public_input_files = ../../../bin/slc7_amd64_gcc11/process_data_exe
 arguments = --ntupleid 0 --datatype sim_proton_v46_patchMIP --showertype em --tag ntuples-v3 --w0 2.9 --dpos 1.3 --energy 300 --step selection
 universe = vanilla
 requirements = (OpSysAndVer =?= "CentOS7")
-output = out/selection_sim_proton_v46_patchMIP_em_ntuples-v3.0.out
-error =  out/selection_sim_proton_v46_patchMIP_em_ntuples-v3.0.err
-log =    log/selection_sim_proton_v46_patchMIP_em_ntuples-v3.0.log
+output = out/selection_sim_proton_v46_patchMIP_em_beamen300_ntuples-v3.0.out
+error =  out/selection_sim_proton_v46_patchMIP_em_beamen300_ntuples-v3.0.err
+log =    log/selection_sim_proton_v46_patchMIP_em_beamen300_ntuples-v3.0.log
 getenv = True
 RequestMemory = 1.3GB
 +JobFlavour = "workday"
