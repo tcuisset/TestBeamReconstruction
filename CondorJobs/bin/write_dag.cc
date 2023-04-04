@@ -266,7 +266,7 @@ void write_simulation(const std::string& submission_folder, const std::string& b
 
 int main(int argc, char **argv) {
   std::unordered_map< std::string, std::vector<std::string> > valid_args;
-  valid_args["--datatype"] = {"data", "sim_proton_v3", "sim_proton_v7", "sim_noproton_v5", "sim_noproton_v6"};
+  valid_args["--datatype"] = {"data", "sim_proton_v3", "sim_proton_v7", "sim_noproton_v5", "sim_noproton_v6", "sim_proton_v46_patchMIP"};
   valid_args["--showertype"] = {"em", "had"};
   std::vector<std::string> free_args = {"--tag", "--w0", "--dpos"}; //any argument allowed
   std::vector<std::string> optional_args = {"--last_step_only"}; //any argument allowed
