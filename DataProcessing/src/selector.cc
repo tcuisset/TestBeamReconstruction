@@ -316,12 +316,31 @@ void Selector::select_relevant_branches()
   bool myVecFunc(std::vector<float> args);
   df.Filter(PassAsVec<3, float>(myVecFunc), {"var1", "var2", "var3"});
   */
-  auto partial_process = d->Filter(filter_str.c_str())
+  ROOT::RDF::RNode partial_process = d->Filter(filter_str.c_str())
     // Remove events with missing DWC info (if any column impactX_HGCal_layer_i or  impactY_HGCal_layer_i is unset)
     .Filter(ROOT::RDF::PassAsVec<static_cast<unsigned>(2*detectorConstants::totalnlayers), float>(remove_missing_dwc),
-	    impactcols_)
+	    impactcols_);
 
-    .Alias("DWC_b_x", "myFriend.b_x") //Track offsets from Delay Wire Chambers : impact on EE
+  if(this->showertype == SHOWERTYPE::EM) {
+    // Proton contamination selection : select only events with less than 50 hits in CE-H
+    // and where the energy in CE-E is at least 95% of the total energy in CE-E and CE-H
+    partial_process = partial_process.Filter([](std::vector<float> energies, std::vector<int> layers){
+      int count_hits_hadronic = 0; // Number of hits in hadronic compartment
+      double energyInEE = 0.; // Energy in electromagnetic part
+      double energyTotal = 0.; // Total energy in the detector
+      for (std::size_t i = 0; i < energies.size(); i++) {
+        if (layers[i] > 28 && layers[i] <= 40)
+          count_hits_hadronic += 1;
+        else if (layers[i] <= 28)
+          energyInEE += energies[i];
+        
+        energyTotal += energies[i];
+      }
+      return (count_hits_hadronic < 50) && (energyInEE / energyTotal > 0.95);
+    }, {"rechit_energy", "rechit_layer"});
+  }
+
+  partial_process = partial_process.Alias("DWC_b_x", "myFriend.b_x") //Track offsets from Delay Wire Chambers : impact on EE
     .Alias("DWC_b_y", "myFriend.b_y")
     .Alias("DWC_trackChi2_X", "myFriend.trackChi2_X") //Track chisquare from DWC
     .Alias("DWC_trackChi2_Y", "myFriend.trackChi2_Y")
