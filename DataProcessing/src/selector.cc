@@ -324,7 +324,7 @@ void Selector::select_relevant_branches()
   if(this->showertype == SHOWERTYPE::EM) {
     // Proton contamination selection : select only events with less than 50 hits in CE-H
     // and where the energy in CE-E is at least 95% of the total energy in CE-E and CE-H
-    partial_process = partial_process.Filter([](std::vector<float> energies, std::vector<int> layers){
+    partial_process = partial_process.Filter([](std::vector<float> energies, std::vector<unsigned int> layers){
       int count_hits_hadronic = 0; // Number of hits in hadronic compartment
       double energyInEE = 0.; // Energy in electromagnetic part
       double energyTotal = 0.; // Total energy in the detector
