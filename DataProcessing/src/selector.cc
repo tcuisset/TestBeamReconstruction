@@ -475,18 +475,30 @@ void Selector::select_relevant_branches()
   }
 
   if (this->datatype == DATATYPE::MC) {
-    // Save gun energy
+    // Save gun energy and various sim information
     savedcols_.emplace_back("trueBeamEnergy");
+    savedcols_.emplace_back("energyLostEE");
+    savedcols_.emplace_back("energyLostFH");
+    savedcols_.emplace_back("energyLostBH");
+    savedcols_.emplace_back("energyLostBeam");
+    savedcols_.emplace_back("energyLostOutside");
   }
+
+  if (this->datatype == DATATYPE::MC && this->showertype == SHOWERTYPE::EM) {
+    /* In case of simulation, for positron showers, we want to veto hadron contamination. We do this by requiring zero energy in AHCAL.
+    (this works because there seems to be no electronic noise simulated)
+    In data this is done at triggering level, by using the big 40cm*40cm scinttillator located between CE-H and AHCAL as a veto
+    (I think the scintillator is not simulated)
+    Without  this cut the proton contamination is much higher in simulation than in data. However after the cut it is still higher at low beam energies (20-50 GeV)
     
-  if(this->datatype == DATATYPE::MC and this->showertype == SHOWERTYPE::HAD) {
-    partial_process_next.Filter("ahc_energySum == 0").Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), savedcols_);
+    Originally this cut was applied only for hadronic showers in simulation, which I believe was a bug
+    */
+    partial_process_next = partial_process_next.Filter("ahc_energySum == 0");
   }
-  else if(this->datatype == DATATYPE::DATA or this->showertype == SHOWERTYPE::EM) {
-    if(this->showertype == SHOWERTYPE::EM)
+  if(this->showertype == SHOWERTYPE::EM) //Remove AHCAL energy in MeV in case of EM showers
       savedcols_.erase(std::remove(savedcols_.begin(), savedcols_.end(), new_ahc_en_MeV_), savedcols_.end()); //erase-remove idiom
-    partial_process_next.Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), savedcols_);
-  }
+
+  partial_process_next.Snapshot(this->outdata_.tree_name.c_str(), this->outdata_.file_path.c_str(), savedcols_);
 }
 
 void Selector::print_relevant_branches(const int& nrows=5, std::optional<std::string> filename)
