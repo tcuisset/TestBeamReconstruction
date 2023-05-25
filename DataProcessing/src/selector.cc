@@ -322,7 +322,8 @@ void Selector::select_relevant_branches()
 	    impactcols_);
 
   if(this->showertype == SHOWERTYPE::EM) {
-    // Proton contamination selection : select only events with less than 50 hits in CE-H
+    // Proton contamination selection : select only events with less than 80 hits in CE-H 
+    // (it is 50 in the JINST paper but that removes a significant fraction of positron events, so I changed it to 80)
     // and where the energy in CE-E is at least 95% of the total energy in CE-E and CE-H
     partial_process = partial_process.Filter([](std::vector<float> energies, std::vector<unsigned int> layers){
       int count_hits_hadronic = 0; // Number of hits in hadronic compartment
@@ -336,7 +337,7 @@ void Selector::select_relevant_branches()
         
         energyTotal += energies[i];
       }
-      return (count_hits_hadronic < 50) && (energyInEE / energyTotal > 0.95);
+      return (count_hits_hadronic < 80) && (energyInEE / energyTotal > 0.95);
     }, {"rechit_energy", "rechit_layer"});
   }
 
