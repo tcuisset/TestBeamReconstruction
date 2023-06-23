@@ -104,8 +104,11 @@ void Selector::load_calibration_values()
   */
   if (this->datatype == DATATYPE::DATA)
     rechitEnergyCalibration_slope = 1./(1-0.0514);
-  else
-    rechitEnergyCalibration_slope = 1./(1+0.0142);
+  else {
+    // rechitEnergyCalibration_slope = 1./(1+0.0142); //For sim_proton_v6
+    rechitEnergyCalibration_slope = 1./(1-0.019); // For sim_proton_v46_patchMIP
+  }
+    
 }
 
 /**
