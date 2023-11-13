@@ -447,15 +447,17 @@ void Selector::select_relevant_branches()
     auto shift_rechitX = [this](const std::vector<float>& rechit_x, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const bool& st)
     {
       std::vector<float> rechit_x_cleaned = clean_ce<float>(rechit_x, en, l, chip, channel, module, amplitude, noise_flag, this->noise_map_, st);
+      std::vector<unsigned> layer_cleaned = clean_ce<unsigned>(l, en, l, chip, channel, module, amplitude, noise_flag, this->noise_map_, st);
       for(unsigned i = 0; i < rechit_x_cleaned.size(); ++i)
-        rechit_x_cleaned[i] -= this->shifts_map_[l[i]].first;
+        rechit_x_cleaned[i] -= this->shifts_map_[layer_cleaned[i]].first;
       return rechit_x_cleaned;
     };
     auto shift_rechitY = [this](const std::vector<float>& rechit_y, const std::vector<float>& en, const std::vector<unsigned>& l, const std::vector<unsigned>& chip, const std::vector<unsigned>& channel, const std::vector<unsigned>& module, const std::vector<float>& amplitude, const std::vector<bool>& noise_flag, const bool& st)
     {
       std::vector<float> rechit_y_cleaned = clean_ce<float>(rechit_y, en, l, chip, channel, module, amplitude, noise_flag, this->noise_map_, st);
+      std::vector<unsigned> layer_cleaned = clean_ce<unsigned>(l, en, l, chip, channel, module, amplitude, noise_flag, this->noise_map_, st);
       for(unsigned i = 0; i < rechit_y_cleaned.size(); ++i)
-        rechit_y_cleaned[i] -= this->shifts_map_[l[i]].second;
+        rechit_y_cleaned[i] -= this->shifts_map_[layer_cleaned[i]].second;
       return rechit_y_cleaned;
     };
 
