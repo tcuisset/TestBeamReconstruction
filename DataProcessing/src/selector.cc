@@ -328,7 +328,7 @@ void Selector::select_relevant_branches()
     // Proton contamination selection : select only events with less than 80 hits in CE-H 
     // (it is 50 in the JINST paper but that removes a significant fraction of positron events, so I changed it to 80)
     // and where the energy in CE-E is at least 95% of the total energy in CE-E and CE-H
-    partial_process = partial_process.Filter([](std::vector<float> energies, std::vector<int> layers){
+    partial_process = partial_process.Filter([](std::vector<float> energies, std::vector<unsigned int> layers){
       int count_hits_hadronic = 0; // Number of hits in hadronic compartment
       double energyInEE = 0.; // Energy in electromagnetic part
       double energyTotal = 0.; // Total energy in the detector

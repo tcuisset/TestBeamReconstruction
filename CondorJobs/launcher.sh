@@ -3,8 +3,9 @@ declare -a ENERGIES=("20" "30" "50" "80" "100" "120" "150" "200" "250" "300")
 declare -a DATATYPES=("data" "sim_proton_v3" "sim_proton_v7" "sim_noproton_v5" "sim_noproton_v6" "sim_proton_v46_patchMIP")
 declare -a SHOWERTYPES=("em" "had")
 declare -a STEPS=("selection" "analysis")
-export X509_USER_PROXY=/home/llr/cms/cuisset/.t3/proxy.cert
-OUTPUT_FOLDER="/grid_mnt/data_cms_upgrade/cuisset/testbeam18/ntuple-selection/test" #Default output folder
+#Note : putting /grid_mnt/.... is necessary, just using /home/llr leads to failures
+export X509_USER_PROXY=/grid_mnt/vol_home/llr/cms/cuisset/.t3/proxy.cert
+OUTPUT_FOLDER="/grid_mnt/data_cms_upgrade/cuisset/testbeam18/ntuple-selection/v2-pilot" #Default output folder
 
 varExists() { 
     # Checks whether a certain environment variable already exists
